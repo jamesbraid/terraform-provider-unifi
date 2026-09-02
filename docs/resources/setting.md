@@ -82,6 +82,7 @@ resource "unifi_setting" "radius_only" {
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
 - `ether_lighting` (Attributes) Ethernet port lighting color settings. (see [below for nested schema](#nestedatt--ether_lighting))
+- `global_ap` (Attributes) Global access point (radio) settings. (see [below for nested schema](#nestedatt--global_ap))
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
 - `global_network` (Attributes) Global network settings for zone-based firewalling. (see [below for nested schema](#nestedatt--global_network))
 - `global_switch` (Attributes) Global switch (wired network) settings. (see [below for nested schema](#nestedatt--global_switch))
@@ -205,6 +206,20 @@ Required:
 - `key` (String) Link speed this color override applies to.
 - `raw_color_hex` (String) Hex color code for this override (e.g. `FF0000`).
 
+
+
+<a id="nestedatt--global_ap"></a>
+### Nested Schema for `global_ap`
+
+Optional:
+
+- `ap_exclusions` (List of String) MAC addresses of access points excluded from these global settings.
+- `na_channel_size` (Number) 5 GHz radio channel width, in MHz.
+- `na_tx_power` (Number) 5 GHz radio transmit power (0-49).
+- `na_tx_power_mode` (String) 5 GHz radio transmit power mode.
+- `ng_channel_size` (Number) 2.4 GHz radio channel width, in MHz.
+- `ng_tx_power` (Number) 2.4 GHz radio transmit power (0-49).
+- `ng_tx_power_mode` (String) 2.4 GHz radio transmit power mode.
 
 
 <a id="nestedatt--global_nat"></a>

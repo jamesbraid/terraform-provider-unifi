@@ -1,0 +1,58 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.global_ap",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "ap_exclusions",
+      "terraform_name": "ap_exclusions",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "na_channel_size",
+      "terraform_name": "na_channel_size",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "na_tx_power",
+      "terraform_name": "na_tx_power",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "na_tx_power_mode",
+      "terraform_name": "na_tx_power_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ng_channel_size",
+      "terraform_name": "ng_channel_size",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ng_tx_power",
+      "terraform_name": "ng_tx_power",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ng_tx_power_mode",
+      "terraform_name": "ng_tx_power_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

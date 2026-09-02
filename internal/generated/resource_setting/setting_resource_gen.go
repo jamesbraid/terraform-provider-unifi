@@ -250,6 +250,84 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"global_ap": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"ap_exclusions": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "MAC addresses of access points excluded from these global settings.",
+						MarkdownDescription: "MAC addresses of access points excluded from these global settings.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, "")),
+						},
+					},
+					"na_channel_size": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "5 GHz radio channel width, in MHz.",
+						MarkdownDescription: "5 GHz radio channel width, in MHz.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(20, 40, 80, 160),
+						},
+					},
+					"na_tx_power": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "5 GHz radio transmit power (0-49).",
+						MarkdownDescription: "5 GHz radio transmit power (0-49).",
+						Validators: []validator.Int64{
+							int64validator.Between(0, 49),
+						},
+					},
+					"na_tx_power_mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "5 GHz radio transmit power mode.",
+						MarkdownDescription: "5 GHz radio transmit power mode.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "medium", "high", "low", "custom"),
+						},
+					},
+					"ng_channel_size": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "2.4 GHz radio channel width, in MHz.",
+						MarkdownDescription: "2.4 GHz radio channel width, in MHz.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(20, 40),
+						},
+					},
+					"ng_tx_power": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "2.4 GHz radio transmit power (0-49).",
+						MarkdownDescription: "2.4 GHz radio transmit power (0-49).",
+						Validators: []validator.Int64{
+							int64validator.Between(0, 49),
+						},
+					},
+					"ng_tx_power_mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "2.4 GHz radio transmit power mode.",
+						MarkdownDescription: "2.4 GHz radio transmit power mode.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "medium", "high", "low", "custom"),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Global access point (radio) settings.",
+				MarkdownDescription: "Global access point (radio) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"global_nat": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"excluded_network_ids": schema.ListAttribute{

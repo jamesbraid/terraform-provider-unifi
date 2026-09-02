@@ -5916,6 +5916,97 @@
             "controllerregex.matchesValidator: value must match regular expression '[0-9A-Fa-f]{6}'"
           ]
         },
+        "global_ap": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Global access point (radio) settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "global_ap.ap_exclusions": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "MAC addresses of access points excluded from these global settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
+          "validators": [
+            "listvalidator.valueStringsAreValidator: element value must satisfy all validations: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
+          ]
+        },
+        "global_ap.na_channel_size": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "5 GHz radio channel width, in MHz.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"20\" \"40\" \"80\" \"160\"]"
+          ]
+        },
+        "global_ap.na_tx_power": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "5 GHz radio transmit power (0-49).",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 0 and 49"
+          ]
+        },
+        "global_ap.na_tx_power_mode": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "5 GHz radio transmit power mode.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"medium\" \"high\" \"low\" \"custom\"]"
+          ]
+        },
+        "global_ap.ng_channel_size": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "2.4 GHz radio channel width, in MHz.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"20\" \"40\"]"
+          ]
+        },
+        "global_ap.ng_tx_power": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "2.4 GHz radio transmit power (0-49).",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 0 and 49"
+          ]
+        },
+        "global_ap.ng_tx_power_mode": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "2.4 GHz radio transmit power mode.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"medium\" \"high\" \"low\" \"custom\"]"
+          ]
+        },
         "global_nat": {
           "kind": "attribute",
           "nesting_mode": "single",

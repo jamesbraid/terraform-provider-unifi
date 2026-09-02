@@ -92,6 +92,7 @@ type settingResourceModel struct {
 	Snmp               types.Object   `tfsdk:"snmp"`
 	GuestAccess        types.Object   `tfsdk:"guest_access"`
 	Usw                types.Object   `tfsdk:"usw"`
+	GlobalAp           types.Object   `tfsdk:"global_ap"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 

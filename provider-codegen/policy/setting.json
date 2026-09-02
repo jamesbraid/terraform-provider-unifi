@@ -261,7 +261,17 @@
     "Usw.attr_no_delete",
     "Usw.attr_no_edit",
     "Usw.key",
-    "Usw.site_id"
+    "Usw.site_id",
+    "GlobalAp._id",
+    "GlobalAp.attr_hidden",
+    "GlobalAp.attr_hidden_id",
+    "GlobalAp.attr_no_delete",
+    "GlobalAp.attr_no_edit",
+    "GlobalAp.key",
+    "GlobalAp.site_id",
+    "GlobalAp.6e_channel_size",
+    "GlobalAp.6e_tx_power",
+    "GlobalAp.6e_tx_power_mode"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -4438,6 +4448,153 @@
       ],
       "terraform_name": "usw",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Global access point (radio) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "MAC addresses of access points excluded from these global settings.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ],
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    },
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, \"\"))"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "ap_exclusions",
+          "structural_source": "GlobalAp",
+          "terraform_name": "ap_exclusions",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "5 GHz radio channel width, in MHz."
+          },
+          "disposition": "managed",
+          "structural_name": "na_channel_size",
+          "structural_source": "GlobalAp",
+          "terraform_name": "na_channel_size"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "5 GHz radio transmit power (0-49).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(0, 49)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "na_tx_power",
+          "structural_source": "GlobalAp",
+          "terraform_name": "na_tx_power"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "5 GHz radio transmit power mode."
+          },
+          "disposition": "managed",
+          "structural_name": "na_tx_power_mode",
+          "structural_source": "GlobalAp",
+          "terraform_name": "na_tx_power_mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "2.4 GHz radio channel width, in MHz."
+          },
+          "disposition": "managed",
+          "structural_name": "ng_channel_size",
+          "structural_source": "GlobalAp",
+          "terraform_name": "ng_channel_size"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "2.4 GHz radio transmit power (0-49).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(0, 49)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "ng_tx_power",
+          "structural_source": "GlobalAp",
+          "terraform_name": "ng_tx_power"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "2.4 GHz radio transmit power mode."
+          },
+          "disposition": "managed",
+          "structural_name": "ng_tx_power_mode",
+          "structural_source": "GlobalAp",
+          "terraform_name": "ng_tx_power_mode"
+        }
+      ],
+      "terraform_name": "global_ap",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -4502,6 +4659,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "34210990b8b9e8d876e542cbeda81f0d839362276253bc49c640413ca5d38363",
+  "source_specification_sha256": "0cdbd3e349d92b94c4a2db6f1008a808b63d2528b2fe94e9241dbf4ee66d6cc9",
   "surface_kind": "managed_resource"
 }

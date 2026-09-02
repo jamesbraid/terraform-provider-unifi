@@ -3501,6 +3501,101 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_globalAp exercises the two tx-power-mode enums of
+// global_ap's seven exposed attributes. na_tx_power_mode is the one field
+// whose masked write is probe-pinned (2026-09-01, value "auto"); the
+// update step moves it to another member of the controller's own enum.
+// ap_exclusions is not exercised live: like global_switch's
+// switch_exclusions (whose own test comment records the controller
+// refusing a synthetic MAC with api.err.InvalidDevicesInSwitchExclusions),
+// a MAC that names no real, known access point is a write this harness has
+// no adopted AP to satisfy. The channel-size and tx-power ints are not
+// exercised live either; every field's wire mapping is still covered by
+// the mask-pin and conformance tests.
+func TestAccSettingResource_globalAp(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalAp(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_ap.na_tx_power_mode",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_ap.ng_tx_power_mode",
+						"auto",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// global_ap has no AfterReceive (an unconditional mirror), so
+				// every attribute reads back a real, concrete value from the
+				// controller even when this test never configured it; import
+				// cannot rehydrate section presence ahead of Read (see
+				// settingResource.ImportState's own comment), so every one of
+				// those concrete values disagrees with the null the
+				// post-import refresh produces -- the same reasoning
+				// global_switch's own import step records.
+				ImportStateVerifyIgnore: []string{
+					"global_ap.%",
+					"global_ap.ap_exclusions.#",
+					"global_ap.na_channel_size",
+					"global_ap.na_tx_power",
+					"global_ap.na_tx_power_mode",
+					"global_ap.ng_channel_size",
+					"global_ap.ng_tx_power",
+					"global_ap.ng_tx_power_mode",
+				},
+			},
+			{
+				Config: testAccSettingConfig_globalApUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_ap.na_tx_power_mode",
+						"medium",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_ap.ng_tx_power_mode",
+						"auto",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalAp() string {
+	return `
+resource "unifi_setting" "test" {
+  global_ap = {
+    na_tx_power_mode = "auto"
+    ng_tx_power_mode = "auto"
+  }
+}
+`
+}
+
+func testAccSettingConfig_globalApUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  global_ap = {
+    na_tx_power_mode = "medium"
+    ng_tx_power_mode = "auto"
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

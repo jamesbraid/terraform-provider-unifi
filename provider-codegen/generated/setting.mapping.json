@@ -89,6 +89,55 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "GlobalAp.ap_exclusions",
+      "terraform_name": "global_ap.ap_exclusions",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalAp.na_channel_size",
+      "terraform_name": "global_ap.na_channel_size",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalAp.na_tx_power",
+      "terraform_name": "global_ap.na_tx_power",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalAp.na_tx_power_mode",
+      "terraform_name": "global_ap.na_tx_power_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalAp.ng_channel_size",
+      "terraform_name": "global_ap.ng_channel_size",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalAp.ng_tx_power",
+      "terraform_name": "global_ap.ng_tx_power",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalAp.ng_tx_power_mode",
+      "terraform_name": "global_ap.ng_tx_power_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "GlobalNat.excluded_network_ids",
       "terraform_name": "global_nat.excluded_network_ids",
       "structural_type": "array<string>",
