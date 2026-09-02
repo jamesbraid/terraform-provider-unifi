@@ -221,7 +221,14 @@ func TestSpecSectionWriteDiagnosticNeverCarriesTheRealSDKsPayload(t *testing.T) 
 	}))
 	t.Cleanup(server.Close)
 
-	client, err := ui.New(context.Background(), &ui.Config{BaseURL: server.URL, APIKey: "test-key"})
+	client, err := ui.New(context.Background(), &ui.Config{
+		BaseURL: server.URL, APIKey: "test-key",
+		// v1.113.0 stopped attaching request bodies to errors by default.
+		// Opt in: this test exists to prove the provider's own strip works
+		// when a body IS attached, and the premise check below fails loudly
+		// if this flag ever stops producing one.
+		IncludeRequestBodyInErrors: true,
+	})
 	if err != nil {
 		t.Fatalf("create the API client: %v", err)
 	}
@@ -237,11 +244,15 @@ func TestSpecSectionWriteDiagnosticNeverCarriesTheRealSDKsPayload(t *testing.T) 
 	if rawErr == nil {
 		t.Fatal("the probe write succeeded, so the SDK never formatted an error")
 	}
-	if !strings.Contains(rawErr.Error(), marker) {
+	if !strings.Contains(rawErr.Error(), "\npayload: ") {
 		t.Fatalf("the SDK no longer puts the request body in its errors, so this test "+
 			"no longer exercises DiagErrorText. Set Config.IncludeRequestBodyInErrors "+
 			"to restore it, or retire the test. Raw error: %q", rawErr.Error())
 	}
+	// The value itself may already be scrubbed here: since v1.112.0 the SDK
+	// redacts wire names the controller declares sensitive. The strip below
+	// exists for the names the controller does NOT declare, so the premise
+	// is a payload tail being attached at all, not the secret surviving it.
 
 	// x_stripe_api_key is a real settings.GuestAccess field, and one of the
 	// five genuine credentials the review measured leaking through this
