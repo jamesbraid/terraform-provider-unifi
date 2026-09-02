@@ -8716,6 +8716,25 @@
           "validators": [
             "controllerregex.matchesValidator: value must match regular expression 'WAN[2-9]?'"
           ]
+        },
+        "usw": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "USW (UniFi switch) settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "usw.dhcp_snoop": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable DHCP snooping.",
+          "description_kind": "markdown"
         }
       }
     },

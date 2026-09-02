@@ -40,6 +40,7 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"radio_ai",
 		"snmp",
 		"guest_access",
+		"usw",
 	}
 
 	r := &settingResource{client: &Client{}}

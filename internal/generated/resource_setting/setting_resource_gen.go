@@ -2509,6 +2509,23 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "USG settings.",
 				MarkdownDescription: "USG settings.",
 			},
+			"usw": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"dhcp_snoop": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable DHCP snooping.",
+						MarkdownDescription: "Enable DHCP snooping.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "USW (UniFi switch) settings.",
+				MarkdownDescription: "USW (UniFi switch) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 		},
 		MarkdownDescription: "Manages settings for a UniFi site. Configure only the settings you need by providing the corresponding nested object.",
 	}

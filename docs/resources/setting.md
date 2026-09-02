@@ -107,6 +107,7 @@ resource "unifi_setting" "radius_only" {
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `traffic_flow` (Attributes) Traffic flow classification settings. (see [below for nested schema](#nestedatt--traffic_flow))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
+- `usw` (Attributes) USW (UniFi switch) settings. (see [below for nested schema](#nestedatt--usw))
 
 ### Read-Only
 
@@ -731,3 +732,12 @@ Optional:
 - `primary_dns_server` (String) Primary DNS server.
 - `secondary_dns_server` (String) Secondary DNS server.
 - `setting_preference` (String) Setting preference: auto or manual.
+
+
+
+<a id="nestedatt--usw"></a>
+### Nested Schema for `usw`
+
+Optional:
+
+- `dhcp_snoop` (Boolean) Enable DHCP snooping.

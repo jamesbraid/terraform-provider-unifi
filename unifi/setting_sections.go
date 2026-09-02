@@ -59,6 +59,7 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	radioAiKitSection,
 	snmpKitSection,
 	guestAccessKitSection,
+	uswKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -116,3 +117,6 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // .superpowers/sdd/plan-r2b-guest-access lands its 21 core scalars only;
 // see setting_guest_access_descriptor.go's own comment for what the
 // remaining 71 of settings.GuestAccess's 92 fields wait on.
+//
+// usw is new too, not migrated -- exposed straight from the controller's
+// own Usw definition; see setting_usw_descriptor.go.

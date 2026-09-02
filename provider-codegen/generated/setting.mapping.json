@@ -1781,6 +1781,13 @@
       "structural_type": "string",
       "terraform_type": "",
       "disposition": "managed"
+    },
+    {
+      "structural_name": "Usw.dhcp_snoop",
+      "terraform_name": "usw.dhcp_snoop",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
     }
   ],
   "provider_owned": [

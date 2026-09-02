@@ -3432,6 +3432,75 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_usw exercises usw's whole surface -- the one
+// field the pinned SDK's settings.Usw defines, dhcp_snoop. The write was
+// probed live against the pinned controller (2026-09-01): a masked write
+// naming usw.dhcp_snoop is accepted, and the read echoes it back.
+func TestAccSettingResource_usw(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_usw(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"usw.dhcp_snoop",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// usw has no AfterReceive (an unconditional mirror), so
+				// dhcp_snoop reads back a real, concrete bool from the
+				// controller; import cannot rehydrate section presence ahead
+				// of Read (see settingResource.ImportState's own comment), so
+				// that concrete value disagrees with the null the post-import
+				// refresh produces -- the same reasoning global_switch's own
+				// import step records.
+				ImportStateVerifyIgnore: []string{
+					"usw.%",
+					"usw.dhcp_snoop",
+				},
+			},
+			{
+				Config: testAccSettingConfig_uswUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"usw.dhcp_snoop",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_usw() string {
+	return `
+resource "unifi_setting" "test" {
+  usw = {
+    dhcp_snoop = true
+  }
+}
+`
+}
+
+func testAccSettingConfig_uswUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  usw = {
+    dhcp_snoop = false
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

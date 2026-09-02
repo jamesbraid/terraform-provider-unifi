@@ -91,6 +91,7 @@ type settingResourceModel struct {
 	RadioAi            types.Object   `tfsdk:"radio_ai"`
 	Snmp               types.Object   `tfsdk:"snmp"`
 	GuestAccess        types.Object   `tfsdk:"guest_access"`
+	Usw                types.Object   `tfsdk:"usw"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 

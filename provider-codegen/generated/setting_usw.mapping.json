@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.usw",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "dhcp_snoop",
+      "terraform_name": "dhcp_snoop",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}
