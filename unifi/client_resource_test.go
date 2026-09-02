@@ -208,6 +208,41 @@ func TestClientToModel_LocalDNSRecordEnabledKeepsValue(t *testing.T) {
 	}
 }
 
+// display_name and last_ip are accepted by a masked write and stored empty --
+// measured against a 10.6.101 controller (2026-08-31). Both elide KeepZero,
+// so the read must store the controller's known "" over the written value;
+// keeping prior state here would hide the discard forever.
+func TestClientReadSurfacesControllerDiscards(t *testing.T) {
+	ctx := context.Background()
+	prior := clientKitModel{
+		DisplayName: types.StringValue("Revert Probe Client"),
+		LastIP:      types.StringValue("192.168.1.223"),
+	}
+	// Read seeds the model from prior state before decoding, so a field the
+	// decode skipped would keep the written value -- exactly what this test
+	// must be able to see.
+	model := prior
+	api := &unifi.Client{MAC: "02:00:00:de:ad:0a"}
+	if d := clientKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
+		t.Fatalf("ToModel: %v", d)
+	}
+	if d := clientKitAfterReceive(ctx, api, &model, prior, nil); d.HasError() {
+		t.Fatalf("AfterReceive: %v", d)
+	}
+	for _, pair := range []struct {
+		name string
+		got  types.String
+	}{
+		{"display_name", model.DisplayName},
+		{"last_ip", model.LastIP},
+	} {
+		if pair.got.IsNull() || pair.got.IsUnknown() || pair.got.ValueString() != "" {
+			t.Errorf("%s = %#v, want known empty: the controller discarded the written value",
+				pair.name, pair.got)
+		}
+	}
+}
+
 func TestAccClientFramework_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
