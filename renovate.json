@@ -1,0 +1,10 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["gomod", "github-actions"],
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies"],
+  "gomod": {
+    "postUpdateOptions": ["gomodTidy"]
+  }
+}

@@ -1,0 +1,46 @@
+# Dependency updates, running where the code is reviewed.
+#
+# This file lives in .github/workflows like every other workflow, because
+# a .forgejo/workflows directory REPLACES .github/workflows on the forge
+# rather than adding to it -- one directory, and the server guard on each
+# job decides where it runs. This one runs only on the forge; the mirror
+# skips it. (The Dependabot config it replaced never ran once: forks do
+# not get Dependabot, so pins were manually maintained while looking
+# covered.)
+#
+# Needs a repository secret RENOVATE_TOKEN: a token for a dedicated
+# renovate-bot Forgejo user with write access to this repository. The
+# run fails loudly until that exists -- a quietly-skipping updater is
+# how the last one went unnoticed for months.
+---
+name: renovate
+on:
+  schedule:
+    - cron: '34 3 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  renovate:
+    # Forge only -- the inverse of the guard every other workflow here
+    # carries. On GitHub this job skips.
+    if: github.server_url != 'https://github.com'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/renovatebot/renovate:41
+    steps:
+      - name: Refuse to pretend without a token
+        run: |
+          if [ -z "${{ secrets.RENOVATE_TOKEN }}" ]; then
+            echo "::error::RENOVATE_TOKEN is not set; mint a token for a renovate-bot user and add it as a repository secret"
+            exit 1
+          fi
+      - name: Run renovate
+        env:
+          RENOVATE_PLATFORM: gitea
+          RENOVATE_ENDPOINT: https://git.octanix.dev/api/v1
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          RENOVATE_REPOSITORIES: infra/terraform-provider-unifi
+          RENOVATE_ONBOARDING: 'false'
+          RENOVATE_REQUIRE_CONFIG: optional
+          LOG_LEVEL: info
+        run: renovate

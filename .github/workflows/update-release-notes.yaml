@@ -16,6 +16,9 @@ permissions:
 
 jobs:
   update-release-notes:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
