@@ -1,0 +1,63 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_schedule_task",
+  "resource": "unifi_schedule_task",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "action",
+      "terraform_name": "action",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "cron_expr",
+      "terraform_name": "cron_expr",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "execute_only_once",
+      "terraform_name": "execute_only_once",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upgrade_targets",
+      "terraform_name": "upgrade_targets",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

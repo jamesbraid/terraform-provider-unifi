@@ -116,9 +116,13 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		"unifi_setting.mdns.predefined_services":         "settingCountryModel settingMdnsPredefinedServiceModel",
 		"unifi_setting.magic_site_to_site_vpn":           "settingMagicSiteToSiteVpnModel settingNetworkOptimizationModel",
 		"unifi_setting.network_optimization":             "settingMagicSiteToSiteVpnModel settingNetworkOptimizationModel",
-		"unifi_vpn_server.dns":                           "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
-		"data.unifi_network.dhcp_guarding":               "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
-		"data.unifi_network.dhcp_relay":                  "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		// A schedule task's upgrade target and a traffic route's source client
+		// are both a lone mac, so their models share a member set.
+		"unifi_schedule_task.upgrade_targets": "scheduleTaskTargetModel sourceClientModel",
+		"unifi_traffic_route.source.clients":  "scheduleTaskTargetModel sourceClientModel",
+		"unifi_vpn_server.dns":                "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"data.unifi_network.dhcp_guarding":    "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"data.unifi_network.dhcp_relay":       "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 	}
 	for path, candidates := range ambiguous {
 		declared, ok := declaredAmbiguous[path]

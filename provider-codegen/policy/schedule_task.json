@@ -1,0 +1,137 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "resource": "unifi_schedule_task",
+  "generator_name": "schedule_task",
+  "source_specification_sha256": "c753c7f5576d55122f3d1329f036ec99a9c7100a6dee7a5af86b5735d0133545",
+  "description": "Manages a scheduled task in the UniFi controller. A schedule task upgrades the firmware of one or more adopted devices, either once or on a repeating cron schedule.",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the scheduled task.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "action",
+      "terraform_name": "action",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "upgrade"
+        },
+        "description": "The action the task performs. The controller only schedules firmware upgrades, so `upgrade` is the sole value."
+      }
+    },
+    {
+      "structural_name": "cron_expr",
+      "terraform_name": "cron_expr",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The cron expression fixing when the task runs. A once-only task runs at the first matching time and then stops."
+      }
+    },
+    {
+      "structural_name": "execute_only_once",
+      "terraform_name": "execute_only_once",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "Whether the task runs a single time (`true`) or repeats on every match of its cron expression (`false`)."
+      }
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the scheduled task."
+      }
+    },
+    {
+      "structural_name": "upgrade_targets",
+      "terraform_name": "upgrade_targets",
+      "terraform_type": "list_nested",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The devices the task upgrades, each named by its MAC address."
+      },
+      "fields": [
+        {
+          "structural_name": "mac",
+          "terraform_name": "mac",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The MAC address of the device to upgrade."
+          }
+        }
+      ]
+    }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "site_id"
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the scheduled task belongs to.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

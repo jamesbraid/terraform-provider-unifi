@@ -102,6 +102,7 @@ unifi_radius_profile.use_usg_acct_server
 unifi_radius_profile.vlan_enabled
 unifi_radius_user.tunnel_medium_type
 unifi_radius_user.tunnel_type
+unifi_schedule_task.action
 unifi_setting.auto_speedtest.enabled
 unifi_setting.doh.custom_servers.enabled
 unifi_setting.dpi.enabled

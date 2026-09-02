@@ -125,6 +125,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		backend := wlanGroupKitBackend(api)
 		record("wlan_group", backend.Create != nil, backend.CreateFields != nil)
 	}
+	{
+		backend := scheduleTaskKitBackend(api)
+		record("schedule_task", backend.Create != nil, backend.CreateFields != nil)
+	}
 
 	sort.Strings(seen)
 	served := kitServedSurfaces(t)

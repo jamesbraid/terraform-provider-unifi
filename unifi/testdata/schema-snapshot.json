@@ -5899,6 +5899,132 @@
         }
       }
     },
+    "unifi_schedule_task": {
+      "version": 0,
+      "description": "Manages a scheduled task in the UniFi controller. A schedule task upgrades the firmware of one or more adopted devices, either once or on a repeating cron schedule.",
+      "description_kind": "markdown",
+      "attributes": {
+        "action": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The action the task performs. The controller only schedules firmware upgrades, so `upgrade` is the sole value.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to upgrade",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression 'upgrade'"
+          ]
+        },
+        "cron_expr": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The cron expression fixing when the task runs. A once-only task runs at the first matching time and then stops.",
+          "description_kind": "markdown"
+        },
+        "execute_only_once": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "required": true,
+          "description": "Whether the task runs a single time (`true`) or repeats on every match of its cron expression (`false`).",
+          "description_kind": "markdown"
+        },
+        "id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "computed": true,
+          "description": "The ID of the scheduled task.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the scheduled task.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The name of the site the scheduled task belongs to.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource.",
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "timeouts": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "description_kind": "plain",
+          "custom_type": "timeouts.Type: \u003ccarries no description\u003e"
+        },
+        "timeouts.create": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.delete": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.read": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.update": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "upgrade_targets": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "required": true,
+          "description": "The devices the task upgrades, each named by its MAC address.",
+          "description_kind": "markdown"
+        },
+        "upgrade_targets.mac": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The MAC address of the device to upgrade.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
+          ]
+        }
+      }
+    },
     "unifi_setting": {
       "version": 1,
       "description": "Manages settings for a UniFi site. Configure only the settings you need by providing the corresponding nested object.",
@@ -15295,6 +15421,39 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The name of the site to list RADIUS users from.",
+          "description_kind": "markdown"
+        }
+      }
+    },
+    "unifi_schedule_task": {
+      "version": 0,
+      "description": "List scheduled tasks in a site.",
+      "description_kind": "markdown",
+      "attributes": {
+        "filter": {
+          "kind": "block",
+          "nesting_mode": "list",
+          "description_kind": "plain"
+        },
+        "filter.name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the filter to apply. Supported values are: `name`.",
+          "description_kind": "markdown"
+        },
+        "filter.value": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The value to filter by.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The name of the site to list scheduled tasks from.",
           "description_kind": "markdown"
         }
       }

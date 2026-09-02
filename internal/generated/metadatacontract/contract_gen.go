@@ -40,6 +40,7 @@ var FrozenTypeNames = map[string]string{
 	"radiusProfileKitResource":    "unifi_radius_profile",
 	"radiusUserDataSource":        "unifi_radius_user",
 	"radiusUserKitResource":       "unifi_radius_user",
+	"scheduleTaskKitResource":     "unifi_schedule_task",
 	"settingResource":             "unifi_setting",
 	"siteFrameworkResource":       "unifi_site",
 	"siteToSiteVPNKitResource":    "unifi_site_to_site_vpn",
