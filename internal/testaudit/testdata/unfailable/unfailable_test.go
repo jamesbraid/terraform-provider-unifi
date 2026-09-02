@@ -68,3 +68,53 @@ func TestVarDeclaredEmptyTable(t *testing.T) {
 		t.Errorf("unreachable: %s", tt.name)
 	}
 }
+
+// The donation channel: verify exists on two types, one asserting and one
+// mute, and this test calls the mute one. A resolver that looks methods up
+// by bare name finds donor.verify and inherits its verdict -- exactly how
+// three device schema tests passed for months by reaching a logger's Error.
+func TestMethodOnUnrelatedType(t *testing.T) {
+	m := mute{}
+	m.verify()
+}
+
+// The receiver's declared type is an interface, so no method body is
+// resolvable from syntax. The call must be judged non-asserting even though
+// a same-named method that asserts exists in the package.
+func TestUnresolvableReceiver(t *testing.T) {
+	var v verifier = mute{}
+	v.verify()
+}
+
+// One name, two types, and the mute binding is the one called. Which
+// declaration a given call sees is a scope question the parser cannot
+// answer, so the name resolves to nothing.
+func TestShadowedReceiver(t *testing.T) {
+	d := donor{t: t}
+	_ = d
+	{
+		d := mute{}
+		d.verify()
+	}
+}
+
+type donor struct{ t *testing.T }
+
+func (d donor) verify() { d.t.Fatal("boom") }
+
+type mute struct{}
+
+func (m mute) verify() {}
+
+type verifier interface{ verify() }
+
+// A bare call is a free function, never a method: the free doNothing is what
+// runs here, and the asserting method of the same name must not stand in
+// for it.
+func TestBareNameIsNotAMethod(t *testing.T) {
+	doNothing()
+}
+
+func doNothing() {}
+
+func (d donor) doNothing() { d.t.Fatal("boom") }

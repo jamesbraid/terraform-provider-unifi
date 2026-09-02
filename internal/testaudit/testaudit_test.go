@@ -75,6 +75,13 @@ func Test_scanReportsTheThreeShapes(t *testing.T) {
 		"TestUnconditionalSkip":     SkipStub,
 		"TestEmptyMapNeverWritten":  EmptyTable,
 		"TestVarDeclaredEmptyTable": EmptyTable,
+		// The receiver-resolution shapes: a method on an unrelated type, an
+		// interface receiver, a shadowed name, a free/method name collision.
+		// None of these calls may donate an assertion verdict.
+		"TestMethodOnUnrelatedType": NoAssertion,
+		"TestUnresolvableReceiver":  NoAssertion,
+		"TestShadowedReceiver":      NoAssertion,
+		"TestBareNameIsNotAMethod":  NoAssertion,
 	}
 	for name, kind := range want {
 		if got[name] != kind {
@@ -109,6 +116,14 @@ func Test_scanDoesNotReportATestThatCanFail(t *testing.T) {
 		"TestVarDeclaredTableFilledLater",
 		"TestVarDeclaredTableFilledByPointerArgument",
 		"TestVarDeclaredTableFilledThroughCompositeLiteralPointer",
+		// Method assertion helpers: each binds the receiver a different way
+		// the resolver must read, and each asserts only through that method.
+		"TestMethodViaCompositeLiteral",
+		"TestMethodViaConstructor",
+		"TestMethodViaMultiResultConstructor",
+		"TestMethodViaVarDecl",
+		"TestMethodViaMethodChain",
+		"TestMethodViaTableCase",
 	} {
 		if kind, reported := got[name]; reported {
 			t.Errorf("%s can fail but was reported as %q", name, kind)

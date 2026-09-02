@@ -183,3 +183,74 @@ type recorder struct {
 func (r recorder) record(name string) {
 	*r.log = append(*r.log, name)
 }
+
+// Method assertion helpers, each binding the receiver a different way the
+// resolver must be able to read. Any of these flagged means a real test
+// asserting through a fixture method would be reported as mute.
+
+type checker struct{ t *testing.T }
+
+func (c checker) mustBeThree(n int) {
+	if n != 3 {
+		c.t.Fatalf("want 3, got %d", n)
+	}
+}
+
+func newChecker(t *testing.T) *checker { return &checker{t: t} }
+
+func newCheckerOrErr(t *testing.T) (*checker, error) { return &checker{t: t}, nil }
+
+// The receiver is bound by a composite literal.
+func TestMethodViaCompositeLiteral(t *testing.T) {
+	c := checker{t: t}
+	c.mustBeThree(3)
+}
+
+// The receiver is bound through a same-package constructor's result type.
+func TestMethodViaConstructor(t *testing.T) {
+	c := newChecker(t)
+	c.mustBeThree(3)
+}
+
+// d, err := f(): constructor results bind by position.
+func TestMethodViaMultiResultConstructor(t *testing.T) {
+	c, err := newCheckerOrErr(t)
+	_ = err
+	c.mustBeThree(3)
+}
+
+// The receiver is bound by a var declaration.
+func TestMethodViaVarDecl(t *testing.T) {
+	var c checker
+	c.t = t
+	c.mustBeThree(3)
+}
+
+// The assertion is a method calling a method: the inner receiver binding
+// comes from the method's own receiver list.
+func TestMethodViaMethodChain(t *testing.T) {
+	c := checker{t: t}
+	c.indirect(3)
+}
+
+func (c checker) indirect(n int) { c.mustBeThree(n) }
+
+// The receiver is a table case: its type is the ranged slice's element type,
+// read from the slice variable's own binding.
+func TestMethodViaTableCase(t *testing.T) {
+	cases := []methodCase{{t: t, n: 3}}
+	for _, tc := range cases {
+		tc.check()
+	}
+}
+
+type methodCase struct {
+	t *testing.T
+	n int
+}
+
+func (tc methodCase) check() {
+	if tc.n != 3 {
+		tc.t.Fatalf("want 3, got %d", tc.n)
+	}
+}

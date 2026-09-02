@@ -16,7 +16,11 @@
 //	              nothing at all.
 //
 // Assertion reachability is transitive through same-package helpers: a test
-// whose only assertion lives in a helper it calls does assert.
+// whose only assertion lives in a helper it calls does assert. A method call
+// resolves only against the receiver's type, and only when that type is
+// knowable from the syntax alone; a call whose receiver cannot be pinned down
+// is judged non-asserting. Fail closed: a bare name must never donate an
+// assertion verdict across unrelated types.
 package testaudit
 
 import (
@@ -122,6 +126,7 @@ var skipDirs = map[string]bool{".git": true, "vendor": true, "build": true, "tes
 type funcInfo struct {
 	decl    *ast.FuncDecl
 	pkgDir  string
+	recv    string // receiver type name, "" for a free function
 	file    string
 	isTest  bool
 	asserts int // -1 unknown, 0 no, 1 yes
@@ -169,6 +174,7 @@ func Scan(root string) ([]Finding, error) {
 			funcs[key] = &funcInfo{
 				decl:   fd,
 				pkgDir: pkgDir,
+				recv:   recv,
 				file:   path,
 				// TestMain is a harness, not a test. It has no assertions by
 				// design and counting it would put a permanent false entry at
@@ -187,13 +193,7 @@ func Scan(root string) ([]Finding, error) {
 		return nil, err
 	}
 
-	byName := map[string][]*funcInfo{}
-	for key, fi := range funcs {
-		parts := strings.SplitN(key, "|", 3)
-		byName[parts[0]+"|"+parts[2]] = append(byName[parts[0]+"|"+parts[2]], fi)
-	}
-
-	resolver := &assertResolver{byName: byName, visiting: map[*funcInfo]bool{}}
+	resolver := &assertResolver{funcs: funcs, visiting: map[*funcInfo]bool{}}
 
 	var findings []Finding
 	for _, key := range order {
@@ -225,8 +225,12 @@ func Scan(root string) ([]Finding, error) {
 }
 
 type assertResolver struct {
-	byName   map[string][]*funcInfo
+	funcs    map[string]*funcInfo // pkgDir|recvType|name; recvType "" for free functions
 	visiting map[*funcInfo]bool
+}
+
+func (r *assertResolver) lookup(pkgDir, recv, name string) *funcInfo {
+	return r.funcs[pkgDir+"|"+recv+"|"+name]
 }
 
 // asserts reports whether fi can fail the test, following calls into
@@ -245,6 +249,7 @@ func (r *assertResolver) asserts(fi *funcInfo) bool {
 	defer delete(r.visiting, fi)
 
 	params := testingParams(fi.decl)
+	binds := r.bindings(fi)
 	found := false
 	ast.Inspect(fi.decl, func(n ast.Node) bool {
 		if found {
@@ -261,19 +266,36 @@ func (r *assertResolver) asserts(fi *funcInfo) bool {
 					found = true
 					return false
 				}
-				// err.Error(). Stop here rather than falling through to
-				// the name lookup below: resolving the bare name "Error"
-				// finds any package method that happens to be called
-				// Error -- a logger's, say -- and inherits its verdict.
+				// err.Error(). Stop here rather than resolving the method:
+				// x.Error on a non-testing receiver is the error interface
+				// until proven otherwise.
 				return true
 			}
-			if id, ok := fn.X.(*ast.Ident); ok && assertPackages[id.Name] {
+			id, ok := fn.X.(*ast.Ident)
+			if !ok {
+				// A chained receiver (a.b.M(), f().M()) is not resolvable
+				// from syntax. Judged non-asserting.
+				return true
+			}
+			if assertPackages[id.Name] {
 				found = true
 				return false
 			}
-			found = r.anyAsserts(fi, fn.Sel.Name)
+			// A method call resolves only against the receiver's bound type.
+			// An unbound or ambiguous receiver resolves to nothing: a method
+			// on an unrelated type that shares the name must not donate its
+			// verdict, which is exactly how three unfailable schema tests
+			// passed for months (they reached a logger's Error by bare name).
+			if typ, ok := binds[id.Name]; ok {
+				if m := r.lookup(fi.pkgDir, typ, fn.Sel.Name); m != nil && m != fi {
+					found = r.asserts(m)
+				}
+			}
 		case *ast.Ident:
-			found = r.anyAsserts(fi, fn.Name)
+			// A bare call is a free function, never a method.
+			if callee := r.lookup(fi.pkgDir, "", fn.Name); callee != nil && callee != fi {
+				found = r.asserts(callee)
+			}
 		}
 		return !found
 	})
@@ -286,13 +308,219 @@ func (r *assertResolver) asserts(fi *funcInfo) bool {
 	return found
 }
 
-func (r *assertResolver) anyAsserts(from *funcInfo, name string) bool {
-	for _, candidate := range r.byName[from.pkgDir+"|"+name] {
-		if candidate != from && r.asserts(candidate) {
-			return true
+// unknownType poisons a name whose type the syntax cannot pin down, or that
+// is bound to two different types in one function. It matches no receiver, so
+// a call through it resolves to nothing: fail closed.
+const unknownType = "?"
+
+// namedType reduces a syntactic type to a bare in-package type name. *T is T;
+// []T is kept as "[]T" so ranging over such a value can recover the element
+// type; anything qualified or composite is unknown -- its methods could not
+// be resolved in this package anyway.
+func namedType(e ast.Expr) string {
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		return namedType(t.X)
+	case *ast.Ident:
+		return t.Name
+	case *ast.ArrayType:
+		if t.Len == nil {
+			if elem := namedType(t.Elt); elem != unknownType && !strings.HasPrefix(elem, "[]") {
+				return "[]" + elem
+			}
 		}
 	}
-	return false
+	return unknownType
+}
+
+func elemType(typ string) string {
+	if s, ok := strings.CutPrefix(typ, "[]"); ok {
+		return s
+	}
+	return unknownType
+}
+
+// valueType names the type of an expression used as a declaration value:
+// a composite literal, its address, a type assertion, or a call to a
+// same-package free function with one declared result.
+func (r *assertResolver) valueType(pkgDir string, e ast.Expr) string {
+	switch v := e.(type) {
+	case *ast.UnaryExpr:
+		if v.Op == token.AND {
+			return r.valueType(pkgDir, v.X)
+		}
+	case *ast.CompositeLit:
+		if v.Type != nil {
+			return namedType(v.Type)
+		}
+	case *ast.TypeAssertExpr:
+		if v.Type != nil {
+			return namedType(v.Type)
+		}
+	case *ast.CallExpr:
+		if types := r.callResultTypes(pkgDir, e); len(types) == 1 {
+			return types[0]
+		}
+	}
+	return unknownType
+}
+
+// callResultTypes resolves a call to a same-package free function into its
+// declared result types, one entry per returned value. Anything else -- a
+// method call, a conversion, an imported function -- resolves to nothing.
+func (r *assertResolver) callResultTypes(pkgDir string, e ast.Expr) []string {
+	call, ok := e.(*ast.CallExpr)
+	if !ok {
+		return nil
+	}
+	id, ok := call.Fun.(*ast.Ident)
+	if !ok {
+		return nil
+	}
+	fn := r.lookup(pkgDir, "", id.Name)
+	if fn == nil || fn.decl.Type.Results == nil {
+		return nil
+	}
+	var out []string
+	for _, f := range fn.decl.Type.Results.List {
+		n := len(f.Names)
+		if n == 0 {
+			n = 1
+		}
+		for range n {
+			out = append(out, namedType(f.Type))
+		}
+	}
+	return out
+}
+
+// bindings maps each name declared anywhere in fi -- receiver, parameters,
+// results, function-literal parameters, var declarations, := assignments,
+// range and type-switch variables -- to the one type the syntax names for it.
+// Every declaration site contributes: a site whose type cannot be read binds
+// the name to unknownType, and a name bound to two different types anywhere
+// in the function is poisoned the same way, because which declaration a given
+// call sees is a scope question the parser cannot answer.
+func (r *assertResolver) bindings(fi *funcInfo) map[string]string {
+	binds := map[string]string{}
+	set := func(name, typ string) {
+		if name == "" || name == "_" {
+			return
+		}
+		if prev, ok := binds[name]; ok && prev != typ {
+			typ = unknownType
+		}
+		binds[name] = typ
+	}
+	bindFields := func(fl *ast.FieldList) {
+		if fl == nil {
+			return
+		}
+		for _, f := range fl.List {
+			typ := namedType(f.Type)
+			for _, n := range f.Names {
+				set(n.Name, typ)
+			}
+		}
+	}
+	bindFields(fi.decl.Recv)
+	bindFields(fi.decl.Type.Params)
+	bindFields(fi.decl.Type.Results)
+
+	// Range values are bound after everything else: their element type comes
+	// from the ranged expression's own binding, which must be settled -- and
+	// poisoned where ambiguous -- before it is read.
+	type pendingRange struct {
+		name string
+		x    ast.Expr
+	}
+	var ranges []pendingRange
+
+	ast.Inspect(fi.decl, func(n ast.Node) bool {
+		switch stmt := n.(type) {
+		case *ast.FuncLit:
+			bindFields(stmt.Type.Params)
+			bindFields(stmt.Type.Results)
+		case *ast.AssignStmt:
+			if stmt.Tok != token.DEFINE {
+				break
+			}
+			if len(stmt.Rhs) == 1 && len(stmt.Lhs) > 1 {
+				// d, err := newDonor(...): results map by position.
+				types := r.callResultTypes(fi.pkgDir, stmt.Rhs[0])
+				for i, lhs := range stmt.Lhs {
+					if id, ok := lhs.(*ast.Ident); ok {
+						typ := unknownType
+						if i < len(types) {
+							typ = types[i]
+						}
+						set(id.Name, typ)
+					}
+				}
+				break
+			}
+			for i, lhs := range stmt.Lhs {
+				if id, ok := lhs.(*ast.Ident); ok {
+					typ := unknownType
+					if i < len(stmt.Rhs) {
+						typ = r.valueType(fi.pkgDir, stmt.Rhs[i])
+					}
+					set(id.Name, typ)
+				}
+			}
+		case *ast.GenDecl:
+			if stmt.Tok != token.VAR {
+				break
+			}
+			for _, spec := range stmt.Specs {
+				vs, ok := spec.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				for i, name := range vs.Names {
+					typ := unknownType
+					if vs.Type != nil {
+						typ = namedType(vs.Type)
+					} else if i < len(vs.Values) {
+						typ = r.valueType(fi.pkgDir, vs.Values[i])
+					}
+					set(name.Name, typ)
+				}
+			}
+		case *ast.RangeStmt:
+			if stmt.Tok != token.DEFINE {
+				break
+			}
+			if id, ok := stmt.Key.(*ast.Ident); ok {
+				set(id.Name, unknownType)
+			}
+			if id, ok := stmt.Value.(*ast.Ident); ok {
+				ranges = append(ranges, pendingRange{name: id.Name, x: stmt.X})
+			}
+		case *ast.TypeSwitchStmt:
+			// switch v := x.(type): v has a different type in each case.
+			if assign, ok := stmt.Assign.(*ast.AssignStmt); ok && len(assign.Lhs) == 1 {
+				if id, ok := assign.Lhs[0].(*ast.Ident); ok {
+					set(id.Name, unknownType)
+				}
+			}
+		}
+		return true
+	})
+
+	for _, p := range ranges {
+		typ := unknownType
+		switch x := p.x.(type) {
+		case *ast.CompositeLit:
+			if x.Type != nil {
+				typ = elemType(namedType(x.Type))
+			}
+		case *ast.Ident:
+			typ = elemType(binds[x.Name])
+		}
+		set(p.name, typ)
+	}
+	return binds
 }
 
 // isSkipStub reports an unconditional t.Skip: one that no condition guards, so
