@@ -13,6 +13,9 @@ permissions:
 
 jobs:
   test:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     name: Acceptance Test
     runs-on: ubuntu-latest
     timeout-minutes: 75

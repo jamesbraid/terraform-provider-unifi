@@ -13,6 +13,9 @@ on:
 
 jobs:
   codeql:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
     permissions:
@@ -61,6 +64,9 @@ jobs:
         category: "/language:${{matrix.language}}"
 
   gosec:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     name: gosec
     runs-on: ubuntu-latest
     permissions:

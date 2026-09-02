@@ -18,6 +18,9 @@ permissions:
 
 jobs:
   goreleaser:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     concurrency: release
     steps:

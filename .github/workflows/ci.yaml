@@ -24,6 +24,9 @@ permissions:
 
 jobs:
   lint:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     name: GolangCI Lint
     runs-on: ubuntu-latest
     steps:
@@ -41,6 +44,9 @@ jobs:
           only-new-issues: true
 
   build:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -54,6 +60,9 @@ jobs:
     - run: go build -v .
 
   generate:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -75,6 +84,9 @@ jobs:
         git diff --compact-summary --exit-code || \
           (echo; echo "Unexpected difference in directories after code generation. Run 'go generate ./...' command and commit."; exit 1)
   test:
+    # GitHub only -- on the forge this job skips (see renovate.yml for why
+    # both live in one directory).
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
