@@ -5694,6 +5694,57 @@
           "description_kind": "markdown",
           "default": "booldefault.staticBoolDefault: value defaults to false"
         },
+        "connectivity": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Uplink connectivity monitor and wireless uplink settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "connectivity.enable_isolated_wlan": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable the isolated WLAN for access points that lose their uplink.",
+          "description_kind": "markdown"
+        },
+        "connectivity.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable the uplink connectivity monitor.",
+          "description_kind": "markdown"
+        },
+        "connectivity.mlo_mesh_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable MLO (Wi-Fi 7 multi-link operation) mesh.",
+          "description_kind": "markdown"
+        },
+        "connectivity.uplink_host": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Custom host the connectivity monitor checks.",
+          "description_kind": "markdown"
+        },
+        "connectivity.uplink_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Connectivity monitor uplink type.",
+          "description_kind": "markdown"
+        },
         "country": {
           "kind": "attribute",
           "nesting_mode": "single",

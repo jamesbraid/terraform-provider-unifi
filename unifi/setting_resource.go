@@ -93,6 +93,7 @@ type settingResourceModel struct {
 	GuestAccess        types.Object   `tfsdk:"guest_access"`
 	Usw                types.Object   `tfsdk:"usw"`
 	GlobalAp           types.Object   `tfsdk:"global_ap"`
+	Connectivity       types.Object   `tfsdk:"connectivity"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 

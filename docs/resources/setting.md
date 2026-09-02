@@ -77,6 +77,7 @@ resource "unifi_setting" "radius_only" {
 ### Optional
 
 - `auto_speedtest` (Attributes) Periodic automated internet speed test settings. (see [below for nested schema](#nestedatt--auto_speedtest))
+- `connectivity` (Attributes) Uplink connectivity monitor and wireless uplink settings. (see [below for nested schema](#nestedatt--connectivity))
 - `country` (Attributes) Regulatory country settings. (see [below for nested schema](#nestedatt--country))
 - `dashboard` (Attributes) Dashboard layout and widget visibility settings. (see [below for nested schema](#nestedatt--dashboard))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
@@ -121,6 +122,18 @@ Optional:
 
 - `cron_expr` (String) Cron expression controlling when the speed test runs (e.g. `0 * * * *`).
 - `enabled` (Boolean) Whether periodic automated speed tests are enabled.
+
+
+<a id="nestedatt--connectivity"></a>
+### Nested Schema for `connectivity`
+
+Optional:
+
+- `enable_isolated_wlan` (Boolean) Enable the isolated WLAN for access points that lose their uplink.
+- `enabled` (Boolean) Enable the uplink connectivity monitor.
+- `mlo_mesh_enabled` (Boolean) Enable MLO (Wi-Fi 7 multi-link operation) mesh.
+- `uplink_host` (String) Custom host the connectivity monitor checks.
+- `uplink_type` (String) Connectivity monitor uplink type.
 
 
 <a id="nestedatt--country"></a>

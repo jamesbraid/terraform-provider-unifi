@@ -49,6 +49,47 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"connectivity": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"enable_isolated_wlan": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable the isolated WLAN for access points that lose their uplink.",
+						MarkdownDescription: "Enable the isolated WLAN for access points that lose their uplink.",
+					},
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable the uplink connectivity monitor.",
+						MarkdownDescription: "Enable the uplink connectivity monitor.",
+					},
+					"mlo_mesh_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable MLO (Wi-Fi 7 multi-link operation) mesh.",
+						MarkdownDescription: "Enable MLO (Wi-Fi 7 multi-link operation) mesh.",
+					},
+					"uplink_host": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Custom host the connectivity monitor checks.",
+						MarkdownDescription: "Custom host the connectivity monitor checks.",
+					},
+					"uplink_type": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Connectivity monitor uplink type.",
+						MarkdownDescription: "Connectivity monitor uplink type.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Uplink connectivity monitor and wireless uplink settings.",
+				MarkdownDescription: "Uplink connectivity monitor and wireless uplink settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"country": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"code": schema.Int64Attribute{

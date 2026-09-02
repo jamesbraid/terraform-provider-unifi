@@ -19,6 +19,41 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Connectivity.enable_isolated_wlan",
+      "terraform_name": "connectivity.enable_isolated_wlan",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Connectivity.enabled",
+      "terraform_name": "connectivity.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Connectivity.mlo_mesh_enabled",
+      "terraform_name": "connectivity.mlo_mesh_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Connectivity.uplink_host",
+      "terraform_name": "connectivity.uplink_host",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Connectivity.uplink_type",
+      "terraform_name": "connectivity.uplink_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Country.code",
       "terraform_name": "country.code",
       "structural_type": "int64",

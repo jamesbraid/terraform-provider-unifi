@@ -1,0 +1,44 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.connectivity",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "enable_isolated_wlan",
+      "terraform_name": "enable_isolated_wlan",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mlo_mesh_enabled",
+      "terraform_name": "mlo_mesh_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "uplink_host",
+      "terraform_name": "uplink_host",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "uplink_type",
+      "terraform_name": "uplink_type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}
