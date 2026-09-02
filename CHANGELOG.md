@@ -35,6 +35,15 @@ All notable changes to this project will be documented in this file.
   controller error into a Terraform message now drop the request body,
   and a test fails the build if a new one is added without it.
 
+### ✨ Features
+
+- **New resource `unifi_ospf_router`** manages OSPF routers: the router
+  ID, its areas and the networks announced into them, per-interface
+  cost/interval/priority settings, and redistribution of BGP, connected
+  and static routes. Derived from the pinned controller's own
+  `OSPFRouter` definition. The controller requires a `router_id` and at
+  least one area on every router.
+
 ### 🔧 Maintenance
 
 - The bundled go-unifi client is now v1.113.0. Its error messages no

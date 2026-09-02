@@ -30,6 +30,7 @@ var FrozenTypeNames = map[string]string{
 	"firewallZoneKitResource":     "unifi_firewall_zone",
 	"networkDataSource":           "unifi_network",
 	"networkKitResource":          "unifi_network",
+	"ospfRouterKitResource":       "unifi_ospf_router",
 	"portAction":                  "unifi_port",
 	"portForwardResource":         "unifi_port_forward",
 	"portProfileDataSource":       "unifi_port_profile",

@@ -17,7 +17,7 @@ import (
 // Configure disappears from the enumeration below and every remaining row
 // still passes, so this is what catches it. Raise it deliberately when a
 // surface is added.
-const wantConfigurableSurfaces = 44
+const wantConfigurableSurfaces = 45
 
 // TestEveryConfigurableSurfaceAcceptsProviderData asserts, for every
 // configurable surface, that Configure(nil) doesn't error, Configure(wrong

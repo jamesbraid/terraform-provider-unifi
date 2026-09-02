@@ -214,6 +214,10 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client-info-ds.json -policy policy/client_info_ds.json -artifact-prefix client_info_ds -output-dir generated
 //go:generate go tool tfplugingen-framework generate data-sources --input generated/client_info_ds.provider-code-spec.json --output ../internal/generated/datasource_client_info --package datasource_client_info
 //go:generate gofmt -w ../internal/generated/datasource_client_info/client_info_ds_data_source_gen.go
+//go:generate sdkbootstrap -struct OSPFRouter -resource unifi_ospf_router -output bootstrap/go-unifi-v1.103.0-ospf-router.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-ospf-router.json -policy policy/ospf_router.json -artifact-prefix ospf_router -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/ospf_router.provider-code-spec.json --output ../internal/generated/resource_ospf_router --package resource_ospf_router
+//go:generate gofmt -w ../internal/generated/resource_ospf_router/ospf_router_resource_gen.go
 
 //go:generate sdkbootstrap -struct WLANGroup -resource unifi_wlan_group -output bootstrap/go-unifi-v1.103.0-wlan-group.json
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan-group.json -policy policy/wlan_group.json -artifact-prefix wlan_group -output-dir generated

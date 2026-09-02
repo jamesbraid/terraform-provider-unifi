@@ -4365,6 +4365,244 @@
         }
       }
     },
+    "unifi_ospf_router": {
+      "version": 0,
+      "description": "Manages an OSPF router in the UniFi controller. An OSPF router announces the networks assigned to its areas to neighbouring routers and can redistribute BGP, connected and static routes.",
+      "description_kind": "markdown",
+      "attributes": {
+        "announce_default_route": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the router announces a default route to its neighbours.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "areas": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "required": true,
+          "description": "OSPF areas this router participates in. The controller refuses a router with no areas.",
+          "description_kind": "markdown",
+          "validators": [
+            "listvalidator.sizeAtLeastValidator: list must contain at least 1 elements"
+          ]
+        },
+        "areas.area_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The OSPF area identifier, in dotted-quad form (`0.0.0.0` is the backbone area).",
+          "description_kind": "markdown"
+        },
+        "areas.area_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The area's type.",
+          "description_kind": "markdown"
+        },
+        "areas.name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A human-readable name for the area.",
+          "description_kind": "markdown"
+        },
+        "areas.network_ids": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "description": "IDs of the networks announced into this area.",
+          "description_kind": "markdown"
+        },
+        "enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the OSPF router is enabled.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to true"
+        },
+        "id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "computed": true,
+          "description": "The ID of the OSPF router.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "interfaces": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "description": "Per-interface OSPF settings, keyed by the network the interface serves.",
+          "description_kind": "markdown"
+        },
+        "interfaces.authentication_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The interface's OSPF authentication type.",
+          "description_kind": "markdown"
+        },
+        "interfaces.cost": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The interface's OSPF cost.",
+          "description_kind": "markdown"
+        },
+        "interfaces.dead_interval": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "Seconds without a hello before a neighbour on this interface is declared down.",
+          "description_kind": "markdown"
+        },
+        "interfaces.hello_interval": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "Seconds between hello packets on this interface.",
+          "description_kind": "markdown"
+        },
+        "interfaces.network_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The ID of the network whose interface these settings apply to.",
+          "description_kind": "markdown"
+        },
+        "interfaces.passive_interface": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the interface is passive: its networks are announced but no OSPF packets are sent on it.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "interfaces.priority": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The router's priority in designated-router election on this interface.",
+          "description_kind": "markdown"
+        },
+        "redistribute_bgp_routes": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether routes learned over BGP are redistributed into OSPF.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "redistribute_connected_routes": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether directly connected routes are redistributed into OSPF.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "redistribute_connected_routes_metric_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The OSPF metric type used when redistributing connected routes.",
+          "description_kind": "markdown"
+        },
+        "redistribute_static_routes": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether static routes are redistributed into OSPF.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "redistribute_static_routes_metric_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The OSPF metric type used when redistributing static routes.",
+          "description_kind": "markdown"
+        },
+        "router_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The router's OSPF identifier, in dotted-quad form. The controller refuses an empty one.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The name of the site to associate the OSPF router with.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource.",
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "timeouts": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "description_kind": "plain",
+          "custom_type": "timeouts.Type: \u003ccarries no description\u003e"
+        },
+        "timeouts.create": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.delete": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.read": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.update": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        }
+      }
+    },
     "unifi_port_forward": {
       "version": 0,
       "description": "Manages a port forwarding rule on the gateway.",
