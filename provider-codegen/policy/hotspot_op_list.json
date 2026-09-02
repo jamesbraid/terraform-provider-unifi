@@ -1,0 +1,60 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "resource": "unifi_hotspot_op",
+  "generator_name": "hotspot_op",
+  "source_specification_sha256": "4ab20a050865704b6a5c2a50b7371f4f3a1d05077ed951165c0f9b3d79b23943",
+  "description": "List hotspot operators in a site.",
+  "fields": [],
+  "omitted": [
+    "_id",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "name",
+    "note",
+    "site_id",
+    "x_password"
+  ],
+  "groupings": [
+    {
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block",
+      "members": [
+        {
+          "terraform_name": "name",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "invented": "A filter key is a query term the practitioner writes; no controller field corresponds to it.",
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`."
+          }
+        },
+        {
+          "terraform_name": "value",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "invented": "The value half of a query term, likewise invented by the provider.",
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          }
+        }
+      ]
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list hotspot operators from."
+      }
+    }
+  ]
+}

@@ -154,6 +154,17 @@
       },
       "schema_version": 0
     },
+    "unifi_hotspot_op": {
+      "sdk_type": "HotspotOp",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_network": {
       "sdk_type": "Network",
       "list": {

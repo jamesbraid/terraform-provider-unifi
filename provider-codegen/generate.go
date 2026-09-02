@@ -247,6 +247,13 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-group.json -policy policy/dpi_group_list.json -artifact-prefix dpi_group_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/dpi_group_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_group --package listresource_dpi_group
 
+//go:generate sdkbootstrap -struct HotspotOp -resource unifi_hotspot_op -output bootstrap/go-unifi-v1.103.0-hotspot-op.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-op.json -policy policy/hotspot_op.json -artifact-prefix hotspot_op -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/hotspot_op.provider-code-spec.json --output ../internal/generated/resource_hotspot_op --package resource_hotspot_op
+//go:generate gofmt -w ../internal/generated/resource_hotspot_op/hotspot_op_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-op.json -policy policy/hotspot_op_list.json -artifact-prefix hotspot_op_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/hotspot_op_list.provider-code-spec.json --output ../internal/generated/listresource_hotspot_op --package listresource_hotspot_op
+
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated
