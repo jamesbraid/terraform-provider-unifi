@@ -12,6 +12,7 @@ import (
 	resource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client"
 	resource_client_qos_rate "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
 	resource_device "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_device"
+	resource_dhcp_option "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dhcp_option"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
 	resource_firewall_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_group"
 	resource_firewall_policy "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
@@ -45,6 +46,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 	ctx := context.Background()
 
 	checks := map[string]func(*testing.T){
+		"dhcp_option": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(dhcpOptionKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				dhcpOptionKitSpec(), resource_dhcp_option.DhcpOptionResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
 		"wlan_group": func(t *testing.T) {
 			for _, problem := range resourcekit.WireNameProblems(wlanGroupKitSpec()) {
 				t.Error(problem)

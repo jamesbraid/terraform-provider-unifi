@@ -19,6 +19,7 @@ var FrozenTypeNames = map[string]string{
 	"deprecatedAccountDataSource": "unifi_account",
 	"deprecatedAccountResource":   "unifi_account",
 	"deviceKitResource":           "unifi_device",
+	"dhcpOptionKitResource":       "unifi_dhcp_option",
 	"dnsRecordDataSource":         "unifi_dns_record",
 	"dnsRecordKitResource":        "unifi_dns_record",
 	"dynamicDNSResource":          "unifi_dynamic_dns",

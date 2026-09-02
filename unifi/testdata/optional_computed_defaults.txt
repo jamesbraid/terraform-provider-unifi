@@ -22,6 +22,7 @@ unifi_client_qos_rate.qos_rate_max_up
 unifi_device.allow_adoption
 unifi_device.forget_on_destroy
 unifi_device.port_override.op_mode
+unifi_dhcp_option.signed
 unifi_dns_record.enabled
 unifi_dynamic_dns.interface
 unifi_firewall_policy.create_allow_respond

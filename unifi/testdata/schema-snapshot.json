@@ -1891,6 +1891,131 @@
         }
       }
     },
+    "unifi_dhcp_option": {
+      "version": 0,
+      "description": "Manages a custom DHCP option definition: an option code paired with a name and the value type DHCP clients receive.",
+      "description_kind": "markdown",
+      "attributes": {
+        "code": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The DHCP option code, `7`-`254`. The codes the controller manages itself (15, 42, 43, 44, 51, 66, 67 and 252) are refused.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^(?!(?:15|42|43|44|51|66|67|252)$)([7-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-4])$'"
+          ]
+        },
+        "id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "computed": true,
+          "description": "The ID of the DHCP option.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the DHCP option: up to 25 characters, from letters, digits, `-` and `_`.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^[A-Za-z0-9-_]{1,25}$'"
+          ]
+        },
+        "signed": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the option's integer value is signed.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The name of the site the DHCP option belongs to.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource.",
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "timeouts": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "description_kind": "plain",
+          "custom_type": "timeouts.Type: \u003ccarries no description\u003e"
+        },
+        "timeouts.create": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.delete": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.read": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.update": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The value type of the option. One of `boolean`, `hexarray`, `integer`, `ipaddress`, `macaddress` or `text`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"boolean\" \"hexarray\" \"integer\" \"ipaddress\" \"macaddress\" \"text\"]"
+          ]
+        },
+        "width": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "description": "The bit width of an `integer` option. One of `8`, `16` or `32`.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"8\" \"16\" \"32\"]"
+          ]
+        }
+      }
+    },
     "unifi_dns_record": {
       "version": 1,
       "description": "Manages DNS record settings for different providers.",
@@ -14299,6 +14424,39 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The name of the site to list devices from.",
+          "description_kind": "markdown"
+        }
+      }
+    },
+    "unifi_dhcp_option": {
+      "version": 0,
+      "description": "List DHCP option definitions in a site.",
+      "description_kind": "markdown",
+      "attributes": {
+        "filter": {
+          "kind": "block",
+          "nesting_mode": "list",
+          "description_kind": "plain"
+        },
+        "filter.name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the filter to apply. Supported values are: `name`.",
+          "description_kind": "markdown"
+        },
+        "filter.value": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The value to filter by.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The name of the site to list DHCP options from.",
           "description_kind": "markdown"
         }
       }

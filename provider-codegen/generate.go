@@ -222,6 +222,13 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan-group.json -policy policy/wlan_group_list.json -artifact-prefix wlan_group_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/wlan_group_list.provider-code-spec.json --output ../internal/generated/listresource_wlan_group --package listresource_wlan_group
 
+//go:generate sdkbootstrap -struct DHCPOption -resource unifi_dhcp_option -output bootstrap/go-unifi-v1.103.0-dhcp-option.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dhcp-option.json -policy policy/dhcp_option.json -artifact-prefix dhcp_option -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/dhcp_option.provider-code-spec.json --output ../internal/generated/resource_dhcp_option --package resource_dhcp_option
+//go:generate gofmt -w ../internal/generated/resource_dhcp_option/dhcp_option_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dhcp-option.json -policy policy/dhcp_option_list.json -artifact-prefix dhcp_option_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/dhcp_option_list.provider-code-spec.json --output ../internal/generated/listresource_dhcp_option --package listresource_dhcp_option
+
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated
