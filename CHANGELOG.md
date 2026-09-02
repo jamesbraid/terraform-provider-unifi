@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### ✨ Features
+
+- **Eight new resources**, each derived from the controller's own
+  definitions and proven against a live controller:
+  - `unifi_nat` — site NAT rules (SNAT, DNAT, MASQUERADE) with source and
+    destination filters.
+  - `unifi_ospf_router` — OSPF dynamic routing with areas and interfaces.
+  - `unifi_wlan_group` — WLAN groups.
+  - `unifi_dhcp_option` — custom DHCP options.
+  - `unifi_dpi_app` and `unifi_dpi_group` — deep-packet-inspection
+    application rules and groups.
+  - `unifi_hotspot_op` — hotspot operators.
+  - `unifi_schedule_task` — scheduled device firmware upgrades.
+- **Four new `unifi_setting` sections**: `usw` (switch settings), `global_ap`
+  (AP radio defaults), `connectivity`, and `device_supervision`.
+
 ### ⚠️ Behavior Changes
 
 - **`unifi_device`: a declared `port_override` attribute now reads back
