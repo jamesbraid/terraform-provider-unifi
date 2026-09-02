@@ -11610,6 +11610,92 @@
           ]
         }
       }
+    },
+    "unifi_wlan_group": {
+      "version": 0,
+      "description": "Manages a WLAN group. Every wireless network belongs to a group; the controller ships a built-in `Default` one and `unifi_wlan` assigns new networks to a group automatically.",
+      "description_kind": "markdown",
+      "attributes": {
+        "id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "computed": true,
+          "description": "The ID of the WLAN group.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the WLAN group.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '.{1,128}'"
+          ]
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The name of the site the WLAN group belongs to.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource.",
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "timeouts": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "description_kind": "plain",
+          "custom_type": "timeouts.Type: \u003ccarries no description\u003e"
+        },
+        "timeouts.create": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.delete": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.read": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.update": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        }
+      }
     }
   },
   "data_sources": {
@@ -14906,6 +14992,39 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The name of the site to list WLANs from.",
+          "description_kind": "markdown"
+        }
+      }
+    },
+    "unifi_wlan_group": {
+      "version": 0,
+      "description": "List WLAN groups in a site.",
+      "description_kind": "markdown",
+      "attributes": {
+        "filter": {
+          "kind": "block",
+          "nesting_mode": "list",
+          "description_kind": "plain"
+        },
+        "filter.name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the filter to apply. Supported values are: `name`.",
+          "description_kind": "markdown"
+        },
+        "filter.value": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The value to filter by.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The name of the site to list WLAN groups from.",
           "description_kind": "markdown"
         }
       }

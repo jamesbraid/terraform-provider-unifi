@@ -255,6 +255,17 @@
         ]
       },
       "schema_version": 1
+    },
+    "unifi_wlan_group": {
+      "sdk_type": "WLANGroup",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
     }
   }
 }

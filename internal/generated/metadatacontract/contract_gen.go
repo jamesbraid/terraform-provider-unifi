@@ -49,4 +49,5 @@ var FrozenTypeNames = map[string]string{
 	"wanResource":                 "unifi_wan",
 	"wireguardPeerResource":       "unifi_wireguard_peer",
 	"wlanFrameworkResource":       "unifi_wlan",
+	"wlanGroupKitResource":        "unifi_wlan_group",
 }

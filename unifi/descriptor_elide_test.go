@@ -28,6 +28,7 @@ import (
 	resource_vpn_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_client"
 	resource_vpn_server "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_server"
 	resource_wlan "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wlan"
+	resource_wlan_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wlan_group"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
@@ -44,6 +45,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 	ctx := context.Background()
 
 	checks := map[string]func(*testing.T){
+		"wlan_group": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(wlanGroupKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				wlanGroupKitSpec(), resource_wlan_group.WlanGroupResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
 		"firewall_zone": func(t *testing.T) {
 			for _, problem := range resourcekit.WireNameProblems(firewallZoneKitSpec()) {
 				t.Error(problem)

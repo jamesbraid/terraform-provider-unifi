@@ -215,6 +215,13 @@ package providercodegen
 //go:generate go tool tfplugingen-framework generate data-sources --input generated/client_info_ds.provider-code-spec.json --output ../internal/generated/datasource_client_info --package datasource_client_info
 //go:generate gofmt -w ../internal/generated/datasource_client_info/client_info_ds_data_source_gen.go
 
+//go:generate sdkbootstrap -struct WLANGroup -resource unifi_wlan_group -output bootstrap/go-unifi-v1.103.0-wlan-group.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan-group.json -policy policy/wlan_group.json -artifact-prefix wlan_group -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/wlan_group.provider-code-spec.json --output ../internal/generated/resource_wlan_group --package resource_wlan_group
+//go:generate gofmt -w ../internal/generated/resource_wlan_group/wlan_group_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan-group.json -policy policy/wlan_group_list.json -artifact-prefix wlan_group_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/wlan_group_list.provider-code-spec.json --output ../internal/generated/listresource_wlan_group --package listresource_wlan_group
+
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated
