@@ -233,12 +233,12 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dhcp-option.json -policy policy/dhcp_option_list.json -artifact-prefix dhcp_option_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/dhcp_option_list.provider-code-spec.json --output ../internal/generated/listresource_dhcp_option --package listresource_dhcp_option
 
-//go:generate sdkbootstrap -struct ScheduleTask -resource unifi_schedule_task -output bootstrap/go-unifi-v1.103.0-schedule-task.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-schedule-task.json -policy policy/schedule_task.json -artifact-prefix schedule_task -output-dir generated
-//go:generate go tool tfplugingen-framework generate resources --input generated/schedule_task.provider-code-spec.json --output ../internal/generated/resource_schedule_task --package resource_schedule_task
-//go:generate gofmt -w ../internal/generated/resource_schedule_task/schedule_task_resource_gen.go
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-schedule-task.json -policy policy/schedule_task_list.json -artifact-prefix schedule_task_list -output-dir generated
-//go:generate go run ../cmd/list-resource-gen --input generated/schedule_task_list.provider-code-spec.json --output ../internal/generated/listresource_schedule_task --package listresource_schedule_task
+//go:generate sdkbootstrap -struct DpiApp -resource unifi_dpi_app -output bootstrap/go-unifi-v1.103.0-dpi-app.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-app.json -policy policy/dpi_app.json -artifact-prefix dpi_app -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/dpi_app.provider-code-spec.json --output ../internal/generated/resource_dpi_app --package resource_dpi_app
+//go:generate gofmt -w ../internal/generated/resource_dpi_app/dpi_app_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-app.json -policy policy/dpi_app_list.json -artifact-prefix dpi_app_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/dpi_app_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_app --package listresource_dpi_app
 
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.

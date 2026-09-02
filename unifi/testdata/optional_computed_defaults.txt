@@ -24,6 +24,9 @@ unifi_device.forget_on_destroy
 unifi_device.port_override.op_mode
 unifi_dhcp_option.signed
 unifi_dns_record.enabled
+unifi_dpi_app.blocked
+unifi_dpi_app.enabled
+unifi_dpi_app.log
 unifi_dynamic_dns.interface
 unifi_firewall_policy.create_allow_respond
 unifi_firewall_policy.description

@@ -54,6 +54,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("dhcp_option", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := dpiAppKitBackend(api)
+		record("dpi_app", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := dnsRecordKitBackend(api)
 		record("dns_record", backend.Create != nil, backend.CreateFields != nil)
 	}

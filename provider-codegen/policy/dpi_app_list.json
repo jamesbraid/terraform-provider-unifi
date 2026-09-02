@@ -1,0 +1,65 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "resource": "unifi_dpi_app",
+  "generator_name": "dpi_app",
+  "source_specification_sha256": "72227a98e90202c441e171c4d699040e7a25e28e198fb3e8555a4cfa5e9b7011",
+  "description": "List DPI application rules in a site.",
+  "fields": [],
+  "omitted": [
+    "_id",
+    "apps",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "blocked",
+    "cats",
+    "enabled",
+    "log",
+    "name",
+    "qos_rate_max_down",
+    "qos_rate_max_up",
+    "site_id"
+  ],
+  "groupings": [
+    {
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block",
+      "members": [
+        {
+          "terraform_name": "name",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "invented": "A filter key is a query term the practitioner writes; no controller field corresponds to it.",
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`."
+          }
+        },
+        {
+          "terraform_name": "value",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "invented": "The value half of a query term, likewise invented by the provider.",
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          }
+        }
+      ]
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list DPI application rules from."
+      }
+    }
+  ]
+}

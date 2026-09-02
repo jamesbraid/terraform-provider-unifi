@@ -2176,6 +2176,147 @@
         }
       }
     },
+    "unifi_dpi_app": {
+      "version": 0,
+      "description": "Manages a DPI application rule: a set of deep-packet-inspection applications or categories the controller blocks or logs, with optional QoS rate caps.",
+      "description_kind": "markdown",
+      "attributes": {
+        "apps": {
+          "kind": "attribute",
+          "type": "[\"list\",\"number\"]",
+          "optional": true,
+          "description": "The DPI application identifiers the rule matches.",
+          "description_kind": "markdown"
+        },
+        "blocked": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether traffic the rule matches is blocked.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "cats": {
+          "kind": "attribute",
+          "type": "[\"list\",\"number\"]",
+          "optional": true,
+          "description": "The DPI category identifiers the rule matches.",
+          "description_kind": "markdown"
+        },
+        "enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the rule is enabled.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to true"
+        },
+        "id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "computed": true,
+          "description": "The ID of the DPI application rule.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "log": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether traffic the rule matches is logged.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the DPI application rule.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '.{1,128}'"
+          ]
+        },
+        "qos_rate_max_down": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "description": "The download rate cap in Kbps applied to matched traffic, or `-1` for no cap.",
+          "description_kind": "markdown"
+        },
+        "qos_rate_max_up": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "description": "The upload rate cap in Kbps applied to matched traffic, or `-1` for no cap.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The name of the site the DPI application rule belongs to.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource.",
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "timeouts": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "description_kind": "plain",
+          "custom_type": "timeouts.Type: \u003ccarries no description\u003e"
+        },
+        "timeouts.create": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.delete": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.read": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.update": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        }
+      }
+    },
     "unifi_dynamic_dns": {
       "version": 0,
       "description": "Manages dynamic DNS settings for different providers.",
@@ -15058,6 +15199,39 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The name of the site to list DNS records from.",
+          "description_kind": "markdown"
+        }
+      }
+    },
+    "unifi_dpi_app": {
+      "version": 0,
+      "description": "List DPI application rules in a site.",
+      "description_kind": "markdown",
+      "attributes": {
+        "filter": {
+          "kind": "block",
+          "nesting_mode": "list",
+          "description_kind": "plain"
+        },
+        "filter.name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the filter to apply. Supported values are: `name`.",
+          "description_kind": "markdown"
+        },
+        "filter.value": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The value to filter by.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The name of the site to list DPI application rules from.",
           "description_kind": "markdown"
         }
       }

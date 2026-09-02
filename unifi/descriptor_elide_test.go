@@ -14,6 +14,7 @@ import (
 	resource_device "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_device"
 	resource_dhcp_option "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dhcp_option"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
+	resource_dpi_app "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dpi_app"
 	resource_firewall_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_group"
 	resource_firewall_policy "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
 	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
@@ -58,12 +59,12 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 				t.Error(problem)
 			}
 		},
-		"schedule_task": func(t *testing.T) {
-			for _, problem := range resourcekit.WireNameProblems(scheduleTaskKitSpec()) {
+		"dpi_app": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(dpiAppKitSpec()) {
 				t.Error(problem)
 			}
 			problems := resourcekit.ElideProblems(
-				scheduleTaskKitSpec(), resource_schedule_task.ScheduleTaskResourceSchema(ctx))
+				dpiAppKitSpec(), resource_dpi_app.DpiAppResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}
