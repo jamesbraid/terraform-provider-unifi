@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### ⚠️ Behavior Changes
+
+- **`unifi_device`: a declared `port_override` attribute now reads back
+  what the controller actually stored.** Previously the read refreshed
+  only six of the roughly forty-five per-port attributes and kept the
+  prior state value for the rest — so a value the controller silently
+  discarded stayed in state indefinitely, looking configured while the
+  controller held nothing. Measured live: a port-override write of
+  `fec_mode`, `voice_networkconf_id` and
+  `multicast_router_networkconf_ids` returns success and stores none of
+  them. Every declared attribute is now reconciled against the
+  controller's answer, so a discard surfaces as a plan diff instead of
+  being hidden. If a plan that was previously quiet now shows a
+  persistent diff on one of these attributes, the controller was never
+  keeping that value; remove it from the config or fix the value it
+  rejects.
+
 ### 🔒 Fixed
 
 - **The remaining resources that could print credentials in an error now
@@ -19,6 +36,12 @@ All notable changes to this project will be documented in this file.
   and a test fails the build if a new one is added without it.
 
 ### 🔧 Maintenance
+
+- The bundled go-unifi client is now v1.113.0. Its error messages no
+  longer include the request body at all (previously appended to every
+  failed request's error, redacted by field-name guesswork), and when a
+  caller opts back in, redaction is derived from the controller's own
+  list of sensitive fields instead of six substrings.
 
 - The check that finds tests which cannot fail no longer accepts
   `err.Error()` as an assertion. It matched any method call named
