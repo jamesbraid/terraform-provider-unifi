@@ -5810,6 +5810,49 @@
             "stringvalidator.oneOfValidator: value must be one of: [\"critical_traffic_prioritization\" \"cybersecure\" \"traffic_identification\" \"wifi_technology\" \"wifi_channels\" \"wifi_client_experience\" \"wifi_tx_retries\" \"most_active_apps_aps_clients\" \"most_active_apps_clients\" \"most_active_aps_clients\" \"most_active_apps_aps\" \"most_active_apps\" \"v2_most_active_aps\" \"v2_most_active_clients\" \"wifi_connectivity\" \"ap_radio_density\" \"wifi_channel_preset_configuration\" \"most_common_client_fingerprints\" \"wan_activity\"]"
           ]
         },
+        "device_supervision": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Device supervision settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "device_supervision.global_supervision_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable device supervision site-wide.",
+          "description_kind": "markdown"
+        },
+        "device_supervision.heartbeat_interval_seconds": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Interval between supervision heartbeats, in seconds (60-300).",
+          "description_kind": "markdown"
+        },
+        "device_supervision.power_off_duration_seconds": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "How long power stays off when a supervised device is power-cycled, in seconds (60-9000).",
+          "description_kind": "markdown"
+        },
+        "device_supervision.silence_threshold_seconds": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "How long a supervised device may stay silent before supervision reacts, in seconds (300-9000).",
+          "description_kind": "markdown"
+        },
         "doh": {
           "kind": "attribute",
           "nesting_mode": "single",

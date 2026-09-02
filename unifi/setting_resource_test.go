@@ -3671,6 +3671,82 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_deviceSupervision exercises
+// global_supervision_enabled -- the one field whose masked write is
+// probe-pinned (2026-09-01) -- across a create and an update. The three
+// bounded seconds fields are not exercised live; their wire mapping is
+// covered by the mask-pin and conformance tests, and their
+// pattern-rejects-zero handling by the section's own OmitZeroProblems
+// test.
+func TestAccSettingResource_deviceSupervision(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_deviceSupervision(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"device_supervision.global_supervision_enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// device_supervision has no AfterReceive (an unconditional
+				// mirror), so every attribute reads back a real, concrete
+				// value from the controller even when this test never
+				// configured it; import cannot rehydrate section presence
+				// ahead of Read (see settingResource.ImportState's own
+				// comment), so every one of those concrete values disagrees
+				// with the null the post-import refresh produces -- the same
+				// reasoning global_switch's own import step records.
+				ImportStateVerifyIgnore: []string{
+					"device_supervision.%",
+					"device_supervision.global_supervision_enabled",
+					"device_supervision.heartbeat_interval_seconds",
+					"device_supervision.power_off_duration_seconds",
+					"device_supervision.silence_threshold_seconds",
+				},
+			},
+			{
+				Config: testAccSettingConfig_deviceSupervisionUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"device_supervision.global_supervision_enabled",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_deviceSupervision() string {
+	return `
+resource "unifi_setting" "test" {
+  device_supervision = {
+    global_supervision_enabled = true
+  }
+}
+`
+}
+
+func testAccSettingConfig_deviceSupervisionUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  device_supervision = {
+    global_supervision_enabled = false
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

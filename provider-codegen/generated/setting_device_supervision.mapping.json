@@ -1,0 +1,37 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.device_supervision",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "global_supervision_enabled",
+      "terraform_name": "global_supervision_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "heartbeat_interval_seconds",
+      "terraform_name": "heartbeat_interval_seconds",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "power_off_duration_seconds",
+      "terraform_name": "power_off_duration_seconds",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "silence_threshold_seconds",
+      "terraform_name": "silence_threshold_seconds",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

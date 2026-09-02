@@ -75,6 +75,34 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "DeviceSupervision.global_supervision_enabled",
+      "terraform_name": "device_supervision.global_supervision_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "DeviceSupervision.heartbeat_interval_seconds",
+      "terraform_name": "device_supervision.heartbeat_interval_seconds",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "DeviceSupervision.power_off_duration_seconds",
+      "terraform_name": "device_supervision.power_off_duration_seconds",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "DeviceSupervision.silence_threshold_seconds",
+      "terraform_name": "device_supervision.silence_threshold_seconds",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Doh.custom_servers",
       "terraform_name": "doh.custom_servers",
       "structural_type": "array<object>",

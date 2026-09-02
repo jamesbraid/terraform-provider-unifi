@@ -149,6 +149,41 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"device_supervision": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"global_supervision_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable device supervision site-wide.",
+						MarkdownDescription: "Enable device supervision site-wide.",
+					},
+					"heartbeat_interval_seconds": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Interval between supervision heartbeats, in seconds (60-300).",
+						MarkdownDescription: "Interval between supervision heartbeats, in seconds (60-300).",
+					},
+					"power_off_duration_seconds": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "How long power stays off when a supervised device is power-cycled, in seconds (60-9000).",
+						MarkdownDescription: "How long power stays off when a supervised device is power-cycled, in seconds (60-9000).",
+					},
+					"silence_threshold_seconds": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "How long a supervised device may stay silent before supervision reacts, in seconds (300-9000).",
+						MarkdownDescription: "How long a supervised device may stay silent before supervision reacts, in seconds (300-9000).",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Device supervision settings.",
+				MarkdownDescription: "Device supervision settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"doh": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"custom_servers": schema.ListNestedAttribute{

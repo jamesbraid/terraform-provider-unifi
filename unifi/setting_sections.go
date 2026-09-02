@@ -62,6 +62,7 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	uswKitSection,
 	globalApKitSection,
 	connectivityKitSection,
+	deviceSupervisionKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -120,7 +121,9 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // see setting_guest_access_descriptor.go's own comment for what the
 // remaining 71 of settings.GuestAccess's 92 fields wait on.
 //
-// usw, global_ap and connectivity are new too, not migrated -- each
-// exposed straight from the controller's own Usw/GlobalAp/Connectivity
-// definition; see setting_usw_descriptor.go,
-// setting_global_ap_descriptor.go and setting_connectivity_descriptor.go.
+// usw, global_ap, connectivity and device_supervision are new too, not
+// migrated -- each exposed straight from the controller's own
+// Usw/GlobalAp/Connectivity/DeviceSupervision definition; see
+// setting_usw_descriptor.go, setting_global_ap_descriptor.go,
+// setting_connectivity_descriptor.go and
+// setting_device_supervision_descriptor.go.

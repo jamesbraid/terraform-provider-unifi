@@ -80,6 +80,7 @@ resource "unifi_setting" "radius_only" {
 - `connectivity` (Attributes) Uplink connectivity monitor and wireless uplink settings. (see [below for nested schema](#nestedatt--connectivity))
 - `country` (Attributes) Regulatory country settings. (see [below for nested schema](#nestedatt--country))
 - `dashboard` (Attributes) Dashboard layout and widget visibility settings. (see [below for nested schema](#nestedatt--dashboard))
+- `device_supervision` (Attributes) Device supervision settings. (see [below for nested schema](#nestedatt--device_supervision))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
 - `ether_lighting` (Attributes) Ethernet port lighting color settings. (see [below for nested schema](#nestedatt--ether_lighting))
@@ -160,6 +161,17 @@ Required:
 - `enabled` (Boolean) Whether this widget is shown on the dashboard.
 - `name` (String) Which dashboard widget this override applies to.
 
+
+
+<a id="nestedatt--device_supervision"></a>
+### Nested Schema for `device_supervision`
+
+Optional:
+
+- `global_supervision_enabled` (Boolean) Enable device supervision site-wide.
+- `heartbeat_interval_seconds` (Number) Interval between supervision heartbeats, in seconds (60-300).
+- `power_off_duration_seconds` (Number) How long power stays off when a supervised device is power-cycled, in seconds (60-9000).
+- `silence_threshold_seconds` (Number) How long a supervised device may stay silent before supervision reacts, in seconds (300-9000).
 
 
 <a id="nestedatt--doh"></a>

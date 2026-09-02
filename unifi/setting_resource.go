@@ -94,6 +94,7 @@ type settingResourceModel struct {
 	Usw                types.Object   `tfsdk:"usw"`
 	GlobalAp           types.Object   `tfsdk:"global_ap"`
 	Connectivity       types.Object   `tfsdk:"connectivity"`
+	DeviceSupervision  types.Object   `tfsdk:"device_supervision"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
