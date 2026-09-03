@@ -6,11 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### ✨ Features
 
-- **Eight new resources**, each derived from the controller's own
+- **Six new resources**, each derived from the controller's own
   definitions and proven against a live controller:
-  - `unifi_nat` — site NAT rules (SNAT, DNAT, MASQUERADE) with source and
-    destination filters.
-  - `unifi_ospf_router` — OSPF dynamic routing with areas and interfaces.
   - `unifi_wlan_group` — WLAN groups.
   - `unifi_dhcp_option` — custom DHCP options.
   - `unifi_dpi_app` and `unifi_dpi_group` — deep-packet-inspection
@@ -19,23 +16,6 @@ All notable changes to this project will be documented in this file.
   - `unifi_schedule_task` — scheduled device firmware upgrades.
 - **Four new `unifi_setting` sections**: `usw` (switch settings), `global_ap`
   (AP radio defaults), `connectivity`, and `device_supervision`.
-
-### ⚠️ Behavior Changes
-
-- **`unifi_device`: a declared `port_override` attribute now reads back
-  what the controller actually stored.** Previously the read refreshed
-  only six of the roughly forty-five per-port attributes and kept the
-  prior state value for the rest — so a value the controller silently
-  discarded stayed in state indefinitely, looking configured while the
-  controller held nothing. Measured live: a port-override write of
-  `fec_mode`, `voice_networkconf_id` and
-  `multicast_router_networkconf_ids` returns success and stores none of
-  them. Every declared attribute is now reconciled against the
-  controller's answer, so a discard surfaces as a plan diff instead of
-  being hidden. If a plan that was previously quiet now shows a
-  persistent diff on one of these attributes, the controller was never
-  keeping that value; remove it from the config or fix the value it
-  rejects.
 
 ### 🔒 Fixed
 

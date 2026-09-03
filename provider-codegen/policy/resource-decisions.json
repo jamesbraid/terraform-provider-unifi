@@ -154,17 +154,15 @@
       },
       "schema_version": 0
     },
-    "unifi_nat": {
-      "sdk_type": "Nat",
+    "unifi_hotspot_op": {
+      "sdk_type": "HotspotOp",
       "duration_units": {},
       "list": {
-        "display_field": "Description",
+        "display_field": "Name",
         "filters": [
-          "type",
-          "out_interface"
+          "name"
         ]
-      },
-      "schema_version": 0
+      }
     },
     "unifi_network": {
       "sdk_type": "Network",
@@ -175,9 +173,6 @@
           "purpose"
         ]
       }
-    },
-    "unifi_ospf_router": {
-      "sdk_type": "OSPFRouter"
     },
     "unifi_port_forward": {
       "sdk_type": "PortForward",

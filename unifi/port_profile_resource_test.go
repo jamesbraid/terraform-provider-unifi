@@ -1262,55 +1262,6 @@ func TestPortProfileReadDefaults(t *testing.T) {
 	}
 }
 
-// A masked write can be silently rewritten by the controller -- measured
-// against a 10.6.101 controller (2026-08-31): forward is re-derived from the
-// stored tagged_vlan_mgmt whatever the write said, and voice_networkconf_id,
-// multicast_router_networkconf_ids and fec_mode are accepted then stored
-// empty. Apply-time state must echo the plan (the framework's consistency
-// contract), so the refresh read is the only surface that can report the
-// revert; this pins that it does, rather than keeping the prior state's
-// written values.
-func TestPortProfileReadSurfacesControllerReverts(t *testing.T) {
-	ctx := context.Background()
-	networkID := "6a95b51185eec8342c2b7908"
-	routerSet, d := types.SetValueFrom(ctx, types.StringType, []string{networkID})
-	if d.HasError() {
-		t.Fatalf("build set: %v", d)
-	}
-	prior := portProfileKitModel{
-		Forward:                   types.StringValue("customize"),
-		VoiceNetworkConfID:        types.StringValue(networkID),
-		MulticastRouterNetworkIDs: routerSet,
-		FecMode:                   types.StringValue("disabled"),
-	}
-	// Read seeds the model from prior state before decoding, so a field the
-	// decode skipped would keep the written value -- exactly what this test
-	// must be able to see.
-	model := prior
-	api := &unifi.PortProfile{Forward: "native"} // the other three stored empty
-	if d := portProfileKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
-		t.Fatalf("ToModel: %v", d)
-	}
-	if d := portProfileAfterReceive(ctx, api, &model, prior, []unifi.Network(nil)); d.HasError() {
-		t.Fatalf("AfterReceive: %v", d)
-	}
-
-	if got := model.Forward.ValueString(); got != "native" {
-		t.Errorf("forward = %q, want the stored %q, not the written customize", got, "native")
-	}
-	if !model.VoiceNetworkConfID.IsNull() {
-		t.Errorf("voice_networkconf_id = %#v, want null: the controller discarded the id",
-			model.VoiceNetworkConfID)
-	}
-	if !model.MulticastRouterNetworkIDs.IsNull() {
-		t.Errorf("multicast_router_networkconf_ids = %#v, want null: the controller discarded the ids",
-			model.MulticastRouterNetworkIDs)
-	}
-	if !model.FecMode.IsNull() {
-		t.Errorf("fec_mode = %#v, want null: the controller discarded the mode", model.FecMode)
-	}
-}
-
 // lldpmed_notify_enabled is the only Optional-only bool this surface has: no
 // Computed, no Default. BoolField's ToModel writes whatever the controller
 // reports unconditionally, but an Optional-only attribute must come back

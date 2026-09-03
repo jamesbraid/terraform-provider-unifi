@@ -214,10 +214,6 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client-info-ds.json -policy policy/client_info_ds.json -artifact-prefix client_info_ds -output-dir generated
 //go:generate go tool tfplugingen-framework generate data-sources --input generated/client_info_ds.provider-code-spec.json --output ../internal/generated/datasource_client_info --package datasource_client_info
 //go:generate gofmt -w ../internal/generated/datasource_client_info/client_info_ds_data_source_gen.go
-//go:generate sdkbootstrap -struct OSPFRouter -resource unifi_ospf_router -output bootstrap/go-unifi-v1.103.0-ospf-router.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-ospf-router.json -policy policy/ospf_router.json -artifact-prefix ospf_router -output-dir generated
-//go:generate go tool tfplugingen-framework generate resources --input generated/ospf_router.provider-code-spec.json --output ../internal/generated/resource_ospf_router --package resource_ospf_router
-//go:generate gofmt -w ../internal/generated/resource_ospf_router/ospf_router_resource_gen.go
 
 //go:generate sdkbootstrap -struct WLANGroup -resource unifi_wlan_group -output bootstrap/go-unifi-v1.103.0-wlan-group.json
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan-group.json -policy policy/wlan_group.json -artifact-prefix wlan_group -output-dir generated
@@ -233,12 +229,32 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dhcp-option.json -policy policy/dhcp_option_list.json -artifact-prefix dhcp_option_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/dhcp_option_list.provider-code-spec.json --output ../internal/generated/listresource_dhcp_option --package listresource_dhcp_option
 
-//go:generate sdkbootstrap -struct Nat -resource unifi_nat -output bootstrap/go-unifi-v1.103.0-nat.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-nat.json -policy policy/nat.json -artifact-prefix nat -output-dir generated
-//go:generate go tool tfplugingen-framework generate resources --input generated/nat.provider-code-spec.json --output ../internal/generated/resource_nat --package resource_nat
-//go:generate gofmt -w ../internal/generated/resource_nat/nat_resource_gen.go
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-nat.json -policy policy/nat_list.json -artifact-prefix nat_list -output-dir generated
-//go:generate go run ../cmd/list-resource-gen --input generated/nat_list.provider-code-spec.json --output ../internal/generated/listresource_nat --package listresource_nat
+//go:generate sdkbootstrap -struct ScheduleTask -resource unifi_schedule_task -output bootstrap/go-unifi-v1.103.0-schedule-task.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-schedule-task.json -policy policy/schedule_task.json -artifact-prefix schedule_task -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/schedule_task.provider-code-spec.json --output ../internal/generated/resource_schedule_task --package resource_schedule_task
+//go:generate gofmt -w ../internal/generated/resource_schedule_task/schedule_task_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-schedule-task.json -policy policy/schedule_task_list.json -artifact-prefix schedule_task_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/schedule_task_list.provider-code-spec.json --output ../internal/generated/listresource_schedule_task --package listresource_schedule_task
+//go:generate sdkbootstrap -struct DpiApp -resource unifi_dpi_app -output bootstrap/go-unifi-v1.103.0-dpi-app.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-app.json -policy policy/dpi_app.json -artifact-prefix dpi_app -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/dpi_app.provider-code-spec.json --output ../internal/generated/resource_dpi_app --package resource_dpi_app
+//go:generate gofmt -w ../internal/generated/resource_dpi_app/dpi_app_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-app.json -policy policy/dpi_app_list.json -artifact-prefix dpi_app_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/dpi_app_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_app --package listresource_dpi_app
+
+//go:generate sdkbootstrap -struct DpiGroup -resource unifi_dpi_group -output bootstrap/go-unifi-v1.103.0-dpi-group.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-group.json -policy policy/dpi_group.json -artifact-prefix dpi_group -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/dpi_group.provider-code-spec.json --output ../internal/generated/resource_dpi_group --package resource_dpi_group
+//go:generate gofmt -w ../internal/generated/resource_dpi_group/dpi_group_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-group.json -policy policy/dpi_group_list.json -artifact-prefix dpi_group_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/dpi_group_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_group --package listresource_dpi_group
+
+//go:generate sdkbootstrap -struct HotspotOp -resource unifi_hotspot_op -output bootstrap/go-unifi-v1.103.0-hotspot-op.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-op.json -policy policy/hotspot_op.json -artifact-prefix hotspot_op -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/hotspot_op.provider-code-spec.json --output ../internal/generated/resource_hotspot_op --package resource_hotspot_op
+//go:generate gofmt -w ../internal/generated/resource_hotspot_op/hotspot_op_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-op.json -policy policy/hotspot_op_list.json -artifact-prefix hotspot_op_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/hotspot_op_list.provider-code-spec.json --output ../internal/generated/listresource_hotspot_op --package listresource_hotspot_op
 
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.

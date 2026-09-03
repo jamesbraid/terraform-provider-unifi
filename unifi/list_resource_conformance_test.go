@@ -52,7 +52,7 @@ func TestListResourceConfigSchemasAreUniform(t *testing.T) {
 	ctx := context.Background()
 	shapes := listConfigShapes(ctx, t)
 
-	if len(shapes) != 28 {
+	if len(shapes) != 31 {
 		t.Fatalf("the provider registers %d list resources, want 28 — a surface was added "+
 			"or removed, so this count, the outlier table below and the golden inventory "+
 			"in testdata/list_resource_schemas.txt all describe a provider that no longer "+
@@ -90,7 +90,7 @@ func TestListResourceConfigSchemasAreUniform(t *testing.T) {
 			name, canonicalListShape, shape)
 	}
 
-	if canonical != 25 {
+	if canonical != 28 {
 		t.Errorf("%d surfaces match the canonical shape, want 25 — the uniformity that "+
 			"justified a straight-line emitter over a general templating layer has changed",
 			canonical)

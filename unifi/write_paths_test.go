@@ -82,16 +82,12 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("firewall_zone", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
-		backend := natKitBackend(api)
-		record("nat", backend.Create != nil, backend.CreateFields != nil)
+		backend := hotspotOpKitBackend(api)
+		record("hotspot_op", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
 		backend := networkKitBackend(api)
 		record("network", backend.Create != nil, backend.CreateFields != nil)
-	}
-	{
-		backend := ospfRouterKitBackend(api)
-		record("ospf_router", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
 		backend := portForwardKitBackend(api)

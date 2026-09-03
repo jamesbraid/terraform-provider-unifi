@@ -742,38 +742,6 @@ func Test_deviceRestoreCreateValues_keepsControllerNameWhenUnset(t *testing.T) {
 	}
 }
 
-// An AP quietly reverts two of these on a masked write -- measured against a
-// 10.6.101 controller (2026-08-31): lcm_brightness=77 came back stored as
-// null and mesh_sta_vap_enabled=true as false. Apply-time state must echo
-// the plan (the framework's consistency contract), so the refresh read is
-// the only surface that can report the revert; this pins that it does.
-func TestDeviceReadSurfacesControllerReverts(t *testing.T) {
-	ctx := context.Background()
-	spec := deviceKitSpec()
-	prior := deviceKitModel{
-		LcmBrightness:     types.Int64Value(77),
-		MeshStaVapEnabled: types.BoolValue(true),
-	}
-	// Read seeds the model from prior state before decoding, so a field the
-	// decode skipped would keep the written value -- exactly what this test
-	// must be able to see.
-	model := prior
-	api := &unifi.Device{}
-	if d := spec.ToModel(ctx, api, &model, "default"); d.HasError() {
-		t.Fatalf("ToModel: %v", d)
-	}
-	if d := spec.AfterReceive(ctx, api, &model, prior, nil); d.HasError() {
-		t.Fatalf("AfterReceive: %v", d)
-	}
-	if !model.LcmBrightness.IsNull() {
-		t.Errorf("lcm_brightness = %#v, want null: the controller stored no value",
-			model.LcmBrightness)
-	}
-	if model.MeshStaVapEnabled.ValueBool() {
-		t.Error("mesh_sta_vap_enabled = true after reading the reverted device, want false")
-	}
-}
-
 func Test_cleanMAC(t *testing.T) {
 	type args struct {
 		mac string

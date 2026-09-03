@@ -295,9 +295,8 @@ func (p *unifiProvider) Resources(ctx context.Context) []func() resource.Resourc
 		NewFirewallPolicyResource,
 		NewFirewallRuleResource,
 		NewFirewallZoneResource,
-		NewNATResource,
+		NewHotspotOpResource,
 		NewNetworkResource,
-		NewOSPFRouterResource,
 		NewPortForwardResource,
 		NewPortProfileFrameworkResource,
 		NewPowerSupervisorResource,
@@ -385,6 +384,5 @@ func (p *unifiProvider) ListResources(context.Context) []func() list.ListResourc
 		NewPortProfileListResource,
 		NewDeviceListResource,
 		NewFirewallPolicyListResource,
-		NewNATListResource,
 	}
 }
