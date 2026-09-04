@@ -1,0 +1,321 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/jamesbraid/go-unifi",
+    "version": "v1.113.1-0.20260904035309-7d5c1431100a",
+    "commit": "7d5c1431100a8b9de18858a6258e06e82c1ac175",
+    "specification_sha256": "10bdc0ab4542420176c4517f4aa12f458c3193bb5f81717df41de64e7361453b"
+  },
+  "behavior": {
+    "controller_version": "10.6.101",
+    "ownership": {
+      "FirewallRule": {
+        "setting_preference": [
+          "state_established",
+          "state_related"
+        ]
+      },
+      "Nat": {
+        "setting_preference": []
+      },
+      "Network": {
+        "ipv6_setting_preference": [
+          "dhcpdv6_dns_auto",
+          "dhcpdv6_leasetime",
+          "ipv6_ra_preferred_lifetime"
+        ],
+        "setting_preference": [
+          "dhcpd_dns_enabled",
+          "dhcpd_gateway_enabled",
+          "dhcpd_leasetime",
+          "dhcpd_ntp_enabled",
+          "dhcpd_tftp_server",
+          "dhcpd_time_offset_enabled",
+          "dhcpd_unifi_controller",
+          "dhcpd_wins_enabled",
+          "domain_name",
+          "igmp_snooping",
+          "upnp_lan_enabled"
+        ],
+        "wan_dns_preference": [
+          "wan_dns1",
+          "wan_dns2"
+        ],
+        "wan_ipv6_dns_preference": []
+      },
+      "PortProfile": {
+        "setting_preference": [
+          "egress_rate_limit_kbps_enabled",
+          "isolation",
+          "lldpmed_enabled",
+          "lldpmed_notify_enabled",
+          "port_keepalive_enabled",
+          "stormctrl_bcast_enabled",
+          "stormctrl_mcast_enabled",
+          "stormctrl_ucast_enabled",
+          "stp_port_mode"
+        ]
+      },
+      "SettingDashboard": {
+        "layout_preference": [
+          "widgets"
+        ]
+      },
+      "SettingNtp": {
+        "setting_preference": [
+          "ntp_server_1",
+          "ntp_server_2",
+          "ntp_server_3",
+          "ntp_server_4"
+        ]
+      },
+      "SettingRadioAi": {
+        "setting_preference": []
+      },
+      "SettingSuperMgmt": {
+        "data_retention_setting_preference": [
+          "data_retention_time_in_hours_for_5minutes_scale",
+          "data_retention_time_in_hours_for_hourly_scale",
+          "data_retention_time_in_hours_for_others"
+        ]
+      },
+      "SettingUsg": {
+        "dns_verification.setting_preference": [
+          "domain",
+          "primary_dns_server",
+          "secondary_dns_server"
+        ],
+        "timeout_setting_preference": [
+          "icmp_timeout",
+          "tcp_close_timeout",
+          "tcp_close_wait_timeout",
+          "tcp_established_timeout",
+          "tcp_fin_wait_timeout",
+          "tcp_last_ack_timeout",
+          "tcp_syn_recv_timeout",
+          "tcp_syn_sent_timeout",
+          "tcp_time_wait_timeout",
+          "udp_other_timeout",
+          "udp_stream_timeout"
+        ]
+      },
+      "WLAN": {
+        "minrate_setting_preference": [
+          "minrate_na_data_rate_kbps",
+          "minrate_na_enabled",
+          "minrate_ng_data_rate_kbps"
+        ],
+        "setting_preference": [
+          "bc_filter_enabled",
+          "bss_transition",
+          "dtim_mode",
+          "dtim_ng",
+          "fast_roaming_enabled",
+          "group_rekey",
+          "l2_isolation",
+          "mcastenhance_enabled",
+          "proxy_arp",
+          "uapsd_enabled"
+        ]
+      }
+    },
+    "discarded": {
+      "Network": [
+        "dhcpd_dns_enabled",
+        "dhcpd_gateway_enabled",
+        "dhcpd_leasetime",
+        "dhcpd_ntp_enabled",
+        "dhcpd_time_offset_enabled",
+        "domain_name",
+        "igmp_snooping",
+        "upnp_lan_enabled"
+      ]
+    },
+    "empty": {
+      "networkconf": {
+        "dhcpd_boot_filename": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_boot_server": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_dns_1": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_dns_3": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_gateway": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_ip_1": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "dhcpd_mac_1": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_ntp_1": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_start": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "dhcpd_stop": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "domain_name": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "external_id": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "ip_subnet": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "ipv6_setting_preference": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "mac_override": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "networkgroup": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "setting_preference": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        }
+      },
+      "portconf": {
+        "forward": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "name": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "native_networkconf_id": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "op_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "poe_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "setting_preference": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "stormctrl_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        }
+      },
+      "wlanconf": {
+        "ap_group_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "external_id": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "minrate_setting_preference": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "networkconf_id": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "pmf_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "security": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "setting_preference": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "usergroup_id": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "wlan_band": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "wpa_enc": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "wpa_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "x_iapp_key": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "x_passphrase": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        }
+      }
+    },
+    "coercions": {
+      "SettingUsg": {}
+    },
+    "writes": {
+      "ContentFiltering": {
+        "create_verb": "POST-REJECTED-405",
+        "create_path": "v2/api/site/{site}/content-filtering",
+        "update_verb": "",
+        "update_path": ""
+      },
+      "Nat": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/nat",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/nat/{id}",
+        "required_on_create": [
+          "destination_filter",
+          "protocol",
+          "source_filter"
+        ]
+      }
+    }
+  }
+}

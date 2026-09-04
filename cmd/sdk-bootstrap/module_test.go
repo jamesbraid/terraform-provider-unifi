@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func Test_parseGoListReportsTheReplacedModule(t *testing.T) {
 	pkg := []byte(`{"ImportPath":"github.com/ubiquiti-community/go-unifi/unifi","Module":{"Path":"github.com/ubiquiti-community/go-unifi","Version":"v1.103.0","Replace":{"Path":"github.com/jamesbraid/go-unifi","Version":"v1.105.1"}}}`)
@@ -43,9 +46,12 @@ func Test_parseGoListWithoutAReplaceUsesTheModuleItself(t *testing.T) {
 }
 
 func Test_resolveSDKModuleAgreesWithGoMod(t *testing.T) {
-	got, err := resolveSDKModule("github.com/ubiquiti-community/go-unifi/unifi")
+	got, dir, err := resolveSDKModule("github.com/ubiquiti-community/go-unifi/unifi")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
+		t.Errorf("resolveSDKModule() dir = %q (%v); the resolved module root must exist on disk", dir, statErr)
 	}
 	if got.Repository == "" || got.Version == "" {
 		t.Fatalf("resolveSDKModule() = %+v; the build list always names a module and a version (or 'directory replace')", got)

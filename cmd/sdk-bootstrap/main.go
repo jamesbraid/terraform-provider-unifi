@@ -94,8 +94,33 @@ func run(args []string, stderr io.Writer) int {
 			"the first being the one the surface leads with")
 	resource := flags.String("resource", "", "Terraform resource name")
 	output := flags.String("output", "", "file to write")
+	behaviorOutput := flags.String("behavior-output", "",
+		"copy the SDK's measured-behaviour artifact (schemas/behavior.json), wrapped with its "+
+			"source, to this file instead of deriving a struct bootstrap")
 	if err := flags.Parse(args); err != nil {
 		return 2
+	}
+	if *behaviorOutput != "" {
+		// The behaviour artifact is a module-level fact; a struct, resource or
+		// output flag alongside it would name work this mode never does.
+		if len(structNames) != 0 || *resource != "" || *output != "" {
+			fmt.Fprintln(stderr, "behavior-output stands alone: struct, resource and output do not apply to it")
+			return 2
+		}
+		if *pkgPath == "" {
+			fmt.Fprintln(stderr, "package is required")
+			return 2
+		}
+		source, moduleDir, err := resolveSDKModule(*pkgPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "resolve the SDK module: %v\n", err)
+			return 1
+		}
+		if err := writeBehaviorArtifact(source, moduleDir, *behaviorOutput); err != nil {
+			fmt.Fprintf(stderr, "%v\n", err)
+			return 1
+		}
+		return 0
 	}
 	if *pkgPath == "" || len(structNames) == 0 || *resource == "" || *output == "" {
 		fmt.Fprintln(stderr, "package, struct, resource and output are required")
@@ -153,7 +178,7 @@ func run(args []string, stderr io.Writer) int {
 		copy(sum[:], hash.Sum(nil))
 	}
 
-	source, err := resolveSDKModule(*pkgPath)
+	source, _, err := resolveSDKModule(*pkgPath)
 	if err != nil {
 		fmt.Fprintf(stderr, "resolve the SDK module: %v\n", err)
 		return 1

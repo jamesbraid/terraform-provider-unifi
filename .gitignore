@@ -123,6 +123,12 @@ provider-codegen/generated/*.impact.json
 # reproduced it) -- it now derives like every other surface, and the frozen
 # snapshot lives on as a stable compiler-test fixture in
 # cmd/provider-spec-compiler/testdata, outside this glob.
+# behavior.json is the exception with a different reason: it is not a
+# projection of a struct but the SDK's measured-behaviour artifact, carried
+# in-repo so the compiler and the conformance tests read committed bytes;
+# the go:generate step re-derives it from the pinned module every run, so a
+# stale copy is a diff, not a silent divergence.
 provider-codegen/bootstrap/*.json
+!provider-codegen/bootstrap/behavior.json
 !provider-codegen/bootstrap/go-unifi-v1.103.0-vpn-server.json
 !provider-codegen/bootstrap/go-unifi-v1.103.0-firewall-zone.json

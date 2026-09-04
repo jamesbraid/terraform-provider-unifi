@@ -12,6 +12,7 @@ type goListPackage struct {
 	Module struct {
 		Path    string
 		Version string
+		Dir     string
 		Replace *struct {
 			Path    string
 			Version string
@@ -28,24 +29,34 @@ type goListModule struct {
 
 // resolveSDKModule asks the go tool which module actually provides pkgPath in
 // this build, so the bootstrap records the SDK the schema was derived from
-// rather than a commit someone typed into a generate directive.
-func resolveSDKModule(pkgPath string) (bootstrapSource, error) {
+// rather than a commit someone typed into a generate directive. The second
+// return is the module's root directory on disk (the replacement's, when
+// go.mod replaces it), where module-level artifacts such as
+// schemas/behavior.json live.
+func resolveSDKModule(pkgPath string) (bootstrapSource, string, error) {
 	pkgJSON, err := exec.Command("go", "list", "-json", pkgPath).Output() // #nosec G204 -- pkgPath comes from the -package build-time flag
 	if err != nil {
-		return bootstrapSource{}, fmt.Errorf("go list %s: %w", pkgPath, err)
+		return bootstrapSource{}, "", fmt.Errorf("go list %s: %w", pkgPath, err)
 	}
 	var pkg goListPackage
 	if err := json.Unmarshal(pkgJSON, &pkg); err != nil {
-		return bootstrapSource{}, fmt.Errorf("decode go list output: %w", err)
+		return bootstrapSource{}, "", fmt.Errorf("decode go list output: %w", err)
 	}
 	var modJSON []byte
 	if repo, version := moduleIdentity(pkg); version != "" {
 		modJSON, err = exec.Command("go", "list", "-m", "-json", repo+"@"+version).Output() // #nosec G204 -- repo and version come from parsing 'go list -json' output for the -package build-time flag
 		if err != nil {
-			return bootstrapSource{}, fmt.Errorf("go list -m %s@%s: %w", repo, version, err)
+			return bootstrapSource{}, "", fmt.Errorf("go list -m %s@%s: %w", repo, version, err)
 		}
 	}
-	return parseGoList(pkgJSON, modJSON)
+	// go list resolves Module.Dir through any replace already; Replace.Dir
+	// stands in for the one case (a directory replace) where it can be empty.
+	dir := pkg.Module.Dir
+	if dir == "" && pkg.Module.Replace != nil {
+		dir = pkg.Module.Replace.Dir
+	}
+	source, err := parseGoList(pkgJSON, modJSON)
+	return source, dir, err
 }
 
 // moduleIdentity returns the module path and version after any replace. A

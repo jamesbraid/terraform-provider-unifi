@@ -3,6 +3,10 @@ package providercodegen
 // sdkbootstrap resolves go-unifi the way the build does -- through go.mod and
 // its replace -- so a bump is one go.mod edit and nothing here can go stale.
 //go:generate -command sdkbootstrap go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi
+// The SDK also ships measured controller behaviour (schemas/behavior.json);
+// this carries the pinned module's copy in-repo, source-stamped, so
+// downstream consumers read committed bytes and drift shows up as a diff.
+//go:generate sdkbootstrap -behavior-output bootstrap/behavior.json
 //go:generate sdkbootstrap -struct FirewallPolicy -resource unifi_firewall_policy -output bootstrap/go-unifi-v1.103.0-firewall-policy.json
 //go:generate sdkbootstrap -struct FirewallZone -resource unifi_firewall_zone -output bootstrap/go-unifi-v1.103.0-firewall-zone.json
 //go:generate sdkbootstrap -struct PowerSupervisor -resource unifi_power_supervisor -output bootstrap/go-unifi-v1.103.0-power-supervisor.json
