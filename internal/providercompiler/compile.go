@@ -120,6 +120,15 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, err
 	}
 
+	// Wires the controller was measured to require on create. Derived, never
+	// hand-transcribed: policy may still omit such a field (a decision), but
+	// where it is exposed as a managed attribute, requiredness follows the
+	// measurement.
+	requiredWires, err := behaviorRequiredWires(input.Behavior, rules.SurfaceKind, source, sourceFields)
+	if err != nil {
+		return Result{}, err
+	}
+
 	claimedFields, claimedMembers, err := claimedStructuralFields(rules.SurfaceKind, rules.Claims)
 	if err != nil {
 		return Result{}, err
@@ -212,6 +221,22 @@ func Compile(input CompileInput) (Result, error) {
 	flattened, err := flattenedStructuralFields(rules.Flattenings, sourceFields, policyFields, grouped, terraformNames)
 	if err != nil {
 		return Result{}, err
+	}
+	// A required wire consumed by a claim or spread by a flattening has no
+	// single attribute for the derivation to mark; requiredness there stays a
+	// hand decision, and this says so on every compile rather than silently
+	// covering less than the artifact does.
+	for _, name := range cmdio.SortedKeys(requiredWires) {
+		if owner, related := claimedFields[name]; related {
+			notices = append(notices, fmt.Sprintf(
+				"required-on-create wire %q is consumed by %s; requiredness cannot be derived through a claim",
+				name, owner))
+		}
+		if _, spread := flattened[name]; spread {
+			notices = append(notices, fmt.Sprintf(
+				"required-on-create wire %q is spread by a flattening; requiredness cannot be derived onto its members",
+				name))
+		}
 	}
 
 	var unclassified []string
@@ -331,6 +356,19 @@ func Compile(input CompileInput) (Result, error) {
 			Disposition:    field.Disposition,
 		})
 		if field.Disposition == "managed" || field.Disposition == "computed" {
+			if _, must := requiredWires[name]; must && field.Disposition == "managed" {
+				if blockNesting(field.TerraformType) != "" {
+					return Result{}, fmt.Errorf(
+						"field %q is required on create by the behaviour artifact but declared as a "+
+							"block; a block has no requiredness to carry",
+						name)
+				}
+				forced, forceErr := forceRequiredOnCreate(field.Attribute)
+				if forceErr != nil {
+					return Result{}, fmt.Errorf("field %q: %w", name, forceErr)
+				}
+				field.Attribute = forced
+			}
 			attribute, err := buildCodeAttribute(rules.Resource, field, structural, terraformNames, &notices)
 			if err != nil {
 				return Result{}, fmt.Errorf("field %q: %w", name, err)
@@ -410,7 +448,7 @@ func Compile(input CompileInput) (Result, error) {
 	// grouping consumes.
 	groupingFields := make(map[string][]mappingField, len(groupings))
 	for _, grouping := range groupings {
-		attribute, err := buildGroupingAttribute(rules.Resource, grouping, sourceFields, terraformNames, claimedMembers, &notices)
+		attribute, err := buildGroupingAttribute(rules.Resource, grouping, sourceFields, terraformNames, claimedMembers, requiredWires, &notices)
 		if err != nil {
 			return Result{}, err
 		}
@@ -1156,6 +1194,7 @@ func buildGroupingAttribute(
 	sourceFields map[string]bootstrapField,
 	names map[string]string,
 	claimedMembers map[string]string,
+	requiredWires map[string]struct{},
 	notices *[]string,
 ) (codeAttribute, error) {
 	members := make([]codeAttribute, 0, len(grouping.Members))
@@ -1198,7 +1237,22 @@ func buildGroupingAttribute(
 			members = append(members, attribute)
 			continue
 		}
-		structural := sourceFields[qualifyField(member.StructuralSource, member.StructuralName)]
+		memberKey := qualifyField(member.StructuralSource, member.StructuralName)
+		if _, must := requiredWires[memberKey]; must && member.Disposition == "managed" {
+			if blockNesting(member.TerraformType) != "" {
+				return codeAttribute{}, fmt.Errorf(
+					"grouping %q member %q consumes %q, required on create by the behaviour "+
+						"artifact but declared as a block; a block has no requiredness to carry",
+					grouping.TerraformName, member.TerraformName, memberKey)
+			}
+			forced, forceErr := forceRequiredOnCreate(member.Attribute)
+			if forceErr != nil {
+				return codeAttribute{}, fmt.Errorf(
+					"grouping %q member %q: %w", grouping.TerraformName, member.TerraformName, forceErr)
+			}
+			member.Attribute = forced
+		}
+		structural := sourceFields[memberKey]
 		if member.ElementMember != "" {
 			attribute, err := collapsedElementAttribute(owner, member, structural)
 			if err != nil {

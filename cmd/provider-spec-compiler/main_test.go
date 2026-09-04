@@ -336,3 +336,80 @@ func TestRunPrintsCompilerNoticesToStderr(t *testing.T) {
 		t.Fatalf("stderr = %q, want it to contain %q", stderr.String(), want)
 	}
 }
+
+// TestRunDerivesRequirednessThroughTheBehaviorFlag proves the -behavior
+// plumbing end to end: the wrapper on disk reaches Compile and flips a
+// measured wire to required in the written specification.
+func TestRunDerivesRequirednessThroughTheBehaviorFlag(t *testing.T) {
+	dir := t.TempDir()
+	bootstrapPath := filepath.Join(dir, "bootstrap.json")
+	policyPath := filepath.Join(dir, "policy.json")
+	behaviorPath := filepath.Join(dir, "behavior.json")
+	writeFile(t, bootstrapPath, `{
+		"format_version": 1,
+		"source": {"repository": "r", "commit": "c", "specification_sha256": "d"},
+		"resource": {
+			"name": "unifi_nat_probe",
+			"struct": "Nat",
+			"fields": [{"name": "protocol", "type": "string"}]
+		}
+	}`)
+	writeFile(t, policyPath, `{
+		"format_version": 1,
+		"surface_kind": "managed_resource",
+		"resource": "unifi_nat_probe",
+		"source_specification_sha256": "d",
+		"description": "",
+		"fields": [
+			{"structural_name": "protocol", "terraform_name": "protocol", "disposition": "managed",
+			 "attribute": {"computed_optional_required": "optional"}}
+		],
+		"provider_owned": []
+	}`)
+	writeFile(t, behaviorPath, `{
+		"format_version": 1,
+		"source": {"repository": "r", "commit": "c", "specification_sha256": "d"},
+		"behavior": {"writes": {"Nat": {"required_on_create": ["protocol"]}}}
+	}`)
+	outputDir := t.TempDir()
+	var stderr bytes.Buffer
+	exitCode := run([]string{
+		"-bootstrap", bootstrapPath,
+		"-policy", policyPath,
+		"-behavior", behaviorPath,
+		"-artifact-prefix", "nat_probe",
+		"-output-dir", outputDir,
+	}, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, stderr = %s", exitCode, stderr.String())
+	}
+	spec, err := os.ReadFile(filepath.Join(outputDir, "nat_probe.provider-code-spec.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Resources []struct {
+			Schema struct {
+				Attributes []struct {
+					Name   string `json:"name"`
+					String struct {
+						ComputedOptionalRequired string `json:"computed_optional_required"`
+					} `json:"string"`
+				} `json:"attributes"`
+			} `json:"schema"`
+		} `json:"resources"`
+	}
+	if err := json.Unmarshal(spec, &document); err != nil {
+		t.Fatal(err)
+	}
+	for _, attribute := range document.Resources[0].Schema.Attributes {
+		if attribute.Name != "protocol" {
+			continue
+		}
+		if got := attribute.String.ComputedOptionalRequired; got != "required" {
+			t.Fatalf("protocol = %q, want required derived from the artifact over the policy's optional", got)
+		}
+		return
+	}
+	t.Fatal("the specification emitted no protocol attribute")
+}

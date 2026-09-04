@@ -8,6 +8,7 @@
   },
   "resource": {
     "name": "unifi_vpn_server",
+    "struct": "Network",
     "fields": [
       {
         "name": "_id",

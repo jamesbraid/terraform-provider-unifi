@@ -45,7 +45,11 @@ type bootstrapSource struct {
 }
 
 type bootstrapResource struct {
-	Name   string  `json:"name"`
+	Name string `json:"name"`
+	// Struct is the lead SDK struct's Go type name. The SDK's behaviour
+	// artifact keys write behaviour by this name, so the compiler needs it
+	// recorded rather than re-derived from a resource name it cannot map back.
+	Struct string  `json:"struct"`
 	Fields []field `json:"fields"`
 }
 
@@ -191,7 +195,7 @@ func run(args []string, stderr io.Writer) int {
 	document := bootstrapDocument{
 		FormatVersion: 1,
 		Source:        source,
-		Resource:      bootstrapResource{Name: *resource, Fields: walk(structure, structNames[0], lookup)},
+		Resource:      bootstrapResource{Name: *resource, Struct: structNames[0], Fields: walk(structure, structNames[0], lookup)},
 	}
 	for index, companion := range structures[1:] {
 		document.Companions = append(document.Companions, bootstrapCompanion{

@@ -8,6 +8,7 @@
   },
   "resource": {
     "name": "unifi_firewall_zone",
+    "struct": "FirewallZone",
     "fields": [
       {
         "name": "_id",

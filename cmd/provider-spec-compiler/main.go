@@ -32,6 +32,7 @@ func run(args []string, stderr io.Writer) int {
 	policyPath := flags.String("policy", "", "path to the provider policy")
 	artifactPrefix := flags.String("artifact-prefix", "", "prefix for generated artifact names")
 	outputDir := flags.String("output-dir", "", "directory for generated compiler artifacts")
+	behaviorPath := flags.String("behavior", "", "path to the SDK's measured-behaviour artifact wrapper (optional)")
 	// Off by default: a grouping is also how an ordinary nested attribute is
 	// declared, on surfaces with no Composite section at all, and
 	// <artifact-prefix>_<grouping>.mapping.json can then collide with an
@@ -66,8 +67,16 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "read policy: %v\n", err)
 		return 1
 	}
+	var behavior []byte
+	if *behaviorPath != "" {
+		behavior, err = os.ReadFile(*behaviorPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "read behaviour artifact: %v\n", err)
+			return 1
+		}
+	}
 
-	result, err := providercompiler.Compile(providercompiler.CompileInput{Bootstrap: bootstrap, Policy: policy})
+	result, err := providercompiler.Compile(providercompiler.CompileInput{Bootstrap: bootstrap, Policy: policy, Behavior: behavior})
 	var mismatch *providercompiler.DigestMismatchError
 	if errors.As(err, &mismatch) && providercompiler.WellFormedDigest(mismatch.Policy) {
 		// A well-formed but stale digest means the SDK struct moved under
@@ -82,7 +91,7 @@ func run(args []string, stderr io.Writer) int {
 			return 1
 		}
 		fmt.Fprintf(stderr, "re-pinned %s: %s -> %s\n", *policyPath, mismatch.Policy[:8], mismatch.Bootstrap[:8])
-		result, err = providercompiler.Compile(providercompiler.CompileInput{Bootstrap: bootstrap, Policy: repinned})
+		result, err = providercompiler.Compile(providercompiler.CompileInput{Bootstrap: bootstrap, Policy: repinned, Behavior: behavior})
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "compile: %v\n", err)

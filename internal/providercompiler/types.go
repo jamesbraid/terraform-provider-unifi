@@ -25,6 +25,12 @@ const managedSection SurfaceKind = "managed_section"
 type CompileInput struct {
 	Bootstrap []byte
 	Policy    []byte
+	// Behavior is the SDK's measured-behaviour artifact, in the wrapper
+	// cmd/sdk-bootstrap writes to bootstrap/behavior.json. Optional: empty
+	// means no behaviour derivation. When present, measured facts are
+	// derived into the specification (today: required_on_create) rather
+	// than hand-transcribed into policy.
+	Behavior []byte
 }
 
 // Result contains the deterministic artifacts produced by one compiler run.
@@ -70,7 +76,12 @@ type bootstrapSource struct {
 }
 
 type bootstrapSchema struct {
-	Name   string           `json:"name"`
+	Name string `json:"name"`
+	// Struct is the lead SDK struct's Go type name -- the key the SDK's
+	// behaviour artifact uses for write behaviour. Old bootstraps predate
+	// it; behaviorRequiredWires refuses to guess when it is empty and the
+	// artifact has writes to match.
+	Struct string           `json:"struct,omitempty"`
 	Fields []bootstrapField `json:"fields"`
 }
 
