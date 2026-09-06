@@ -3,6 +3,7 @@
   "surface_kind": "data_source",
   "surface_name": "unifi_network",
   "resource": "unifi_network",
+  "collection": "networkconf",
   "fields": [
     {
       "structural_name": "_id",

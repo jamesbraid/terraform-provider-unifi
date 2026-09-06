@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_port_forward",
   "resource": "unifi_port_forward",
+  "collection": "portforward",
   "fields": [
     {
       "structural_name": "destination_ips",

@@ -1806,8 +1806,7 @@
         {
           "attribute": {
             "computed_optional_required": "optional",
-            "description": "SSH password for device access. Sensitive \u2014 the controller stores only a hash, so this value is kept from configuration and not read back.",
-            "sensitive": true
+            "description": "SSH password for device access. Sensitive \u2014 the controller stores only a hash, so this value is kept from configuration and not read back."
           },
           "disposition": "managed",
           "structural_name": "x_ssh_password",

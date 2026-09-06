@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_vpn_client",
   "resource": "unifi_vpn_client",
+  "collection": "networkconf",
   "fields": [
     {
       "structural_name": "_id",

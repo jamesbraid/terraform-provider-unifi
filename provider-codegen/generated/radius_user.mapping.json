@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_radius_user",
   "resource": "unifi_radius_user",
+  "collection": "account",
   "fields": [
     {
       "structural_name": "_id",

@@ -109,8 +109,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The password for the dynamic DNS service.",
-        "sensitive": true
+        "description": "The password for the dynamic DNS service."
       },
       "disposition": "managed",
       "structural_name": "x_password",

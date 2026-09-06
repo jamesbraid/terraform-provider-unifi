@@ -306,6 +306,7 @@ func Compile(input CompileInput) (Result, error) {
 		SurfaceKind:   rules.SurfaceKind,
 		SurfaceName:   rules.Resource,
 		Resource:      rules.Resource,
+		Collection:    source.Resource.Collection,
 		Fields:        make([]mappingField, 0, len(fieldNames)),
 		ProviderOwned: make([]providerOwnedMapping, 0, len(providerOwned)),
 	}
@@ -1182,7 +1183,14 @@ func collapsedElementAttribute(
 			"member %q declares element type %q but the catalog observes %q.%q as %q",
 			owner, declared, member.StructuralName, member.ElementMember, observed)
 	}
-	return makeCodeAttribute(member.TerraformName, member.TerraformType, member.Attribute)
+	// The served attribute IS the collapsed element, so it carries the
+	// element's declared sensitivity (or the whole array's, were one ever
+	// declared by its own name).
+	attribute, err := deriveSensitive(owner, structural.Sensitive || element.Sensitive, member.Attribute)
+	if err != nil {
+		return codeAttribute{}, err
+	}
+	return makeCodeAttribute(member.TerraformName, member.TerraformType, attribute)
 }
 
 // buildGroupingAttribute emits a declared grouping. Member types come from the
@@ -1602,11 +1610,31 @@ func buildCodeAttribute(
 	names map[string]string,
 	notices *[]string,
 ) (codeAttribute, error) {
+	owner := field.StructuralName
+	if owner == "" {
+		owner = field.TerraformName
+	}
 	if structuralIsObject(structural.Type) {
 		terraformType, err := objectTerraformType(field, structural.Type)
 		if err != nil {
 			return codeAttribute{}, err
 		}
+		// A whole object declared sensitive marks the nested attribute
+		// itself; a block has no Sensitive to carry, so that refuses rather
+		// than silently serving the object unmasked. Neither branch is live
+		// today -- the controller declares leaves -- but a leaf name can
+		// equally be an object's own wire name in a future declaration.
+		if structural.Sensitive && blockNesting(field.TerraformType) != "" {
+			return codeAttribute{}, fmt.Errorf(
+				"field %q is declared sensitive by the controller but served as a block, "+
+					"which has no sensitivity to carry; serve it as a nested attribute or omit it",
+				owner)
+		}
+		withSensitivity, err := deriveSensitive(surface+"."+owner, structural.Sensitive, field.Attribute)
+		if err != nil {
+			return codeAttribute{}, err
+		}
+		field.Attribute = withSensitivity
 		definition, err := nestedDefinition(surface, field, structural, terraformType, names, notices)
 		if err != nil {
 			return codeAttribute{}, err
@@ -1639,15 +1667,18 @@ func buildCodeAttribute(
 	// the task report), and structuralElementType already routed those here
 	// with isCollection set.
 	if !isCollection {
-		owner := field.StructuralName
-		if owner == "" {
-			owner = field.TerraformName
-		}
 		derived, err := deriveConstraintValidators(surface+"."+owner, terraformType, structural.Constraint, attribute, notices)
 		if err != nil {
 			return codeAttribute{}, err
 		}
 		attribute = derived
+	}
+	// Sensitivity is not scoped the same way: a declared secret served as a
+	// list of strings is every bit as secret, and the flag sits on the
+	// attribute, not its element type.
+	attribute, err := deriveSensitive(surface+"."+owner, structural.Sensitive, attribute)
+	if err != nil {
+		return codeAttribute{}, err
 	}
 	return makeCodeAttribute(field.TerraformName, terraformType, attribute)
 }
@@ -1972,7 +2003,7 @@ func verifyBootstrapSecretCandidates(source bootstrap, rules policy) error {
 		if !observed.SecretCandidate {
 			continue
 		}
-		if err := secretCandidateDispositioned(observed.Name, rules); err != nil {
+		if err := secretCandidateDispositioned(observed.Name, observed.Sensitive, rules); err != nil {
 			unsafe = append(unsafe, err.Error())
 		}
 	}
@@ -1984,9 +2015,15 @@ func verifyBootstrapSecretCandidates(source bootstrap, rules policy) error {
 	return nil
 }
 
-func secretCandidateDispositioned(name string, rules policy) error {
+// secretCandidateDispositioned proves one x_-prefixed field is disposed of
+// safely. derived says the controller itself declares the field sensitive:
+// wherever the policy exposes it as a field, grouping member or flattened
+// member, deriveSensitive will mark the attribute, so the exposure is safe
+// without a hand flag. A claim still fails closed even then -- derivation
+// cannot follow a claim onto the terraform members it maps into.
+func secretCandidateDispositioned(name string, derived bool, rules policy) error {
 	if field, ok := policyFieldByStructuralName(rules.Fields, name); ok {
-		if secretCandidateIsSafe(field) {
+		if derived || secretCandidateIsSafe(field) {
 			return nil
 		}
 		return fmt.Errorf("%q is a top-level field that is neither omitted nor sensitive", name)
@@ -1996,7 +2033,7 @@ func secretCandidateDispositioned(name string, rules policy) error {
 			if member.StructuralName != name {
 				continue
 			}
-			if dispositionIsSafe(member.Disposition, member.Attribute) {
+			if derived || dispositionIsSafe(member.Disposition, member.Attribute) {
 				return nil
 			}
 			return fmt.Errorf("%q is a member of grouping %q and is neither omitted nor sensitive", name, group.TerraformName)
@@ -2007,7 +2044,7 @@ func secretCandidateDispositioned(name string, rules policy) error {
 			if member.StructuralName != name {
 				continue
 			}
-			if dispositionIsSafe(member.Disposition, member.Attribute) {
+			if derived || dispositionIsSafe(member.Disposition, member.Attribute) {
 				return nil
 			}
 			return fmt.Errorf("%q is a flattened member and is neither omitted nor sensitive", name)

@@ -88,8 +88,7 @@
         {
           "attribute": {
             "computed_optional_required": "required",
-            "description": "Shared secret for accounting server.",
-            "sensitive": true
+            "description": "Shared secret for accounting server."
           },
           "disposition": "managed",
           "structural_name": "x_secret",
@@ -154,8 +153,7 @@
         {
           "attribute": {
             "computed_optional_required": "required",
-            "description": "Shared secret for authentication server.",
-            "sensitive": true
+            "description": "Shared secret for authentication server."
           },
           "disposition": "managed",
           "structural_name": "x_secret",

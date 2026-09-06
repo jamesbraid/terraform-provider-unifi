@@ -3,6 +3,7 @@
   "surface_kind": "action",
   "surface_name": "unifi_port",
   "resource": "unifi_port",
+  "collection": "device",
   "fields": [],
   "provider_owned": [
     {

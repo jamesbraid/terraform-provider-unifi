@@ -9,6 +9,7 @@
   "resource": {
     "name": "unifi_vpn_server",
     "struct": "Network",
+    "collection": "networkconf",
     "fields": [
       {
         "name": "_id",
@@ -2357,6 +2358,7 @@
         "name": "x_auth_key",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "AuthKey",
         "pointer": true
       },
@@ -2371,6 +2373,7 @@
         "name": "x_ca_key",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "CaKey",
         "pointer": true
       },
@@ -2378,6 +2381,7 @@
         "name": "x_dh_key",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "DhKey",
         "pointer": true
       },
@@ -2385,6 +2389,7 @@
         "name": "x_ipsec_pre_shared_key",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "IPSecPreSharedKey",
         "pointer": true,
         "constraint": {
@@ -2395,6 +2400,7 @@
         "name": "x_openvpn_password",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "OpenVPNPassword",
         "pointer": true
       },
@@ -2429,6 +2435,7 @@
         "name": "x_server_key",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "ServerKey",
         "pointer": true
       },
@@ -2443,6 +2450,7 @@
         "name": "x_shared_client_key",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "SharedClientKey",
         "pointer": true
       },
@@ -2462,6 +2470,7 @@
         "name": "x_wan_password",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "WANPassword",
         "constraint": {
           "pattern": "[^\"' ]+|^$"
@@ -2471,6 +2480,7 @@
         "name": "x_wireguard_private_key",
         "type": "string",
         "secret_candidate": true,
+        "sensitive": true,
         "go_name": "WireguardPrivateKey",
         "pointer": true
       }

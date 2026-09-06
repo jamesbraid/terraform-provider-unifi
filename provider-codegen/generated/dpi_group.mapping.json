@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_dpi_group",
   "resource": "unifi_dpi_group",
+  "collection": "dpigroup",
   "fields": [
     {
       "structural_name": "_id",

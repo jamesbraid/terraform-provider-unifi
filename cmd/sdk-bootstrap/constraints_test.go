@@ -112,7 +112,7 @@ func Test_walkCopiesAConstraintPresentInTheStubTable(t *testing.T) {
 		"Outer": {"mode": want},
 	})
 
-	got := walk(outer, "Outer", lookup)
+	got := walk(outer, "Outer", lookup, nil)
 
 	if len(got) != 1 || got[0].Constraint == nil {
 		t.Fatalf("walk()[0].Constraint = nil, want a copy of %+v", want)
@@ -133,7 +133,7 @@ func Test_walkLeavesConstraintUnsetWhenThePairIsAbsent(t *testing.T) {
 		"Outer": {"other": {Pattern: "x"}},
 	})
 
-	got := walk(outer, "Outer", lookup)
+	got := walk(outer, "Outer", lookup, nil)
 
 	if len(got) != 1 || got[0].Constraint != nil {
 		t.Fatalf("walk()[0].Constraint = %+v, want nil: %q is not in the stub table", got[0].Constraint, "mode")
@@ -160,7 +160,7 @@ func Test_walkResolvesANestedMemberThroughItsOwnTypeName(t *testing.T) {
 		"Inner": {"width": want},
 	})
 
-	got := walk(outer, "Outer", lookup)
+	got := walk(outer, "Outer", lookup, nil)
 
 	var innerField field
 	for _, f := range got {

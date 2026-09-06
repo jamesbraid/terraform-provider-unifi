@@ -533,8 +533,7 @@
         {
           "attribute": {
             "computed_optional_required": "required",
-            "description": "IPsec pre-shared key for L2TP. Required by the UniFi controller.",
-            "sensitive": true
+            "description": "IPsec pre-shared key for L2TP. Required by the UniFi controller."
           },
           "disposition": "managed",
           "structural_name": "x_ipsec_pre_shared_key",
@@ -589,8 +588,7 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "sensitive": true
+            ]
           },
           "disposition": "managed",
           "structural_name": "x_auth_key",
@@ -633,8 +631,7 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "sensitive": true
+            ]
           },
           "disposition": "managed",
           "structural_name": "x_ca_key",
@@ -655,8 +652,7 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "sensitive": true
+            ]
           },
           "disposition": "managed",
           "structural_name": "x_dh_key",
@@ -699,8 +695,7 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "sensitive": true
+            ]
           },
           "disposition": "managed",
           "structural_name": "x_server_key",
@@ -743,8 +738,7 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "sensitive": true
+            ]
           },
           "disposition": "managed",
           "structural_name": "x_shared_client_key",
@@ -799,8 +793,7 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "sensitive": true
+            ]
           },
           "disposition": "managed",
           "structural_name": "x_wireguard_private_key",

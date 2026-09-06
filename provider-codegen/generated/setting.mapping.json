@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_setting",
   "resource": "unifi_setting",
+  "collection": "setting",
   "fields": [
     {
       "structural_name": "AutoSpeedtest.cron_expr",

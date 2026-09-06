@@ -33,8 +33,12 @@ type bootstrapDocument struct {
 // bootstrapCompanion is one further struct, named by its Go type rather than a
 // resource name -- the policy qualifies a field by this name.
 type bootstrapCompanion struct {
-	Struct string  `json:"struct"`
-	Fields []field `json:"fields"`
+	Struct string `json:"struct"`
+	// Collection is the companion's own controller collection, which need not
+	// be the lead's: unifi_client projects Client (user) and ClientGroup
+	// (usergroup) together. See bootstrapResource.Collection.
+	Collection string  `json:"collection,omitempty"`
+	Fields     []field `json:"fields"`
 }
 
 type bootstrapSource struct {
@@ -49,8 +53,12 @@ type bootstrapResource struct {
 	// Struct is the lead SDK struct's Go type name. The SDK's behaviour
 	// artifact keys write behaviour by this name, so the compiler needs it
 	// recorded rather than re-derived from a resource name it cannot map back.
-	Struct string  `json:"struct"`
-	Fields []field `json:"fields"`
+	Struct string `json:"struct"`
+	// Collection is the controller collection the struct's records live in,
+	// derived by structCollection -- the key unifi.SensitiveFieldsByCollection
+	// uses. Empty for a struct served outside the rest API.
+	Collection string  `json:"collection,omitempty"`
+	Fields     []field `json:"fields"`
 }
 
 type field struct {
@@ -61,6 +69,12 @@ type field struct {
 	// candidate, not a verdict -- the policy decides omit/mask, and the compiler
 	// refuses anything that does neither.
 	SecretCandidate bool `json:"secret_candidate,omitempty"`
+	// Sensitive is the controller's own verdict, copied from
+	// unifi.SensitiveFieldsByCollection for the struct's collection: this
+	// wire name carries secret material. The policy still decides whether
+	// the field is exposed at all; where it is, the compiler marks the
+	// attribute Sensitive from this rather than from a hand-set flag.
+	Sensitive bool `json:"sensitive,omitempty"`
 
 	// GoName and Pointer are recorded here because this is the only step that
 	// reads the Go struct -- downstream sees JSON, which has neither. GoName
@@ -142,6 +156,7 @@ func run(args []string, stderr io.Writer) int {
 	// resource, which can differ from where the type actually lives.
 	declared := make([][]byte, 0, len(structNames))
 	structures := make([]*types.Struct, 0, len(structNames))
+	collections := make([]string, 0, len(structNames))
 	seen := map[string]bool{}
 	for _, name := range structNames {
 		if seen[name] {
@@ -164,8 +179,14 @@ func run(args []string, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "%v\n", err)
 			return 1
 		}
+		collection, err := structCollection(*pkgPath, fset.Position(object.Pos()).Filename)
+		if err != nil {
+			fmt.Fprintf(stderr, "%v\n", err)
+			return 1
+		}
 		declared = append(declared, declaration)
 		structures = append(structures, structure)
+		collections = append(collections, collection)
 	}
 	structure := structures[0]
 
@@ -195,12 +216,18 @@ func run(args []string, stderr io.Writer) int {
 	document := bootstrapDocument{
 		FormatVersion: 1,
 		Source:        source,
-		Resource:      bootstrapResource{Name: *resource, Struct: structNames[0], Fields: walk(structure, structNames[0], lookup)},
+		Resource: bootstrapResource{
+			Name:       *resource,
+			Struct:     structNames[0],
+			Collection: collections[0],
+			Fields:     walk(structure, structNames[0], lookup, sensitiveLeaves(collections[0])),
+		},
 	}
 	for index, companion := range structures[1:] {
 		document.Companions = append(document.Companions, bootstrapCompanion{
-			Struct: structNames[index+1],
-			Fields: walk(companion, structNames[index+1], lookup),
+			Struct:     structNames[index+1],
+			Collection: collections[index+1],
+			Fields:     walk(companion, structNames[index+1], lookup, sensitiveLeaves(collections[index+1])),
 		})
 	}
 
@@ -223,7 +250,10 @@ func run(args []string, stderr io.Writer) int {
 // not depend on declaration order. goType is s's own Go type name, used as
 // the constraint lookup key for s's direct fields; lookup may be nil, which
 // means no constraint is ever found (existing structural tests use this).
-func walk(s *types.Struct, goType string, lookup constraintLookup) []field {
+// sensitive is the struct's collection's declared secret leaves (see
+// sensitiveLeaves); it applies at every depth, since the SDK records a
+// nested declaration by its leaf name. Nil means none.
+func walk(s *types.Struct, goType string, lookup constraintLookup, sensitive map[string]bool) []field {
 	out := []field{}
 	for index := range s.NumFields() {
 		member := s.Field(index)
@@ -237,7 +267,7 @@ func walk(s *types.Struct, goType string, lookup constraintLookup) []field {
 			// promotion, and takes the ordinary path below.
 			if member.Embedded() {
 				if _, nested, nestedType := describe(member.Type()); nested != nil {
-					out = append(out, walk(nested, nestedType, lookup)...)
+					out = append(out, walk(nested, nestedType, lookup, sensitive)...)
 				}
 			}
 			continue
@@ -250,6 +280,7 @@ func walk(s *types.Struct, goType string, lookup constraintLookup) []field {
 			Name:            name,
 			Type:            shape,
 			SecretCandidate: strings.HasPrefix(name, "x_"),
+			Sensitive:       sensitive[name],
 			GoName:          member.Name(),
 			Pointer:         isPointer,
 		}
@@ -261,7 +292,7 @@ func walk(s *types.Struct, goType string, lookup constraintLookup) []field {
 		if nested != nil {
 			// A nested struct's own fields are looked up under ITS type
 			// name, not s's -- FieldConstraints is keyed per declaring struct.
-			entry.Fields = walk(nested, nestedType, lookup)
+			entry.Fields = walk(nested, nestedType, lookup, sensitive)
 		}
 		out = append(out, entry)
 	}

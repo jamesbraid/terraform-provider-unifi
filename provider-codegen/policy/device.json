@@ -1271,8 +1271,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Baresip password.",
-        "sensitive": true
+        "description": "Baresip password."
       },
       "disposition": "managed",
       "structural_name": "x_baresip_password",

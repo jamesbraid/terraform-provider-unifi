@@ -1058,8 +1058,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The passphrase for the network, only required if `security` is not `open`. Stored in state \u2014 use `passphrase_wo` to avoid persisting the secret.",
-        "sensitive": true
+        "description": "The passphrase for the network, only required if `security` is not `open`. Stored in state \u2014 use `passphrase_wo` to avoid persisting the secret."
       },
       "disposition": "managed",
       "structural_name": "x_passphrase",

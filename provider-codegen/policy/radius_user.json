@@ -145,8 +145,7 @@
     {
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The password of the account.",
-        "sensitive": true
+        "description": "The password of the account."
       },
       "disposition": "managed",
       "structural_name": "x_password",

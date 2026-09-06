@@ -64,8 +64,11 @@ type bootstrap struct {
 // bootstrapCompanion is one further observed struct, named by its GO TYPE.
 // There is no resource name for it; the policy qualifies a field by this name.
 type bootstrapCompanion struct {
-	Struct string           `json:"struct"`
-	Fields []bootstrapField `json:"fields"`
+	Struct string `json:"struct"`
+	// Collection is the companion's own controller collection; see
+	// bootstrapSchema.Collection. It need not be the lead's.
+	Collection string           `json:"collection,omitempty"`
+	Fields     []bootstrapField `json:"fields"`
 }
 
 type bootstrapSource struct {
@@ -81,8 +84,13 @@ type bootstrapSchema struct {
 	// behaviour artifact uses for write behaviour. Old bootstraps predate
 	// it; behaviorRequiredWires refuses to guess when it is empty and the
 	// artifact has writes to match.
-	Struct string           `json:"struct,omitempty"`
-	Fields []bootstrapField `json:"fields"`
+	Struct string `json:"struct,omitempty"`
+	// Collection is the controller collection the struct's records live in,
+	// derived by cmd/sdk-bootstrap from the SDK's own client -- the key
+	// unifi.SensitiveFieldsByCollection is indexed by. Empty for a struct
+	// served outside the rest API, and on old bootstraps.
+	Collection string           `json:"collection,omitempty"`
+	Fields     []bootstrapField `json:"fields"`
 }
 
 type bootstrapField struct {
@@ -94,6 +102,12 @@ type bootstrapField struct {
 	Fields []bootstrapField `json:"fields,omitempty"`
 	// SecretCandidate is set by cmd/sdk-bootstrap for x_-prefixed SDK fields.
 	SecretCandidate bool `json:"secret_candidate,omitempty"`
+	// Sensitive is the controller's own verdict, set by cmd/sdk-bootstrap
+	// where the field's leaf wire name is declared sensitive for its
+	// struct's collection. Where the policy exposes the field, the emitted
+	// attribute is marked Sensitive from this -- a hand-set flag on such a
+	// field is refused as duplication (see deriveSensitive).
+	Sensitive bool `json:"sensitive,omitempty"`
 	// GoName and Pointer aren't derivable from the wire name or shape (see
 	// cmd/sdk-bootstrap); the compiler decodes strictly, so both must be
 	// declared here to survive decoding.
@@ -368,10 +382,17 @@ type codeAttribute struct {
 }
 
 type mappingReport struct {
-	FormatVersion int                    `json:"format_version"`
-	SurfaceKind   SurfaceKind            `json:"surface_kind"`
-	SurfaceName   string                 `json:"surface_name"`
-	Resource      string                 `json:"resource"`
+	FormatVersion int         `json:"format_version"`
+	SurfaceKind   SurfaceKind `json:"surface_kind"`
+	SurfaceName   string      `json:"surface_name"`
+	Resource      string      `json:"resource"`
+	// Collection is the LEAD struct's controller collection, copied from the
+	// bootstrap so the conformance suite can key the surface into
+	// unifi.SensitiveFieldsByCollection from committed bytes alone. A
+	// companion's collection can differ (unifi_client projects user and
+	// usergroup together); no companion carries a declared secret today, and
+	// the suite would over-demand, loudly, if one ever did.
+	Collection    string                 `json:"collection,omitempty"`
 	Fields        []mappingField         `json:"fields"`
 	ProviderOwned []providerOwnedMapping `json:"provider_owned"`
 }

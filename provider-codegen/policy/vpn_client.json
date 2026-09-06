@@ -391,8 +391,7 @@
         {
           "attribute": {
             "computed_optional_required": "required",
-            "description": "WireGuard private key for this client.",
-            "sensitive": true
+            "description": "WireGuard private key for this client."
           },
           "disposition": "managed",
           "structural_name": "x_wireguard_private_key",

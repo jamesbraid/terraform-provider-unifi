@@ -3,6 +3,7 @@
   "surface_kind": "data_source",
   "surface_name": "unifi_radius_profile",
   "resource": "unifi_radius_profile",
+  "collection": "radiusprofile",
   "fields": [
     {
       "structural_name": "_id",

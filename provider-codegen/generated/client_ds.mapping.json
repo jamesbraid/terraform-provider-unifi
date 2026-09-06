@@ -3,6 +3,7 @@
   "surface_kind": "data_source",
   "surface_name": "unifi_client",
   "resource": "unifi_client",
+  "collection": "user",
   "fields": [
     {
       "structural_name": "_id",

@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_static_route",
   "resource": "unifi_static_route",
+  "collection": "routing",
   "fields": [
     {
       "structural_name": "_id",
