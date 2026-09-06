@@ -37,7 +37,7 @@ var FrozenTypeNames = map[string]string{
 	"portForwardResource":         "unifi_port_forward",
 	"portProfileDataSource":       "unifi_port_profile",
 	"portProfileKitResource":      "unifi_port_profile",
-	"powerSupervisorResource":     "unifi_power_supervisor",
+	"powerSupervisorKitResource":  "unifi_power_supervisor",
 	"radiusProfileDataSource":     "unifi_radius_profile",
 	"radiusProfileKitResource":    "unifi_radius_profile",
 	"radiusUserDataSource":        "unifi_radius_user",

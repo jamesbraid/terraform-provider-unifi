@@ -40,14 +40,52 @@ list "unifi_power_supervisor" "test" {
 	})
 }
 
+// powerSupervisorTestToSDK builds the SDK object the way the engine does:
+// every field's ToSDK, then BeforeSend, which carries the settings document
+// and the empty power_sources slice.
+func powerSupervisorTestToSDK(
+	t *testing.T, model *powerSupervisorKitModel,
+) *unifi.PowerSupervisor {
+	t.Helper()
+	ctx := context.Background()
+	spec := powerSupervisorKitSpec()
+	sdk, diags := spec.ToSDK(ctx, model)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	var prior powerSupervisorKitModel
+	if d := spec.BeforeSend(ctx, model, model, prior, sdk, nil); d.HasError() {
+		t.Fatalf("BeforeSend: %v", d)
+	}
+	return sdk
+}
+
+// powerSupervisorTestToModel reads the SDK object back the way the engine
+// does: every field's ToModel, then AfterReceive for the settings durations
+// and consecutive_failures.
+func powerSupervisorTestToModel(
+	t *testing.T, sdk *unifi.PowerSupervisor, site string,
+) powerSupervisorKitModel {
+	t.Helper()
+	ctx := context.Background()
+	spec := powerSupervisorKitSpec()
+	var model, prior powerSupervisorKitModel
+	if d := spec.ToModel(ctx, sdk, &model, site); d.HasError() {
+		t.Fatalf("ToModel: %v", d)
+	}
+	if d := spec.AfterReceive(ctx, sdk, &model, prior, nil); d.HasError() {
+		t.Fatalf("AfterReceive: %v", d)
+	}
+	return model
+}
+
 // TestPowerSupervisorModelRoundTrip covers the model ⇄ go-unifi conversion:
 // settings are sent as configured, power_sources are not sent (the
 // controller resolves them) but are read back along with the computed fields.
 func TestPowerSupervisorModelRoundTrip(t *testing.T) {
 	ctx := context.Background()
-	r := &powerSupervisorResource{}
 
-	model := powerSupervisorResourceModel{
+	model := powerSupervisorKitModel{
 		DeviceMAC:         hwtypes.NewMACAddressValue("94:2a:6f:d6:ce:fd"),
 		Enabled:           types.BoolValue(true),
 		HeartbeatInterval: util.DurationValue(30, time.Second),
@@ -55,7 +93,7 @@ func TestPowerSupervisorModelRoundTrip(t *testing.T) {
 		PowerOffDuration:  util.DurationValue(90, time.Second),
 	}
 
-	api := r.modelToPowerSupervisor(&model)
+	api := powerSupervisorTestToSDK(t, &model)
 	if api.ClientMAC != "94:2a:6f:d6:ce:fd" {
 		t.Errorf("ClientMAC = %q, want the device MAC", api.ClientMAC)
 	}
@@ -89,10 +127,7 @@ func TestPowerSupervisorModelRoundTrip(t *testing.T) {
 		},
 	}
 
-	var out powerSupervisorResourceModel
-	if d := r.powerSupervisorToModel(resp, &out, "default"); d.HasError() {
-		t.Fatalf("powerSupervisorToModel: %v", d)
-	}
+	out := powerSupervisorTestToModel(t, resp, "default")
 	if out.ID.ValueString() != "000000000000000000000001" {
 		t.Errorf("ID = %q", out.ID.ValueString())
 	}
@@ -165,7 +200,7 @@ func Test_powerSourceAttrTypes(t *testing.T) {
 }
 
 func Test_powerSupervisorResource_IdentitySchema(t *testing.T) {
-	r := &powerSupervisorResource{}
+	r := newPowerSupervisorKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -180,7 +215,7 @@ func Test_powerSupervisorResource_IdentitySchema(t *testing.T) {
 }
 
 func Test_powerSupervisorResource_UpgradeState(t *testing.T) {
-	r := &powerSupervisorResource{}
+	r := newPowerSupervisorKitResource()
 	got := r.UpgradeState(context.Background())
 	if got == nil {
 		t.Fatal("UpgradeState() returned nil")
@@ -190,21 +225,16 @@ func Test_powerSupervisorResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_powerSupervisorResource_modelToPowerSupervisor(t *testing.T) {
-	r := &powerSupervisorResource{}
-
+func Test_powerSupervisorDescriptor_toSDK(t *testing.T) {
 	t.Run("maps all settings fields", func(t *testing.T) {
-		model := &powerSupervisorResourceModel{
+		model := powerSupervisorKitModel{
 			DeviceMAC:         hwtypes.NewMACAddressValue("aa:bb:cc:dd:ee:ff"),
 			Enabled:           types.BoolValue(true),
 			HeartbeatInterval: util.DurationValue(60, time.Second),
 			SilenceThreshold:  util.DurationValue(300, time.Second),
 			PowerOffDuration:  util.DurationValue(120, time.Second),
 		}
-		got := r.modelToPowerSupervisor(model)
-		if got == nil {
-			t.Fatal("modelToPowerSupervisor() returned nil")
-		}
+		got := powerSupervisorTestToSDK(t, &model)
 		if got.ClientMAC != "aa:bb:cc:dd:ee:ff" {
 			t.Errorf("ClientMAC = %q, want aa:bb:cc:dd:ee:ff", got.ClientMAC)
 		}
@@ -226,14 +256,14 @@ func Test_powerSupervisorResource_modelToPowerSupervisor(t *testing.T) {
 	})
 
 	t.Run("disabled supervisor", func(t *testing.T) {
-		model := &powerSupervisorResourceModel{
+		model := powerSupervisorKitModel{
 			DeviceMAC:         hwtypes.NewMACAddressValue("11:22:33:44:55:66"),
 			Enabled:           types.BoolValue(false),
 			HeartbeatInterval: util.DurationValue(30, time.Second),
 			SilenceThreshold:  util.DurationValue(900, time.Second),
 			PowerOffDuration:  util.DurationValue(60, time.Second),
 		}
-		got := r.modelToPowerSupervisor(model)
+		got := powerSupervisorTestToSDK(t, &model)
 		if got.Enabled {
 			t.Error("Enabled should be false")
 		}
@@ -243,9 +273,7 @@ func Test_powerSupervisorResource_modelToPowerSupervisor(t *testing.T) {
 	})
 }
 
-func Test_powerSupervisorResource_powerSupervisorToModel(t *testing.T) {
-	r := &powerSupervisorResource{}
-
+func Test_powerSupervisorDescriptor_toModel(t *testing.T) {
 	t.Run("populates all fields", func(t *testing.T) {
 		supervisor := &unifi.PowerSupervisor{
 			ID:                  "sup-123",
@@ -266,11 +294,7 @@ func Test_powerSupervisorResource_powerSupervisorToModel(t *testing.T) {
 				},
 			},
 		}
-		var model powerSupervisorResourceModel
-		diags := r.powerSupervisorToModel(supervisor, &model, "site1")
-		if diags.HasError() {
-			t.Fatalf("powerSupervisorToModel() errors: %v", diags)
-		}
+		model := powerSupervisorTestToModel(t, supervisor, "site1")
 		if model.ID.ValueString() != "sup-123" {
 			t.Errorf("ID = %q, want sup-123", model.ID.ValueString())
 		}
@@ -301,10 +325,9 @@ func Test_powerSupervisorResource_powerSupervisorToModel(t *testing.T) {
 			Enabled:      false,
 			PowerSources: []unifi.PowerSupervisorSource{},
 		}
-		var model powerSupervisorResourceModel
-		diags := r.powerSupervisorToModel(supervisor, &model, "default")
-		if diags.HasError() {
-			t.Fatalf("powerSupervisorToModel() errors: %v", diags)
+		model := powerSupervisorTestToModel(t, supervisor, "default")
+		if model.PowerSources.IsNull() {
+			t.Error("PowerSources should be an empty list, not null")
 		}
 		if len(model.PowerSources.Elements()) != 0 {
 			t.Errorf(
@@ -316,7 +339,7 @@ func Test_powerSupervisorResource_powerSupervisorToModel(t *testing.T) {
 }
 
 func Test_powerSupervisorResource_ListResourceConfigSchema(t *testing.T) {
-	r := &powerSupervisorResource{}
+	r := newPowerSupervisorKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {

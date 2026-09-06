@@ -354,7 +354,18 @@
     "clearance is the same override capability client already ships for its id+mac",
     "identity: dynamic_dns_resource.go overrides IdentitySchema and stamps site into",
     "every response identity after delegating to the kit, so stored identities decode",
-    "and new ones keep the shape the hand resource wrote."
+    "and new ones keep the shape the hand resource wrote.",
+    "",
+    "power_supervisor IS CUT OVER AND ITS sdk-int ENTRY IS GONE. No int-backed field",
+    "kind was built: the durations could not be Fields either way, because they live",
+    "inside the nested settings document and maskedBody only addresses top-level",
+    "wires -- \"settings.heartbeat_interval\" is a mapping name, not a maskable wire.",
+    "So the descriptor's BeforeSend/AfterReceive hooks carry the four int-backed",
+    "members (the three settings durations and consecutive_failures), transcribed",
+    "from the hand mapper, with AlwaysWire putting the whole settings document on",
+    "the mask. The SDK's UpdatePowerSupervisorFields overlays masked members onto",
+    "the stored object, so masking \"settings\" whole writes exactly what the hand",
+    "resource's whole-object PUT wrote for those members."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -376,9 +387,6 @@
   "surfaces": {
     "bgp": [
       "derived-into-blob"
-    ],
-    "power_supervisor": [
-      "sdk-int"
     ],
     "setting": [
       "backend-cardinality"

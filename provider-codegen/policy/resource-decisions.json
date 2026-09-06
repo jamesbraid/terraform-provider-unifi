@@ -211,6 +211,21 @@
       },
       "schema_version": 1
     },
+    "unifi_power_supervisor": {
+      "sdk_type": "PowerSupervisor",
+      "duration_units": {
+        "settings.heartbeat_interval": "time.Second",
+        "settings.power_off_duration": "time.Second",
+        "settings.silence_threshold": "time.Second"
+      },
+      "list": {
+        "display_field": "ClientMAC",
+        "filters": [
+          "device_mac"
+        ]
+      },
+      "schema_version": 1
+    },
     "unifi_radius_profile": {
       "sdk_type": "RADIUSProfile",
       "duration_units": {

@@ -102,6 +102,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("port_profile", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := powerSupervisorKitBackend(api)
+		record("power_supervisor", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := radiusProfileKitBackend(api)
 		record("radius_profile", backend.Create != nil, backend.CreateFields != nil)
 	}
@@ -180,7 +184,6 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
 	want := []string{
 		"bgp",
-		"power_supervisor",
 		"site",
 		"wireguard_peer",
 	}
