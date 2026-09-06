@@ -2,102 +2,82 @@ package unifi
 
 import (
 	"context"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_dynamic_dns"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dynamic_dns"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	resource_dynamic_dns "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dynamic_dns"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// Ensure provider defined types fully satisfy framework interfaces.
+type dynamicDNSKitResource struct {
+	resourcekit.Resource[dynamicDNSKitModel, ui.DynamicDNS]
+}
+
 var (
-	_ resource.Resource                = &dynamicDNSResource{}
-	_ resource.ResourceWithImportState = &dynamicDNSResource{}
-	_ resource.ResourceWithIdentity    = &dynamicDNSResource{}
+	_ resource.Resource                = &dynamicDNSKitResource{}
+	_ resource.ResourceWithImportState = &dynamicDNSKitResource{}
+	_ resource.ResourceWithIdentity    = &dynamicDNSKitResource{}
+	_ list.ListResource                = &dynamicDNSKitResource{}
+	_ list.ListResourceWithConfigure   = &dynamicDNSKitResource{}
 )
 
-// Ensure provider defined types fully satisfy list interfaces.
-var (
-	_ list.ListResource              = &dynamicDNSResource{}
-	_ list.ListResourceWithConfigure = &dynamicDNSResource{}
-)
-
-func NewDynamicDNSResource() resource.Resource {
-	return &dynamicDNSResource{}
+func newDynamicDNSKitResource() *dynamicDNSKitResource {
+	r := &dynamicDNSKitResource{}
+	r.Spec = dynamicDNSKitSpec()
+	r.SchemaSpec = dynamicDNSKitSchema()
+	r.ListSurface = dynamicDNSKitList()
+	return r
 }
 
-func NewDynamicDNSListResource() list.ListResource {
-	return &dynamicDNSResource{}
-}
-
-// dynamicDNSResource defines the resource implementation.
-type dynamicDNSResource struct {
-	client *Client
-}
-
-// dynamicDNSResourceModel describes the resource data model.
-type dynamicDNSResourceModel struct {
-	ID        types.String   `tfsdk:"id"`
-	Site      types.String   `tfsdk:"site"`
-	Interface types.String   `tfsdk:"interface"`
-	Service   types.String   `tfsdk:"service"`
-	HostName  types.String   `tfsdk:"host_name"`
-	Server    types.String   `tfsdk:"server"`
-	Login     types.String   `tfsdk:"login"`
-	Password  types.String   `tfsdk:"password"`
-	Timeouts  timeouts.Value `tfsdk:"timeouts"`
-}
-
-// dynamicDNSResourceIdentityModel describes the resource identity data model.
-type dynamicDNSResourceIdentityModel struct {
-	ID   types.String `tfsdk:"id"`
-	Site types.String `tfsdk:"site"`
-}
-
-// dynamicDNSListConfigModel describes the list configuration model.
-type dynamicDNSListConfigModel struct {
-	Site   types.String `tfsdk:"site"`
-	Filter types.List   `tfsdk:"filter"`
-}
-
-// dynamicDNSListFilterModel represents a single name/value filter entry.
-type dynamicDNSListFilterModel struct {
-	Name  types.String `tfsdk:"name"`
-	Value types.String `tfsdk:"value"`
-}
-
-func (r *dynamicDNSResource) Metadata(
+func (r *dynamicDNSKitResource) Schema(
 	ctx context.Context,
+	_ resource.SchemaRequest,
+	resp *resource.SchemaResponse,
+) {
+	resp.Schema = resource_dynamic_dns.DynamicDnsResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})
+}
+
+// Metadata is here, not promoted from an embedded type: descriptor_policy_test.go's
+// kitServedSurfaces resolves each surface's TypeName by parsing this method.
+func (r *dynamicDNSKitResource) Metadata(
+	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
 ) {
 	resp.TypeName = req.ProviderTypeName + "_dynamic_dns"
 }
 
-func (r *dynamicDNSResource) Schema(
-	ctx context.Context,
-	req resource.SchemaRequest,
-	resp *resource.SchemaResponse,
+func NewDynamicDNSResource() resource.Resource { return newDynamicDNSKitResource() }
+
+func NewDynamicDNSListResource() list.ListResource { return newDynamicDNSKitResource() }
+
+func (r *dynamicDNSKitResource) Configure(
+	_ context.Context,
+	req resource.ConfigureRequest,
+	resp *resource.ConfigureResponse,
 ) {
-	resp.Schema = resource_dynamic_dns.DynamicDnsResourceSchema(ctx)
-	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
-		ctx,
-		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-	)
+	client, ok := resourceClient(req.ProviderData, &resp.Diagnostics)
+	if !ok {
+		return
+	}
+	r.Spec.Backend = dynamicDNSKitBackend(client.ApiClient)
+	r.DefaultSite = client.Site
 }
 
-func (r *dynamicDNSResource) IdentitySchema(
-	ctx context.Context,
-	req resource.IdentitySchemaRequest,
+// IdentitySchema keeps the two-attribute identity this resource has shipped
+// with since before the kit: id plus site. States created under it store
+// both, and a stored identity is decoded against the schema served here, so
+// narrowing to the kit's id-only default would orphan every one of them.
+func (r *dynamicDNSKitResource) IdentitySchema(
+	_ context.Context,
+	_ resource.IdentitySchemaRequest,
 	resp *resource.IdentitySchemaResponse,
 ) {
 	resp.IdentitySchema = identityschema.Schema{
@@ -112,419 +92,100 @@ func (r *dynamicDNSResource) IdentitySchema(
 	}
 }
 
-func (r *dynamicDNSResource) Configure(
-	ctx context.Context,
-	req resource.ConfigureRequest,
-	resp *resource.ConfigureResponse,
-) {
-	client, ok := resourceClient(req.ProviderData, &resp.Diagnostics)
-	if !ok {
-		return
-	}
-
-	r.client = client
-}
-
-func (r *dynamicDNSResource) Create(
+// Create, Read and Update delegate to the kit and then stamp the site into
+// the response identity, which the kit (writing id alone) would leave null.
+// The hand-written resource stored both, so the states already out there
+// carry both.
+func (r *dynamicDNSKitResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
-	var data dynamicDNSResourceModel
-
-	if resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...); resp.Diagnostics.HasError() {
-		return
-	}
-
-	createTimeout, timeoutDiags := data.Timeouts.Create(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
+	r.Resource.Create(ctx, req, resp)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, createTimeout)
-	defer cancel()
-
-	site := r.client.Site
-	if !data.Site.IsNull() && !data.Site.IsUnknown() {
-		site = data.Site.ValueString()
-	}
-
-	dynamicDNS := r.modelToDynamicDNS(ctx, &data)
-
-	createdDynamicDNS, err := r.client.CreateDynamicDNS(ctx, site, dynamicDNS)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Creating Dynamic DNS", resourcekit.DiagErrorText(err),
-		)
-		return
-	}
-
-	r.dynamicDNSToModel(ctx, createdDynamicDNS, &data, site)
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-
-	identity := dynamicDNSResourceIdentityModel{
-		ID:   types.StringValue(createdDynamicDNS.ID),
-		Site: types.StringValue(site),
-	}
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, identity)...)
+	var site types.String
+	resp.Diagnostics.Append(resp.State.GetAttribute(ctx, path.Root("site"), &site)...)
+	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("site"), site)...)
 }
 
-func (r *dynamicDNSResource) Read(
+func (r *dynamicDNSKitResource) Read(
 	ctx context.Context,
 	req resource.ReadRequest,
 	resp *resource.ReadResponse,
 ) {
-	var data dynamicDNSResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
+	r.Resource.Read(ctx, req, resp)
+	if resp.Diagnostics.HasError() || resp.State.Raw.IsNull() {
 		return
 	}
-
-	readTimeout, timeoutDiags := data.Timeouts.Read(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, readTimeout)
-	defer cancel()
-
-	// Read identity, falling back to state for resources created before identity support
-	var identity dynamicDNSResourceIdentityModel
-	if !req.Identity.Raw.IsNull() {
-		resp.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	} else {
-		identity.ID = data.ID
-		identity.Site = data.Site
-	}
-
-	id := identity.ID.ValueString()
-	site := identity.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	dynamicDNS, err := r.client.GetDynamicDNS(ctx, site, id)
-	if err != nil {
-		if _, ok := err.(*unifi.NotFoundError); ok {
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Error Reading Dynamic DNS",
-			"Could not read dynamic DNS with ID "+id+": "+resourcekit.DiagErrorText(err),
-		)
-		return
-	}
-
-	r.dynamicDNSToModel(ctx, dynamicDNS, &data, site)
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-
-	// Re-set identity (should be unchanged).
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, identity)...)
+	var site types.String
+	resp.Diagnostics.Append(resp.State.GetAttribute(ctx, path.Root("site"), &site)...)
+	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("site"), site)...)
 }
 
-func (r *dynamicDNSResource) Update(
+func (r *dynamicDNSKitResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
-	var state dynamicDNSResourceModel
-	var plan dynamicDNSResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	r.Resource.Update(ctx, req, resp)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-	defer cancel()
-
-	// Read identity, falling back to state for resources created before identity support
-	var identity dynamicDNSResourceIdentityModel
-	if !req.Identity.Raw.IsNull() {
-		resp.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	} else {
-		identity.ID = state.ID
-		identity.Site = state.Site
-	}
-
-	r.applyPlanToState(ctx, &plan, &state)
-
-	id := identity.ID.ValueString()
-	site := identity.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	dynamicDNS := r.modelToDynamicDNS(ctx, &state)
-	dynamicDNS.ID = id
-	dynamicDNS.SiteID = site
-
-	updatedDynamicDNS, err := r.client.UpdateDynamicDNS(ctx, site, dynamicDNS)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Updating Dynamic DNS", resourcekit.DiagErrorText(err),
-		)
-		return
-	}
-
-	r.dynamicDNSToModel(ctx, updatedDynamicDNS, &state, site)
-
-	state.Timeouts = plan.Timeouts
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-
-	// Identity should not change during update.
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, identity)...)
+	var site types.String
+	resp.Diagnostics.Append(resp.State.GetAttribute(ctx, path.Root("site"), &site)...)
+	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("site"), site)...)
 }
 
-func (r *dynamicDNSResource) Delete(
-	ctx context.Context,
-	req resource.DeleteRequest,
-	resp *resource.DeleteResponse,
-) {
-	var data dynamicDNSResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	deleteTimeout, timeoutDiags := data.Timeouts.Delete(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
-	defer cancel()
-
-	// Read identity, falling back to state for resources created before identity support
-	var identity dynamicDNSResourceIdentityModel
-	if !req.Identity.Raw.IsNull() {
-		resp.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	} else {
-		identity.ID = data.ID
-		identity.Site = data.Site
-	}
-
-	id := identity.ID.ValueString()
-	site := identity.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	err := r.client.DeleteDynamicDNS(ctx, site, id)
-	if err != nil {
-		if _, ok := err.(*unifi.NotFoundError); ok {
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Error Deleting Dynamic DNS", resourcekit.DiagErrorText(err),
-		)
-		return
-	}
-}
-
-func (r *dynamicDNSResource) ImportState(
+// ImportState accepts what the kit accepts ("site:id" or "id") and keeps the
+// one thing the hand resource did beyond that: an import block whose
+// identity names a site reads from that site rather than the provider
+// default.
+func (r *dynamicDNSKitResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
 ) {
-	resource.ImportStatePassthroughWithIdentity(
-		ctx,
-		path.Root("id"),
-		path.Root("id"),
-		req,
-		resp,
-	)
-}
-
-// applyPlanToState merges plan values into state, preserving state values where plan is null/unknown.
-func (r *dynamicDNSResource) applyPlanToState(
-	_ context.Context,
-	plan *dynamicDNSResourceModel,
-	state *dynamicDNSResourceModel,
-) {
-	// Apply plan values to state, but only if plan value is not null/unknown
-	if !plan.Interface.IsNull() && !plan.Interface.IsUnknown() {
-		state.Interface = plan.Interface
+	r.Resource.ImportState(ctx, req, resp)
+	if resp.Diagnostics.HasError() || req.ID != "" || req.Identity == nil {
+		return
 	}
-	if !plan.Service.IsNull() && !plan.Service.IsUnknown() {
-		state.Service = plan.Service
+	var site types.String
+	resp.Diagnostics.Append(req.Identity.GetAttribute(ctx, path.Root("site"), &site)...)
+	if resp.Diagnostics.HasError() || site.ValueString() == "" {
+		return
 	}
-	if !plan.HostName.IsNull() && !plan.HostName.IsUnknown() {
-		state.HostName = plan.HostName
-	}
-	if !plan.Server.IsNull() && !plan.Server.IsUnknown() {
-		state.Server = plan.Server
-	}
-	if !plan.Login.IsNull() && !plan.Login.IsUnknown() {
-		state.Login = plan.Login
-	}
-	if !plan.Password.IsNull() && !plan.Password.IsUnknown() {
-		state.Password = plan.Password
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), site)...)
+	if resp.Identity != nil {
+		resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("site"), site)...)
 	}
 }
 
-// modelToDynamicDNS converts the Terraform model to the API struct.
-func (r *dynamicDNSResource) modelToDynamicDNS(
-	_ context.Context,
-	model *dynamicDNSResourceModel,
-) *unifi.DynamicDNS {
-	dynamicDNS := &unifi.DynamicDNS{
-		ID:        model.ID.ValueString(),
-		Interface: model.Interface.ValueString(),
-		Service:   model.Service.ValueString(),
-		HostName:  model.HostName.ValueString(),
-	}
-
-	if !model.Server.IsNull() {
-		dynamicDNS.Server = model.Server.ValueString()
-	}
-	if !model.Login.IsNull() {
-		dynamicDNS.Login = model.Login.ValueString()
-	}
-	if !model.Password.IsNull() {
-		dynamicDNS.Password = model.Password.ValueString()
-	}
-
-	return dynamicDNS
-}
-
-// dynamicDNSToModel converts the API struct to the Terraform model.
-func (r *dynamicDNSResource) dynamicDNSToModel(
-	_ context.Context,
-	dynamicDNS *unifi.DynamicDNS,
-	model *dynamicDNSResourceModel,
-	site string,
-) {
-	model.ID = types.StringValue(dynamicDNS.ID)
-	model.Interface = types.StringValue(dynamicDNS.Interface)
-	model.Service = types.StringValue(dynamicDNS.Service)
-	model.HostName = types.StringValue(dynamicDNS.HostName)
-
-	model.Site = util.StringValueOrNull(site)
-	model.Server = util.StringValueOrNull(dynamicDNS.Server)
-	model.Login = util.StringValueOrNull(dynamicDNS.Login)
-	model.Password = util.StringValueOrNull(dynamicDNS.Password)
-}
-
-// ListResourceConfigSchema implements [list.ListResource].
-func (r *dynamicDNSResource) ListResourceConfigSchema(
-	ctx context.Context,
-	_ list.ListResourceSchemaRequest,
-	resp *list.ListResourceSchemaResponse,
-) {
-	resp.Schema = listresource_dynamic_dns.DynamicDnsListResourceSchema(ctx)
-}
-
-// List implements [list.ListResource].
-func (r *dynamicDNSResource) List(
+// List wraps the kit's stream to stamp the site into each result's identity,
+// matching what Create, Read and Update store there.
+func (r *dynamicDNSKitResource) List(
 	ctx context.Context,
 	req list.ListRequest,
 	stream *list.ListResultsStream,
 ) {
-	var config dynamicDNSListConfigModel
-
-	diags := req.Config.Get(ctx, &config)
-	if diags.HasError() {
-		stream.Results = list.ListResultsStreamDiagnostics(diags)
+	r.Resource.List(ctx, req, stream)
+	site := r.DefaultSite
+	var config resourcekit.ListConfig
+	if diags := req.Config.Get(ctx, &config); !diags.HasError() && config.Site.ValueString() != "" {
+		site = config.Site.ValueString()
+	}
+	inner := stream.Results
+	if inner == nil {
 		return
 	}
-
-	site := config.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	var filters []dynamicDNSListFilterModel
-	if !config.Filter.IsNull() && !config.Filter.IsUnknown() {
-		config.Filter.ElementsAs(ctx, &filters, false)
-	}
-
-	postFilters := make(map[string]string)
-	for _, f := range filters {
-		postFilters[f.Name.ValueString()] = f.Value.ValueString()
-	}
-
-	entries, err := r.client.ListDynamicDNS(ctx, site)
-	if err != nil {
-		var d diag.Diagnostics
-		d.AddError(
-			"Error Listing Dynamic DNS",
-			"Could not list dynamic DNS configurations: "+resourcekit.DiagErrorText(err),
-		)
-		stream.Results = list.ListResultsStreamDiagnostics(d)
-		return
-	}
-
 	stream.Results = func(push func(list.ListResult) bool) {
-		for _, entry := range entries {
-			if val, ok := postFilters["host_name"]; ok {
-				if entry.HostName != val {
-					continue
-				}
+		inner(func(result list.ListResult) bool {
+			if result.Identity != nil {
+				result.Diagnostics.Append(result.Identity.SetAttribute(
+					ctx, path.Root("site"), types.StringValue(site))...)
 			}
-
-			if val, ok := postFilters["service"]; ok {
-				if entry.Service != val {
-					continue
-				}
-			}
-
-			result := req.NewListResult(ctx)
-
-			if entry.HostName != "" {
-				result.DisplayName = entry.HostName
-			} else {
-				result.DisplayName = entry.ID
-			}
-
-			result.Diagnostics.Append(
-				result.Identity.SetAttribute(
-					ctx,
-					path.Root("id"),
-					types.StringValue(entry.ID),
-				)...,
-			)
-			result.Diagnostics.Append(
-				result.Identity.SetAttribute(
-					ctx,
-					path.Root("site"),
-					types.StringValue(site),
-				)...,
-			)
-
-			var model dynamicDNSResourceModel
-			r.dynamicDNSToModel(ctx, &entry, &model, site)
-			model.Timeouts = timeoutsNullValue()
-			result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
-
-			if !push(result) {
-				return
-			}
-		}
+			return push(result)
+		})
 	}
 }

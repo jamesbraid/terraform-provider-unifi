@@ -346,7 +346,15 @@
     "",
     "Measured on wan: 0 of its 30 declared wires are unemitted for purpose=wan, with",
     "a corporate-only name correctly absent as the discriminating control. On",
-    "network's vlan-only purpose, 54 of 67 are unemitted."
+    "network's vlan-only purpose, 54 of 67 are unemitted.",
+    "",
+    "dynamic_dns IS CUT OVER AND ITS multi-identity ENTRY IS GONE. The blocker was its",
+    "shipped TWO-ATTRIBUTE identity schema (id plus site, upstream 72da09ad), which the",
+    "kit's one-attribute default cannot serve without orphaning stored identities. The",
+    "clearance is the same override capability client already ships for its id+mac",
+    "identity: dynamic_dns_resource.go overrides IdentitySchema and stamps site into",
+    "every response identity after delegating to the kit, so stored identities decode",
+    "and new ones keep the shape the hand resource wrote."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -368,9 +376,6 @@
   "surfaces": {
     "bgp": [
       "derived-into-blob"
-    ],
-    "dynamic_dns": [
-      "multi-identity"
     ],
     "power_supervisor": [
       "sdk-int"

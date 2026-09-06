@@ -16,6 +16,7 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
 	resource_dpi_app "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dpi_app"
 	resource_dpi_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dpi_group"
+	resource_dynamic_dns "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dynamic_dns"
 	resource_firewall_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_group"
 	resource_firewall_policy "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
 	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
@@ -50,6 +51,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 	ctx := context.Background()
 
 	checks := map[string]func(*testing.T){
+		"dynamic_dns": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(dynamicDNSKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				dynamicDNSKitSpec(), resource_dynamic_dns.DynamicDnsResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
 		"dhcp_option": func(t *testing.T) {
 			for _, problem := range resourcekit.WireNameProblems(dhcpOptionKitSpec()) {
 				t.Error(problem)

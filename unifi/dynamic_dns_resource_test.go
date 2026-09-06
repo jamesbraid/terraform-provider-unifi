@@ -47,7 +47,7 @@ func TestAccDynamicDNS_dyndns(t *testing.T) {
 const testAccDynamicDNSConfig = `
 resource "unifi_dynamic_dns" "test" {
 	service = "dyndns"
-	
+
 	host_name = "test.example.com"
 
 	server   = "dyndns.example.com"
@@ -83,7 +83,7 @@ func TestNewDynamicDNSListResource(t *testing.T) {
 }
 
 func Test_dynamicDNSResource_IdentitySchema(t *testing.T) {
-	r := &dynamicDNSResource{}
+	r := newDynamicDNSKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if _, ok := resp.IdentitySchema.Attributes["id"]; !ok {
@@ -94,138 +94,118 @@ func Test_dynamicDNSResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_dynamicDNSResource_applyPlanToState(t *testing.T) {
-	r := &dynamicDNSResource{}
-	plan := &dynamicDNSResourceModel{
-		Interface: types.StringValue("wan"),
-		Service:   types.StringValue("dyndns"),
+// TestDynamicDNSDescriptorRoundTripsEveryField pins what the hand-written
+// mapper did in both directions: every set attribute reaches the SDK struct,
+// and a full SDK object reads back attribute for attribute.
+func TestDynamicDNSDescriptorRoundTripsEveryField(t *testing.T) {
+	ctx := context.Background()
+	spec := dynamicDNSKitSpec()
+
+	model := dynamicDNSKitModel{
+		ID:        types.StringValue("abc123"),
 		HostName:  types.StringValue("test.example.com"),
-		Server:    types.StringValue("dyndns.example.com"),
+		Interface: types.StringValue("wan"),
 		Login:     types.StringValue("user"),
 		Password:  types.StringValue("pass"),
+		Server:    types.StringValue("dyndns.example.com"),
+		Service:   types.StringValue("dyndns"),
 	}
-	state := &dynamicDNSResourceModel{}
-	r.applyPlanToState(context.Background(), plan, state)
-	if state.Service.ValueString() != "dyndns" {
-		t.Error("expected Service to be copied from plan")
+
+	var sdk unifi.DynamicDNS
+	for _, field := range spec.Fields {
+		if d := field.ToSDK(ctx, &model, &sdk); d.HasError() {
+			t.Fatalf("ToSDK(%s): %v", field.WireName(), d)
+		}
 	}
-	if state.HostName.ValueString() != "test.example.com" {
-		t.Error("expected HostName to be copied from plan")
+	want := unifi.DynamicDNS{
+		HostName:  "test.example.com",
+		Interface: "wan",
+		Login:     "user",
+		Password:  "pass",
+		Server:    "dyndns.example.com",
+		Service:   "dyndns",
+	}
+	if !reflect.DeepEqual(sdk, want) {
+		t.Errorf("ToSDK produced %+v, want %+v", sdk, want)
+	}
+
+	var back dynamicDNSKitModel
+	for _, field := range spec.Fields {
+		if d := field.ToModel(ctx, &sdk, &back); d.HasError() {
+			t.Fatalf("ToModel(%s): %v", field.WireName(), d)
+		}
+	}
+	for name, pair := range map[string][2]any{
+		"host_name": {back.HostName, model.HostName},
+		"interface": {back.Interface, model.Interface},
+		"login":     {back.Login, model.Login},
+		"password":  {back.Password, model.Password},
+		"server":    {back.Server, model.Server},
+		"service":   {back.Service, model.Service},
+	} {
+		if pair[0] != pair[1] {
+			t.Errorf("%s round trip: %v want %v", name, pair[0], pair[1])
+		}
 	}
 }
 
-func Test_dynamicDNSResource_modelToDynamicDNS(t *testing.T) {
-	tests := []struct {
-		name  string
-		model *dynamicDNSResourceModel
-		want  *unifi.DynamicDNS
-	}{
-		{
-			name: "basic_conversion",
-			model: &dynamicDNSResourceModel{
-				ID:        types.StringValue("abc123"),
-				Interface: types.StringValue("wan"),
-				Service:   types.StringValue("dyndns"),
-				HostName:  types.StringValue("test.example.com"),
-				Server:    types.StringValue("dyndns.example.com"),
-				Login:     types.StringValue("user"),
-				Password:  types.StringValue("pass"),
-			},
-			want: &unifi.DynamicDNS{
-				ID:        "abc123",
-				Interface: "wan",
-				Service:   "dyndns",
-				HostName:  "test.example.com",
-				Server:    "dyndns.example.com",
-				Login:     "user",
-				Password:  "pass",
-			},
-		},
-		{
-			name: "null_optional_fields",
-			model: &dynamicDNSResourceModel{
-				ID:        types.StringValue("abc123"),
-				Interface: types.StringValue("wan"),
-				Service:   types.StringValue("dyndns"),
-				HostName:  types.StringValue("test.example.com"),
-				Server:    types.StringNull(),
-				Login:     types.StringNull(),
-				Password:  types.StringNull(),
-			},
-			want: &unifi.DynamicDNS{
-				ID:        "abc123",
-				Interface: "wan",
-				Service:   "dyndns",
-				HostName:  "test.example.com",
-			},
-		},
+// TestDynamicDNSOptionalFieldsStayAbsent pins the hand mapper's null
+// handling on both paths: a null optional attribute is not written to the
+// SDK struct, and an empty SDK value reads back null rather than "".
+func TestDynamicDNSOptionalFieldsStayAbsent(t *testing.T) {
+	ctx := context.Background()
+	spec := dynamicDNSKitSpec()
+
+	model := dynamicDNSKitModel{
+		HostName:  types.StringValue("test.example.com"),
+		Interface: types.StringValue("wan"),
+		Service:   types.StringValue("dyndns"),
+		Login:     types.StringNull(),
+		Password:  types.StringNull(),
+		Server:    types.StringNull(),
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &dynamicDNSResource{}
-			if got := r.modelToDynamicDNS(
-				context.Background(),
-				tt.model,
-			); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("modelToDynamicDNS() = %+v, want %+v", got, tt.want)
-			}
-		})
+	var sdk unifi.DynamicDNS
+	for _, field := range spec.Fields {
+		if d := field.ToSDK(ctx, &model, &sdk); d.HasError() {
+			t.Fatalf("ToSDK(%s): %v", field.WireName(), d)
+		}
+	}
+	if sdk.Login != "" || sdk.Password != "" || sdk.Server != "" {
+		t.Errorf("null optional fields reached the SDK struct: %+v", sdk)
+	}
+
+	var back dynamicDNSKitModel
+	for _, field := range spec.Fields {
+		if d := field.ToModel(ctx, &sdk, &back); d.HasError() {
+			t.Fatalf("ToModel(%s): %v", field.WireName(), d)
+		}
+	}
+	if !back.Login.IsNull() || !back.Password.IsNull() || !back.Server.IsNull() {
+		t.Errorf("empty optional fields did not read back null: %+v", back)
 	}
 }
 
-func Test_dynamicDNSResource_dynamicDNSToModel(t *testing.T) {
-	tests := []struct {
-		name       string
-		dynamicDNS *unifi.DynamicDNS
-		site       string
-	}{
-		{
-			name: "full_record",
-			dynamicDNS: &unifi.DynamicDNS{
-				ID:        "abc123",
-				Interface: "wan",
-				Service:   "dyndns",
-				HostName:  "test.example.com",
-				Server:    "dyndns.example.com",
-				Login:     "user",
-				Password:  "pass",
-			},
-			site: "default",
-		},
-		{
-			name: "empty_optional_fields",
-			dynamicDNS: &unifi.DynamicDNS{
-				ID:        "abc123",
-				Interface: "wan",
-				Service:   "dyndns",
-				HostName:  "test.example.com",
-			},
-			site: "",
-		},
+// TestDynamicDNSDescriptorCoversEveryManagedField stops the round trips
+// above passing because a field is absent from the descriptor entirely.
+func TestDynamicDNSDescriptorCoversEveryManagedField(t *testing.T) {
+	got := map[string]bool{}
+	for _, f := range dynamicDNSKitSpec().Fields {
+		got[f.WireName()] = true
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &dynamicDNSResource{}
-			model := &dynamicDNSResourceModel{}
-			r.dynamicDNSToModel(context.Background(), tt.dynamicDNS, model, tt.site)
-			if model.ID.ValueString() != tt.dynamicDNS.ID {
-				t.Errorf("ID = %q, want %q", model.ID.ValueString(), tt.dynamicDNS.ID)
-			}
-			if tt.site == "" && !model.Site.IsNull() {
-				t.Error("expected Site to be null for empty site")
-			}
-			if tt.dynamicDNS.Server == "" && !model.Server.IsNull() {
-				t.Error("expected Server to be null for empty server")
-			}
-		})
+	for _, want := range []string{
+		"host_name", "interface", "login", "server", "service", "x_password",
+	} {
+		if !got[want] {
+			t.Errorf("the descriptor does not carry managed field %q", want)
+		}
+	}
+	if len(got) != 6 {
+		t.Errorf("descriptor carries %d fields, want 6: %v", len(got), got)
 	}
 }
 
 func Test_dynamicDNSResource_ListResourceConfigSchema(t *testing.T) {
-	r := &dynamicDNSResource{}
+	r := newDynamicDNSKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if len(resp.Schema.Attributes) == 0 {

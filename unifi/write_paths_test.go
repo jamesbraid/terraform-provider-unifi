@@ -66,6 +66,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("dpi_group", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := dynamicDNSKitBackend(api)
+		record("dynamic_dns", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := firewallGroupKitBackend(api)
 		record("firewall_group", backend.Create != nil, backend.CreateFields != nil)
 	}
@@ -176,7 +180,6 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
 	want := []string{
 		"bgp",
-		"dynamic_dns",
 		"power_supervisor",
 		"site",
 		"wireguard_peer",

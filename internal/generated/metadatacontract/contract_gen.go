@@ -24,7 +24,7 @@ var FrozenTypeNames = map[string]string{
 	"dnsRecordKitResource":        "unifi_dns_record",
 	"dpiAppKitResource":           "unifi_dpi_app",
 	"dpiGroupKitResource":         "unifi_dpi_group",
-	"dynamicDNSResource":          "unifi_dynamic_dns",
+	"dynamicDNSKitResource":       "unifi_dynamic_dns",
 	"firewallGroupKitResource":    "unifi_firewall_group",
 	"firewallPolicyKitResource":   "unifi_firewall_policy",
 	"firewallRuleKitResource":     "unifi_firewall_rule",

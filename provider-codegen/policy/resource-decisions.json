@@ -104,6 +104,18 @@
       },
       "schema_version": 1
     },
+    "unifi_dynamic_dns": {
+      "sdk_type": "DynamicDNS",
+      "duration_units": {},
+      "list": {
+        "display_field": "HostName",
+        "filters": [
+          "host_name",
+          "service"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_firewall_group": {
       "sdk_type": "FirewallGroup",
       "duration_units": {},
