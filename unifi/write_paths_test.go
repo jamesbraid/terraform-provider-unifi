@@ -114,6 +114,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("radius_user", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := siteKitBackend(api)
+		record("site", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := siteToSiteVPNKitBackend(api)
 		record("site_to_site_vpn", backend.Create != nil, backend.CreateFields != nil)
 	}
@@ -184,7 +188,6 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
 	want := []string{
 		"bgp",
-		"site",
 		"wireguard_peer",
 	}
 	got := unmaskedHandWrittenSurfaces(t)

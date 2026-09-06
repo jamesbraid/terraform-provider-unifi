@@ -29,6 +29,7 @@ import (
 	resource_radius_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_profile"
 	resource_radius_user "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_user"
 	resource_schedule_task "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_schedule_task"
+	resource_site "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site"
 	resource_site_to_site_vpn "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	resource_static_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
 	resource_traffic_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_traffic_route"
@@ -68,6 +69,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				powerSupervisorKitSpec(), resource_power_supervisor.PowerSupervisorResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"site": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(siteKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				siteKitSpec(), resource_site.SiteResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

@@ -41,17 +41,6 @@ resource "unifi_site" "test" {
 `
 }
 
-// TestSiteToModelNilDoesNotPanic checks that siteToModel returns an error
-// diagnostic for a nil site instead of dereferencing it.
-func TestSiteToModelNilDoesNotPanic(t *testing.T) {
-	r := &siteFrameworkResource{}
-	var model siteFrameworkResourceModel
-	diags := r.siteToModel(context.Background(), nil, &model)
-	if !diags.HasError() {
-		t.Fatal("expected an error diagnostic for a nil site, got none")
-	}
-}
-
 func TestNewSiteFrameworkResource(t *testing.T) {
 	r := NewSiteFrameworkResource()
 	if r == nil {
@@ -79,161 +68,93 @@ func TestNewSiteListResource(t *testing.T) {
 }
 
 func Test_siteFrameworkResource_IdentitySchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwresource.IdentitySchemaRequest
-		resp *fwresource.IdentitySchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *siteFrameworkResource
-		args args
-	}{
-		{
-			name: "has_id",
-			r:    &siteFrameworkResource{},
-			args: args{
-				in0:  context.Background(),
-				in1:  fwresource.IdentitySchemaRequest{},
-				resp: &fwresource.IdentitySchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
-			if _, ok := tt.args.resp.IdentitySchema.Attributes["id"]; !ok {
-				t.Error("expected identity schema to have 'id' attribute")
-			}
-		})
+	r := newSiteKitResource()
+	resp := &fwresource.IdentitySchemaResponse{}
+	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
+	if _, ok := resp.IdentitySchema.Attributes["id"]; !ok {
+		t.Error("expected identity schema to have 'id' attribute")
 	}
 }
 
-func Test_siteFrameworkResource_applyPlanToState(t *testing.T) {
-	type args struct {
-		in0   context.Context
-		plan  *siteFrameworkResourceModel
-		state *siteFrameworkResourceModel
+// TestSiteDescriptorAppliesThePlansDescription pins what the hand
+// applyPlanToState did: an update's plan value for description lands on the
+// state, and the name (which cannot change after creation) is not the plan's
+// to assert.
+func TestSiteDescriptorAppliesThePlansDescription(t *testing.T) {
+	spec := siteKitSpec()
+	plan := siteKitModel{
+		Description: types.StringValue("new-desc"),
 	}
-	tests := []struct {
-		name string
-		r    *siteFrameworkResource
-		args args
-	}{
-		{
-			name: "copies_description",
-			r:    &siteFrameworkResource{},
-			args: args{
-				in0: context.Background(),
-				plan: &siteFrameworkResourceModel{
-					Description: types.StringValue("new-desc"),
-				},
-				state: &siteFrameworkResourceModel{
-					Description: types.StringValue("old-desc"),
-				},
-			},
-		},
+	state := siteKitModel{
+		Name:        types.StringValue("default"),
+		Description: types.StringValue("old-desc"),
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.applyPlanToState(tt.args.in0, tt.args.plan, tt.args.state)
-			if tt.args.state.Description.ValueString() != "new-desc" {
-				t.Error("expected Description to be copied from plan")
-			}
-		})
+	spec.ApplyPlanToState(&plan, &state)
+	if state.Description.ValueString() != "new-desc" {
+		t.Error("expected Description to be copied from plan")
+	}
+	if state.Name.ValueString() != "default" {
+		t.Error("expected Name to keep its state value")
 	}
 }
 
-func Test_siteFrameworkResource_siteToModel(t *testing.T) {
-	type args struct {
-		in0   context.Context
-		site  *unifi.Site
-		model *siteFrameworkResourceModel
+// TestSiteDescriptorRoundTripsTheSite pins the mapping in both directions:
+// only the description reaches the write object through the field list (the
+// controller derives everything else), the state's name is carried onto the
+// object by BeforeSend because the update-site command is addressed by it,
+// and a read maps id, name and description back.
+func TestSiteDescriptorRoundTripsTheSite(t *testing.T) {
+	ctx := context.Background()
+	spec := siteKitSpec()
+
+	model := siteKitModel{
+		Name:        types.StringValue("default"),
+		Description: types.StringValue("Default site"),
 	}
-	tests := []struct {
-		name      string
-		r         *siteFrameworkResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil_site_returns_error",
-			r:    &siteFrameworkResource{},
-			args: args{
-				in0:   context.Background(),
-				site:  nil,
-				model: &siteFrameworkResourceModel{},
-			},
-			wantError: true,
-		},
-		{
-			name: "empty_id_and_name_returns_error",
-			r:    &siteFrameworkResource{},
-			args: args{
-				in0:   context.Background(),
-				site:  &unifi.Site{},
-				model: &siteFrameworkResourceModel{},
-			},
-			wantError: true,
-		},
-		{
-			name: "valid_site",
-			r:    &siteFrameworkResource{},
-			args: args{
-				in0: context.Background(),
-				site: &unifi.Site{
-					ID:          "abc123",
-					Name:        "default",
-					Description: "Default site",
-				},
-				model: &siteFrameworkResourceModel{},
-			},
-			wantError: false,
-		},
+	sdk, diags := spec.ToSDK(ctx, &model)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.r.siteToModel(tt.args.in0, tt.args.site, tt.args.model)
-			if got.HasError() != tt.wantError {
-				t.Errorf("hasError = %v, want %v, diags: %v", got.HasError(), tt.wantError, got)
-			}
-			if !tt.wantError && tt.args.site != nil {
-				if tt.args.model.ID.ValueString() != tt.args.site.ID {
-					t.Errorf("ID = %q, want %q", tt.args.model.ID.ValueString(), tt.args.site.ID)
-				}
-			}
-		})
+	if sdk.Description != "Default site" {
+		t.Errorf("Description = %q, want the plan's", sdk.Description)
+	}
+	if sdk.Name != "" {
+		t.Errorf("ToSDK wrote name %q; the name is read-only and only BeforeSend may set it", sdk.Name)
+	}
+	var prior siteKitModel
+	if d := spec.BeforeSend(ctx, &model, &model, prior, sdk, nil); d.HasError() {
+		t.Fatalf("BeforeSend: %v", d)
+	}
+	if sdk.Name != "default" {
+		t.Errorf("Name = %q after BeforeSend, want the state's name", sdk.Name)
+	}
+
+	site := &unifi.Site{
+		ID:          "abc123",
+		Name:        "default",
+		Description: "Default site",
+	}
+	var back siteKitModel
+	if d := spec.ToModel(ctx, site, &back, ""); d.HasError() {
+		t.Fatalf("ToModel: %v", d)
+	}
+	if back.ID.ValueString() != "abc123" {
+		t.Errorf("ID = %q, want abc123", back.ID.ValueString())
+	}
+	if back.Name.ValueString() != "default" {
+		t.Errorf("Name = %q, want default", back.Name.ValueString())
+	}
+	if back.Description.ValueString() != "Default site" {
+		t.Errorf("Description = %q, want Default site", back.Description.ValueString())
 	}
 }
 
 func Test_siteFrameworkResource_ListResourceConfigSchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwlist.ListResourceSchemaRequest
-		resp *fwlist.ListResourceSchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *siteFrameworkResource
-		args args
-	}{
-		{
-			name: "returns_schema",
-			r:    &siteFrameworkResource{},
-			args: args{
-				in0:  context.Background(),
-				in1:  fwlist.ListResourceSchemaRequest{},
-				resp: &fwlist.ListResourceSchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.ListResourceConfigSchema(tt.args.in0, tt.args.in1, tt.args.resp)
-			if len(tt.args.resp.Schema.Attributes) == 0 && len(tt.args.resp.Schema.Blocks) == 0 {
-				t.Error("expected non-empty list resource schema")
-			}
-		})
+	r := newSiteKitResource()
+	resp := &fwlist.ListResourceSchemaResponse{}
+	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
+	if len(resp.Schema.Attributes) == 0 && len(resp.Schema.Blocks) == 0 {
+		t.Error("expected non-empty list resource schema")
 	}
 }
 

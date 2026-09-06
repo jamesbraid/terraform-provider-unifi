@@ -365,7 +365,18 @@
     "from the hand mapper, with AlwaysWire putting the whole settings document on",
     "the mask. The SDK's UpdatePowerSupervisorFields overlays masked members onto",
     "the stored object, so masking \"settings\" whole writes exactly what the hand",
-    "resource's whole-object PUT wrote for those members."
+    "resource's whole-object PUT wrote for those members.",
+    "",
+    "site IS CUT OVER AND ITS derived-value ENTRY IS GONE. The derivation is real --",
+    "add-site takes only a description and the controller derives the name and id,",
+    "answering with a site list rather than the object -- but it lives in the",
+    "BACKEND's shape, not the mapping's, so closures absorb it: Create picks the",
+    "first element the way the hand resource did, and every closure ignores the",
+    "kit's site argument because sites are not site-scoped. The SDK's",
+    "UpdateSiteFields exists precisely to give sites the one masked-update shape",
+    "(mask [\"desc\"], addressed by the name BeforeSend carries from state), and the",
+    "global list config -- the one shape the kit's shared ListConfig cannot decode",
+    "-- is served by the surface's own List, the same arrangement client ships."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -390,9 +401,6 @@
     ],
     "setting": [
       "backend-cardinality"
-    ],
-    "site": [
-      "derived-value"
     ],
     "wan": [
       "nested"

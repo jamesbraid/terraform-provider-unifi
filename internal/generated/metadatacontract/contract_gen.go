@@ -44,7 +44,7 @@ var FrozenTypeNames = map[string]string{
 	"radiusUserKitResource":       "unifi_radius_user",
 	"scheduleTaskKitResource":     "unifi_schedule_task",
 	"settingResource":             "unifi_setting",
-	"siteFrameworkResource":       "unifi_site",
+	"siteKitResource":             "unifi_site",
 	"siteToSiteVPNKitResource":    "unifi_site_to_site_vpn",
 	"staticRouteKitResource":      "unifi_static_route",
 	"trafficRouteKitResource":     "unifi_traffic_route",
