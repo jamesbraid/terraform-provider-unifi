@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -310,7 +311,10 @@ func TestZeroIsRejectedAsksTheValidatorsRatherThanGuessing(t *testing.T) {
 		{"a non-string attribute", schema.SetAttribute{ElementType: types.StringType}, false},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			if got := zeroIsRejected(testCase.attribute, true); got != testCase.want {
+			built := schema.Schema{
+				Attributes: map[string]schema.Attribute{"probe": testCase.attribute},
+			}
+			if got := zeroIsRejected(built, testCase.attribute, true); got != testCase.want {
 				t.Errorf("zeroIsRejected = %v, want %v", got, testCase.want)
 			}
 		})
@@ -324,17 +328,49 @@ func TestACustomTypedAttributeIsJudgedByTheFieldKindsZero(t *testing.T) {
 		CustomType: timetypes.GoDurationType{},
 		Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 	}
-	if zeroIsRejected(custom, false) {
+	built := schema.Schema{Attributes: map[string]schema.Attribute{"probe": custom}}
+	if zeroIsRejected(built, custom, false) {
 		t.Error("a kind whose zero is not \"\" was probed with it, so its zero was judged by " +
 			"whether the empty string parses rather than whether zero is legal")
 	}
-	if !zeroIsRejected(custom, true) {
+	if !zeroIsRejected(built, custom, true) {
 		t.Error("a kind whose zero IS \"\" was not asked the type's own opinion of it")
 	}
 	plain := custom
 	plain.CustomType = nil
-	if !zeroIsRejected(plain, false) {
+	plainBuilt := schema.Schema{Attributes: map[string]schema.Attribute{"probe": plain}}
+	if !zeroIsRejected(plainBuilt, plain, false) {
 		t.Fatal("the validator does not reject \"\" at all, so the assertion above proves nothing")
+	}
+}
+
+// bgp's config is the live instance: Optional+Computed, its only validator a
+// stringvalidator.ConflictsWith. A cross-attribute validator path-matches
+// against req.Config, and the zero probe used to hand it a request carrying
+// none -- the framework dereferenced the missing schema and the whole census
+// panicked instead of answering. ConflictsWith relates attributes and says
+// nothing about "" as a value, so the verdict is the plain Optional+Computed
+// one: KeepZero.
+func TestACrossAttributeValidatorDoesNotCrashTheZeroProbe(t *testing.T) {
+	crossSchema := schema.Schema{Attributes: map[string]schema.Attribute{
+		"enum": schema.StringAttribute{
+			Optional: true,
+			Computed: true,
+			Validators: []validator.String{
+				stringvalidator.ConflictsWith(path.MatchRoot("free")),
+			},
+		},
+		"free": schema.StringAttribute{Optional: true, Computed: true},
+	}}
+	if problems := ElideProblems(splitSpec(KeepZero, KeepZero), crossSchema); len(problems) != 0 {
+		t.Fatalf("Optional+Computed under ConflictsWith was reported wrong: %v", problems)
+	}
+	// The must-fail direction, or a probe that silently skipped the
+	// validator would also produce zero problems above.
+	problems := ElideProblems(splitSpec(NullZero, KeepZero), crossSchema)
+	if len(problems) != 1 || !strings.Contains(problems[0], "split.enum") {
+		t.Fatalf("the wrong Elide under a cross-attribute validator produced %v, "+
+			"want exactly split.enum reported", problems)
 	}
 }
 

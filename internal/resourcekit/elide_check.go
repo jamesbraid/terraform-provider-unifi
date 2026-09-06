@@ -12,8 +12,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // elideExempt names the field kinds that deliberately make no elision claim.
@@ -132,7 +134,7 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		case attribute.IsOptional() && !attribute.IsComputed():
 			want = NullZero
 		case attribute.IsOptional() && attribute.IsComputed() &&
-			zeroIsRejected(attribute, elidesTheEmptyString) &&
+			zeroIsRejected(built, attribute, elidesTheEmptyString) &&
 			!zeroIsTheDefault(attribute):
 			want = NullZero
 		}
@@ -204,7 +206,7 @@ func requiredness(a schema.Attribute) string {
 // module, but ValidateString is the one part of a validator promised to keep
 // working, and running it also catches LengthAtLeast and a regex, not just
 // OneOf.
-func zeroIsRejected(attribute schema.Attribute, elidedZeroIsTheEmptyString bool) bool {
+func zeroIsRejected(built schema.Schema, attribute schema.Attribute, elidedZeroIsTheEmptyString bool) bool {
 	stringAttribute, ok := attribute.(schema.StringAttribute)
 	if !ok {
 		return false
@@ -217,10 +219,22 @@ func zeroIsRejected(attribute schema.Attribute, elidedZeroIsTheEmptyString bool)
 		return elidedZeroIsTheEmptyString && customTypeRejectsEmpty(stringAttribute.CustomType)
 	}
 	ctx := context.Background()
+	// A cross-attribute validator (ConflictsWith, AlsoRequires) path-matches
+	// against req.Config before deciding it has nothing to say about the
+	// value, and the framework dereferences the Config's schema to do it --
+	// a request carrying no Config panics instead of answering. A null
+	// config over the surface's own schema gives those validators the state
+	// this probe means anyway: every other attribute unset, so the question
+	// stays "is a bare \"\" rejected on its own".
+	nullConfig := tfsdk.Config{
+		Schema: built,
+		Raw:    tftypes.NewValue(built.Type().TerraformType(ctx), nil),
+	}
 	for _, v := range stringAttribute.Validators {
 		response := &validator.StringResponse{}
 		v.ValidateString(ctx, validator.StringRequest{
 			Path:        path.Root("probe"),
+			Config:      nullConfig,
 			ConfigValue: types.StringValue(""),
 		}, response)
 		if response.Diagnostics.HasError() {
