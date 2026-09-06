@@ -89,6 +89,9 @@ func TestNewBGPResource(t *testing.T) {
 	if _, ok := r.(fwresource.ResourceWithImportState); !ok {
 		t.Error("expected ResourceWithImportState interface")
 	}
+	if _, ok := r.(fwresource.ResourceWithIdentity); !ok {
+		t.Error("expected ResourceWithIdentity interface")
+	}
 }
 
 func Test_bgpPeerModel_AttributeTypes(t *testing.T) {
@@ -118,131 +121,100 @@ func Test_bgpPeerModel_AttributeTypes(t *testing.T) {
 }
 
 func Test_bgpResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
+	resp := &fwresource.SchemaResponse{}
+	newBGPKitResource().Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+
+	s := resp.Schema
+
+	expectedAttrs := []string{
+		"id",
+		"site",
+		"enabled",
+		"config",
+		"asn",
+		"router_id",
+		"peers",
+		"upload_file_name",
+		"description",
+		"timeouts",
 	}
-	tests := []struct {
-		name string
-		r    *bgpResource
-		args args
-	}{
-		{
-			name: "has required and optional attributes",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
+	for _, name := range expectedAttrs {
+		if _, ok := s.Attributes[name]; !ok {
+			t.Errorf("missing attribute %q", name)
+		}
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
 
-			s := tt.args.resp.Schema
+	idAttr, ok := s.Attributes["id"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("attribute is not a schema.StringAttribute")
+	}
+	if !idAttr.Computed {
+		t.Error("id should be Computed")
+	}
 
-			expectedAttrs := []string{
-				"id",
-				"site",
-				"enabled",
-				"config",
-				"asn",
-				"router_id",
-				"peers",
-				"upload_file_name",
-				"description",
-				"timeouts",
-			}
-			for _, name := range expectedAttrs {
-				if _, ok := s.Attributes[name]; !ok {
-					t.Errorf("missing attribute %q", name)
-				}
-			}
+	configAttr, ok := s.Attributes["config"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("attribute is not a schema.StringAttribute")
+	}
+	if !configAttr.Optional || !configAttr.Computed {
+		t.Error("config should be Optional and Computed")
+	}
 
-			idAttr, ok := s.Attributes["id"].(schema.StringAttribute)
-			if !ok {
-				t.Fatalf("attribute is not a schema.StringAttribute")
-			}
-			if !idAttr.Computed {
-				t.Error("id should be Computed")
-			}
+	asnAttr, ok := s.Attributes["asn"].(schema.Int64Attribute)
+	if !ok {
+		t.Fatalf("attribute is not a schema.Int64Attribute")
+	}
+	if !asnAttr.Optional {
+		t.Error("asn should be Optional")
+	}
 
-			configAttr, ok := s.Attributes["config"].(schema.StringAttribute)
-			if !ok {
-				t.Fatalf("attribute is not a schema.StringAttribute")
-			}
-			if !configAttr.Optional || !configAttr.Computed {
-				t.Error("config should be Optional and Computed")
-			}
+	enabledAttr, ok := s.Attributes["enabled"].(schema.BoolAttribute)
+	if !ok {
+		t.Fatalf("attribute is not a schema.BoolAttribute")
+	}
+	if !enabledAttr.Optional || !enabledAttr.Computed {
+		t.Error("enabled should be Optional and Computed")
+	}
 
-			asnAttr, ok := s.Attributes["asn"].(schema.Int64Attribute)
-			if !ok {
-				t.Fatalf("attribute is not a schema.Int64Attribute")
-			}
-			if !asnAttr.Optional {
-				t.Error("asn should be Optional")
-			}
-
-			enabledAttr, ok := s.Attributes["enabled"].(schema.BoolAttribute)
-			if !ok {
-				t.Fatalf("attribute is not a schema.BoolAttribute")
-			}
-			if !enabledAttr.Optional || !enabledAttr.Computed {
-				t.Error("enabled should be Optional and Computed")
-			}
-
-			if _, ok := s.Attributes["peers"].(schema.ListNestedAttribute); !ok {
-				t.Error("peers should be ListNestedAttribute")
-			}
-		})
+	if _, ok := s.Attributes["peers"].(schema.ListNestedAttribute); !ok {
+		t.Error("peers should be ListNestedAttribute")
 	}
 }
 
-func Test_bgpResource_applyPlanToState(t *testing.T) {
-	type args struct {
-		in0   context.Context
-		plan  *bgpResourceModel
-		state *bgpResourceModel
-	}
+func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
+	spec := bgpKitSpec()
 	tests := []struct {
 		name  string
-		r     *bgpResource
-		args  args
-		check func(t *testing.T, state *bgpResourceModel)
+		plan  *bgpKitModel
+		state *bgpKitModel
+		check func(t *testing.T, state *bgpKitModel)
 	}{
 		{
 			name: "plan values override state",
-			r:    &bgpResource{},
-			args: args{
-				in0: context.Background(),
-				plan: &bgpResourceModel{
-					Enabled:  types.BoolValue(true),
-					Config:   types.StringValue("new config"),
-					ASN:      types.Int64Value(65001),
-					RouterID: types.StringValue("10.0.0.2"),
-					Peers: types.ListNull(
-						types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
-					),
-					UploadFileName: types.StringValue("new.conf"),
-					Description:    types.StringValue("new desc"),
-				},
-				state: &bgpResourceModel{
-					ID:       types.StringValue("existing-id"),
-					Enabled:  types.BoolValue(false),
-					Config:   types.StringValue("old config"),
-					ASN:      types.Int64Value(65000),
-					RouterID: types.StringValue("10.0.0.1"),
-					Peers: types.ListNull(
-						types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
-					),
-					UploadFileName: types.StringValue("old.conf"),
-					Description:    types.StringValue("old desc"),
-				},
+			plan: &bgpKitModel{
+				Enabled:  types.BoolValue(true),
+				Config:   types.StringValue("new config"),
+				ASN:      types.Int64Value(65001),
+				RouterID: types.StringValue("10.0.0.2"),
+				Peers: types.ListNull(
+					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+				),
+				UploadFileName: types.StringValue("new.conf"),
+				Description:    types.StringValue("new desc"),
 			},
-			check: func(t *testing.T, state *bgpResourceModel) {
+			state: &bgpKitModel{
+				ID:       types.StringValue("existing-id"),
+				Enabled:  types.BoolValue(false),
+				Config:   types.StringValue("old config"),
+				ASN:      types.Int64Value(65000),
+				RouterID: types.StringValue("10.0.0.1"),
+				Peers: types.ListNull(
+					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+				),
+				UploadFileName: types.StringValue("old.conf"),
+				Description:    types.StringValue("old desc"),
+			},
+			check: func(t *testing.T, state *bgpKitModel) {
 				if state.ID.ValueString() != "existing-id" {
 					t.Error("ID should be preserved from state")
 				}
@@ -268,34 +240,30 @@ func Test_bgpResource_applyPlanToState(t *testing.T) {
 		},
 		{
 			name: "null plan values preserve state",
-			r:    &bgpResource{},
-			args: args{
-				in0: context.Background(),
-				plan: &bgpResourceModel{
-					Enabled:  types.BoolNull(),
-					Config:   types.StringNull(),
-					ASN:      types.Int64Null(),
-					RouterID: types.StringNull(),
-					Peers: types.ListNull(
-						types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
-					),
-					UploadFileName: types.StringNull(),
-					Description:    types.StringNull(),
-				},
-				state: &bgpResourceModel{
-					ID:       types.StringValue("keep-id"),
-					Enabled:  types.BoolValue(true),
-					Config:   types.StringValue("keep config"),
-					ASN:      types.Int64Value(65000),
-					RouterID: types.StringValue("10.0.0.1"),
-					Peers: types.ListNull(
-						types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
-					),
-					UploadFileName: types.StringValue("keep.conf"),
-					Description:    types.StringValue("keep desc"),
-				},
+			plan: &bgpKitModel{
+				Enabled:  types.BoolNull(),
+				Config:   types.StringNull(),
+				ASN:      types.Int64Null(),
+				RouterID: types.StringNull(),
+				Peers: types.ListNull(
+					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+				),
+				UploadFileName: types.StringNull(),
+				Description:    types.StringNull(),
 			},
-			check: func(t *testing.T, state *bgpResourceModel) {
+			state: &bgpKitModel{
+				ID:       types.StringValue("keep-id"),
+				Enabled:  types.BoolValue(true),
+				Config:   types.StringValue("keep config"),
+				ASN:      types.Int64Value(65000),
+				RouterID: types.StringValue("10.0.0.1"),
+				Peers: types.ListNull(
+					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+				),
+				UploadFileName: types.StringValue("keep.conf"),
+				Description:    types.StringValue("keep desc"),
+			},
+			check: func(t *testing.T, state *bgpKitModel) {
 				if state.Enabled.ValueBool() != true {
 					t.Error("Enabled should be preserved")
 				}
@@ -309,33 +277,29 @@ func Test_bgpResource_applyPlanToState(t *testing.T) {
 		},
 		{
 			name: "unknown plan values preserve state",
-			r:    &bgpResource{},
-			args: args{
-				in0: context.Background(),
-				plan: &bgpResourceModel{
-					Enabled:  types.BoolUnknown(),
-					Config:   types.StringUnknown(),
-					ASN:      types.Int64Unknown(),
-					RouterID: types.StringUnknown(),
-					Peers: types.ListUnknown(
-						types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
-					),
-					UploadFileName: types.StringUnknown(),
-					Description:    types.StringUnknown(),
-				},
-				state: &bgpResourceModel{
-					Enabled:  types.BoolValue(false),
-					Config:   types.StringValue("kept"),
-					ASN:      types.Int64Value(65002),
-					RouterID: types.StringValue("1.2.3.4"),
-					Peers: types.ListNull(
-						types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
-					),
-					UploadFileName: types.StringValue("kept.conf"),
-					Description:    types.StringValue("kept desc"),
-				},
+			plan: &bgpKitModel{
+				Enabled:  types.BoolUnknown(),
+				Config:   types.StringUnknown(),
+				ASN:      types.Int64Unknown(),
+				RouterID: types.StringUnknown(),
+				Peers: types.ListUnknown(
+					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+				),
+				UploadFileName: types.StringUnknown(),
+				Description:    types.StringUnknown(),
 			},
-			check: func(t *testing.T, state *bgpResourceModel) {
+			state: &bgpKitModel{
+				Enabled:  types.BoolValue(false),
+				Config:   types.StringValue("kept"),
+				ASN:      types.Int64Value(65002),
+				RouterID: types.StringValue("1.2.3.4"),
+				Peers: types.ListNull(
+					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+				),
+				UploadFileName: types.StringValue("kept.conf"),
+				Description:    types.StringValue("kept desc"),
+			},
+			check: func(t *testing.T, state *bgpKitModel) {
 				if state.Config.ValueString() != "kept" {
 					t.Error("Config should be preserved when plan is unknown")
 				}
@@ -347,8 +311,8 @@ func Test_bgpResource_applyPlanToState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.r.applyPlanToState(tt.args.in0, tt.args.plan, tt.args.state)
-			tt.check(t, tt.args.state)
+			spec.ApplyPlanToState(tt.plan, tt.state)
+			tt.check(t, tt.state)
 		})
 	}
 }
@@ -375,7 +339,7 @@ func testBuildPeersList(t *testing.T, peers []bgpPeerModel) types.List {
 	return types.ListValueMust(objType, vals)
 }
 
-func Test_bgpResource_renderFRRConfig(t *testing.T) {
+func Test_bgp_renderFRRConfig(t *testing.T) {
 	ctx := context.Background()
 
 	networksList := types.ListValueMust(types.StringType, []attr.Value{
@@ -392,27 +356,18 @@ func Test_bgpResource_renderFRRConfig(t *testing.T) {
 		},
 	})
 
-	type args struct {
-		ctx   context.Context
-		model *bgpResourceModel
-	}
 	tests := []struct {
 		name      string
-		r         *bgpResource
-		args      args
+		model     *bgpKitModel
 		wantSubs  []string
 		wantDiags bool
 	}{
 		{
 			name: "single peer with networks and description",
-			r:    &bgpResource{},
-			args: args{
-				ctx: ctx,
-				model: &bgpResourceModel{
-					ASN:      types.Int64Value(65000),
-					RouterID: types.StringValue("10.0.0.1"),
-					Peers:    peersList,
-				},
+			model: &bgpKitModel{
+				ASN:      types.Int64Value(65000),
+				RouterID: types.StringValue("10.0.0.1"),
+				Peers:    peersList,
 			},
 			wantSubs: []string{
 				"router bgp 65000",
@@ -432,21 +387,17 @@ func Test_bgpResource_renderFRRConfig(t *testing.T) {
 		},
 		{
 			name: "peer without description",
-			r:    &bgpResource{},
-			args: args{
-				ctx: ctx,
-				model: &bgpResourceModel{
-					ASN:      types.Int64Value(65100),
-					RouterID: types.StringValue("192.168.1.1"),
-					Peers: testBuildPeersList(t, []bgpPeerModel{
-						{
-							Name:        types.StringValue("UPSTREAM"),
-							RemoteAS:    types.Int64Value(65200),
-							Description: types.StringValue(""),
-							Networks:    types.ListNull(types.StringType),
-						},
-					}),
-				},
+			model: &bgpKitModel{
+				ASN:      types.Int64Value(65100),
+				RouterID: types.StringValue("192.168.1.1"),
+				Peers: testBuildPeersList(t, []bgpPeerModel{
+					{
+						Name:        types.StringValue("UPSTREAM"),
+						RemoteAS:    types.Int64Value(65200),
+						Description: types.StringValue(""),
+						Networks:    types.ListNull(types.StringType),
+					},
+				}),
 			},
 			wantSubs: []string{
 				"router bgp 65100",
@@ -459,7 +410,7 @@ func Test_bgpResource_renderFRRConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotDiags := tt.r.renderFRRConfig(tt.args.ctx, tt.args.model)
+			got, gotDiags := renderFRRConfig(ctx, tt.model)
 			if tt.wantDiags && !gotDiags.HasError() {
 				t.Error("expected diagnostics errors")
 			}
@@ -475,130 +426,107 @@ func Test_bgpResource_renderFRRConfig(t *testing.T) {
 	}
 }
 
-func Test_bgpResource_modelToBGP(t *testing.T) {
+// bgpModelToSDK composes the write path the kit runs: ToSDK builds the
+// object from the model, then bgpBeforeSend renders frr_bgpd_config over it
+// when the structured attributes are in use.
+func bgpModelToSDK(
+	ctx context.Context,
+	t *testing.T,
+	model *bgpKitModel,
+) (*unifi.BGPConfig, bool) {
+	t.Helper()
+	spec := bgpKitSpec()
+	sdk, diags := spec.ToSDK(ctx, model)
+	diags.Append(bgpBeforeSend(ctx, model, model, bgpKitModel{}, sdk, nil)...)
+	return sdk, diags.HasError()
+}
+
+func Test_bgp_modelToSDK(t *testing.T) {
 	ctx := context.Background()
 	peerObjType := types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()}
 
-	type args struct {
-		ctx   context.Context
-		model *bgpResourceModel
-	}
-	tests := []struct {
-		name      string
-		r         *bgpResource
-		args      args
-		want      *unifi.BGPConfig
-		wantDiags bool
-	}{
-		{
-			name: "raw config mode",
-			r:    &bgpResource{},
-			args: args{
-				ctx: ctx,
-				model: &bgpResourceModel{
-					Enabled:        types.BoolValue(true),
-					Config:         types.StringValue("router bgp 65001"),
-					ASN:            types.Int64Null(),
-					RouterID:       types.StringNull(),
-					Peers:          types.ListNull(peerObjType),
-					UploadFileName: types.StringValue("frr.conf"),
-					Description:    types.StringValue("BGP Config"),
-				},
-			},
-			want: &unifi.BGPConfig{
-				Enabled:          true,
-				Config:           "router bgp 65001",
-				UploadedFileName: "frr.conf",
-				Description:      "BGP Config",
-			},
-			wantDiags: false,
-		},
-		{
-			name: "structured mode renders template",
-			r:    &bgpResource{},
-			args: args{
-				ctx: ctx,
-				model: &bgpResourceModel{
-					Enabled:  types.BoolValue(true),
-					Config:   types.StringNull(),
-					ASN:      types.Int64Value(65000),
-					RouterID: types.StringValue("10.0.0.1"),
-					Peers: testBuildPeersList(t, []bgpPeerModel{
-						{
-							Name:        types.StringValue("TEST"),
-							RemoteAS:    types.Int64Value(65001),
-							Description: types.StringValue(""),
-							Networks:    types.ListNull(types.StringType),
-						},
-					}),
-					UploadFileName: types.StringValue("frr.conf"),
-					Description:    types.StringValue("BGP"),
-				},
-			},
-			want:      nil, // checked via field assertions below
-			wantDiags: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, gotDiags := tt.r.modelToBGP(tt.args.ctx, tt.args.model)
-			if tt.wantDiags && !gotDiags.HasError() {
-				t.Error("expected diagnostics errors")
-			}
-			if !tt.wantDiags && gotDiags.HasError() {
-				t.Errorf("unexpected diagnostics: %v", gotDiags)
-			}
-			if tt.want != nil {
-				if !reflect.DeepEqual(got, tt.want) {
-					t.Errorf("modelToBGP() = %+v, want %+v", got, tt.want)
-				}
-			} else if got != nil {
-				if !strings.Contains(got.Config, "router bgp 65000") {
-					t.Errorf(
-						"expected rendered config to contain 'router bgp 65000', got %q",
-						got.Config,
-					)
-				}
-				if got.Enabled != true {
-					t.Error("expected Enabled=true")
-				}
-				if got.UploadedFileName != "frr.conf" {
-					t.Errorf("expected UploadedFileName=frr.conf, got %q", got.UploadedFileName)
-				}
-			}
+	t.Run("raw config mode", func(t *testing.T) {
+		got, errored := bgpModelToSDK(ctx, t, &bgpKitModel{
+			Enabled:        types.BoolValue(true),
+			Config:         types.StringValue("router bgp 65001"),
+			ASN:            types.Int64Null(),
+			RouterID:       types.StringNull(),
+			Peers:          types.ListNull(peerObjType),
+			UploadFileName: types.StringValue("frr.conf"),
+			Description:    types.StringValue("BGP Config"),
 		})
-	}
+		if errored {
+			t.Fatal("unexpected diagnostics")
+		}
+		want := &unifi.BGPConfig{
+			Enabled:          true,
+			Config:           "router bgp 65001",
+			UploadedFileName: "frr.conf",
+			Description:      "BGP Config",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("modelToSDK = %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("structured mode renders template", func(t *testing.T) {
+		got, errored := bgpModelToSDK(ctx, t, &bgpKitModel{
+			Enabled:  types.BoolValue(true),
+			Config:   types.StringNull(),
+			ASN:      types.Int64Value(65000),
+			RouterID: types.StringValue("10.0.0.1"),
+			Peers: testBuildPeersList(t, []bgpPeerModel{
+				{
+					Name:        types.StringValue("TEST"),
+					RemoteAS:    types.Int64Value(65001),
+					Description: types.StringValue(""),
+					Networks:    types.ListNull(types.StringType),
+				},
+			}),
+			UploadFileName: types.StringValue("frr.conf"),
+			Description:    types.StringValue("BGP"),
+		})
+		if errored {
+			t.Fatal("unexpected diagnostics")
+		}
+		if !strings.Contains(got.Config, "router bgp 65000") {
+			t.Errorf(
+				"expected rendered config to contain 'router bgp 65000', got %q",
+				got.Config,
+			)
+		}
+		if got.Enabled != true {
+			t.Error("expected Enabled=true")
+		}
+		if got.UploadedFileName != "frr.conf" {
+			t.Errorf("expected UploadedFileName=frr.conf, got %q", got.UploadedFileName)
+		}
+	})
 }
 
-func Test_bgpResource_bgpToModel(t *testing.T) {
-	type args struct {
-		in0       context.Context
-		bgpConfig *unifi.BGPConfig
-		model     *bgpResourceModel
-		site      string
-	}
+func Test_bgp_ToModel(t *testing.T) {
+	ctx := context.Background()
+	spec := bgpKitSpec()
+
 	tests := []struct {
-		name  string
-		r     *bgpResource
-		args  args
-		check func(t *testing.T, m *bgpResourceModel)
+		name      string
+		bgpConfig *unifi.BGPConfig
+		model     *bgpKitModel
+		site      string
+		check     func(t *testing.T, m *bgpKitModel)
 	}{
 		{
 			name: "populates all fields from API",
-			r:    &bgpResource{},
-			args: args{
-				in0: context.Background(),
-				bgpConfig: &unifi.BGPConfig{
-					ID:               "bgp-123",
-					Enabled:          true,
-					Config:           "router bgp 65000",
-					UploadedFileName: "frr.conf",
-					Description:      "My BGP",
-				},
-				model: &bgpResourceModel{},
-				site:  "default",
+			bgpConfig: &unifi.BGPConfig{
+				ID:               "bgp-123",
+				Enabled:          true,
+				Config:           "router bgp 65000",
+				UploadedFileName: "frr.conf",
+				Description:      "My BGP",
 			},
-			check: func(t *testing.T, m *bgpResourceModel) {
+			model: &bgpKitModel{},
+			site:  "default",
+			check: func(t *testing.T, m *bgpKitModel) {
 				if m.ID.ValueString() != "bgp-123" {
 					t.Errorf("ID = %q, want bgp-123", m.ID.ValueString())
 				}
@@ -620,29 +548,31 @@ func Test_bgpResource_bgpToModel(t *testing.T) {
 			},
 		},
 		{
-			name: "empty strings become null",
-			r:    &bgpResource{},
-			args: args{
-				in0: context.Background(),
-				bgpConfig: &unifi.BGPConfig{
-					ID:               "bgp-456",
-					Enabled:          false,
-					Config:           "",
-					UploadedFileName: "",
-					Description:      "",
-				},
-				model: &bgpResourceModel{},
-				site:  "site1",
+			// The hand-written mapper nulled empty strings here. The kit
+			// keeps them: config, description and upload_file_name are
+			// Optional+Computed, and the elide rule
+			// (TestEveryDescriptorAgreesWithItsSchemaAndItsSDK) says an
+			// Optional+Computed zero is a value the practitioner could have
+			// written, not an absence.
+			name: "empty strings are kept, not nulled",
+			bgpConfig: &unifi.BGPConfig{
+				ID:               "bgp-456",
+				Enabled:          false,
+				Config:           "",
+				UploadedFileName: "",
+				Description:      "",
 			},
-			check: func(t *testing.T, m *bgpResourceModel) {
-				if !m.Config.IsNull() {
-					t.Error("Config should be null for empty string")
+			model: &bgpKitModel{},
+			site:  "site1",
+			check: func(t *testing.T, m *bgpKitModel) {
+				if m.Config.IsNull() || m.Config.ValueString() != "" {
+					t.Error("Config should be the empty string, kept as a value")
 				}
-				if !m.UploadFileName.IsNull() {
-					t.Error("UploadFileName should be null for empty string")
+				if m.UploadFileName.IsNull() || m.UploadFileName.ValueString() != "" {
+					t.Error("UploadFileName should be the empty string, kept as a value")
 				}
-				if !m.Description.IsNull() {
-					t.Error("Description should be null for empty string")
+				if m.Description.IsNull() || m.Description.ValueString() != "" {
+					t.Error("Description should be the empty string, kept as a value")
 				}
 				if m.Enabled.ValueBool() != false {
 					t.Error("Enabled should be false")
@@ -651,22 +581,18 @@ func Test_bgpResource_bgpToModel(t *testing.T) {
 		},
 		{
 			name: "preserves existing model fields not set by API",
-			r:    &bgpResource{},
-			args: args{
-				in0: context.Background(),
-				bgpConfig: &unifi.BGPConfig{
-					ID:      "bgp-789",
-					Enabled: true,
-					Config:  "rendered",
-				},
-				model: &bgpResourceModel{
-					ASN:      types.Int64Value(65000),
-					RouterID: types.StringValue("10.0.0.1"),
-				},
-				site: "default",
+			bgpConfig: &unifi.BGPConfig{
+				ID:      "bgp-789",
+				Enabled: true,
+				Config:  "rendered",
 			},
-			check: func(t *testing.T, m *bgpResourceModel) {
-				// ASN and RouterID should be preserved (bgpToModel doesn't overwrite them)
+			model: &bgpKitModel{
+				ASN:      types.Int64Value(65000),
+				RouterID: types.StringValue("10.0.0.1"),
+			},
+			site: "default",
+			check: func(t *testing.T, m *bgpKitModel) {
+				// ASN and RouterID have no Field, so ToModel leaves them alone.
 				if m.ASN.ValueInt64() != 65000 {
 					t.Error("ASN should be preserved from existing model")
 				}
@@ -678,8 +604,10 @@ func Test_bgpResource_bgpToModel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.r.bgpToModel(tt.args.in0, tt.args.bgpConfig, tt.args.model, tt.args.site)
-			tt.check(t, tt.args.model)
+			if diags := spec.ToModel(ctx, tt.bgpConfig, tt.model, tt.site); diags.HasError() {
+				t.Fatalf("ToModel: %v", diags)
+			}
+			tt.check(t, tt.model)
 		})
 	}
 }

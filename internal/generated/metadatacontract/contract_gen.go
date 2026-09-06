@@ -8,7 +8,7 @@ package metadatacontract
 var FrozenTypeNames = map[string]string{
 	"apGroupDataSource":           "unifi_ap_group",
 	"apGroupKitResource":          "unifi_ap_group",
-	"bgpResource":                 "unifi_bgp",
+	"bgpKitResource":              "unifi_bgp",
 	"clientDataSource":            "unifi_client",
 	"clientInfoDataSource":        "unifi_client_info",
 	"clientInfoListDataSource":    "unifi_client_info_list",

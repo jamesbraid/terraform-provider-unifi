@@ -103,6 +103,14 @@
     "the same thing -- a default is a value the provider chooses, this is a value",
     "only the prior plan holds.",
     "",
+    "CLEARED, by bgp's own migration. BeforeSend renders the blob and AlwaysWire",
+    "puts frr_bgpd_config on the update mask, so the write half was the existing",
+    "hook. The read half needed nothing new either: an attribute no Field",
+    "touches is left alone by ToModel (a read starts from state) and carried",
+    "forward from the plan by ApplyPlanToState's uncovered copy -- the same",
+    "mechanism that keeps network's vlan. asn, router_id and peers are exactly",
+    "that shape.",
+    "",
     "undefined-fields MEANS A WRITE CAN SEND A FIELD THE RESOURCE DOES NOT MODEL,",
     "which is measurable. It previously meant an omission whose decision nobody",
     "recorded -- a property NO artifact carries, which is why four instruments",
@@ -396,8 +404,11 @@
     "undefined-fields"
   ],
   "surfaces": {
-    "bgp": [
-      "derived-into-blob"
+    "dynamic_dns": [
+      "multi-identity"
+    ],
+    "power_supervisor": [
+      "sdk-int"
     ],
     "setting": [
       "backend-cardinality"

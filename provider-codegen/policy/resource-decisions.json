@@ -12,9 +12,11 @@
     "",
     "sdk_type is the go-unifi struct. It derives the method names too:",
     "Create<T>, Get<T>, Update<T>Fields, Delete<T>, List<T>. What it cannot",
-    "derive is WHETHER a masked update exists -- BGPConfig, Site and",
-    "WireGuardPeer have only a whole-object Update, and a surface on those is",
-    "not representable here yet.",
+    "derive is WHETHER a masked update exists. The caveat that once sat here --",
+    "BGPConfig, Site and WireGuardPeer have only a whole-object Update -- is",
+    "gone: the pinned SDK emulates a masked update for all three (fetch the",
+    "stored object, overlay the masked fields, write it back), so",
+    "Update<T>Fields exists for each.",
     "",
     "duration_units keys a wire field to its unit. 74 conversions in the tree use",
     "seconds and 3 use minutes, all three on wlan, so a default would be silently",
@@ -29,6 +31,11 @@
           "name"
         ]
       }
+    },
+    "unifi_bgp": {
+      "sdk_type": "BGPConfig",
+      "duration_units": {},
+      "schema_version": 0
     },
     "unifi_client": {
       "sdk_type": "Client"

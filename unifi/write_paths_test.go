@@ -38,6 +38,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("ap_group", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := bgpKitBackend(api)
+		record("bgp", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := clientKitBackend(api)
 		record("client", backend.Create != nil, backend.CreateFields != nil)
 	}
@@ -187,7 +191,9 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 // left at all.
 func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
 	want := []string{
-		"bgp",
+		"dynamic_dns",
+		"power_supervisor",
+		"site",
 		"wireguard_peer",
 	}
 	got := unmaskedHandWrittenSurfaces(t)

@@ -9,6 +9,7 @@ import (
 
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	resource_ap_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ap_group"
+	resource_bgp "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_bgp"
 	resource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client"
 	resource_client_qos_rate "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
 	resource_device "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_device"
@@ -53,32 +54,12 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 	ctx := context.Background()
 
 	checks := map[string]func(*testing.T){
-		"dynamic_dns": func(t *testing.T) {
-			for _, problem := range resourcekit.WireNameProblems(dynamicDNSKitSpec()) {
+		"bgp": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(bgpKitSpec()) {
 				t.Error(problem)
 			}
 			problems := resourcekit.ElideProblems(
-				dynamicDNSKitSpec(), resource_dynamic_dns.DynamicDnsResourceSchema(ctx))
-			for _, problem := range problems {
-				t.Error(problem)
-			}
-		},
-		"power_supervisor": func(t *testing.T) {
-			for _, problem := range resourcekit.WireNameProblems(powerSupervisorKitSpec()) {
-				t.Error(problem)
-			}
-			problems := resourcekit.ElideProblems(
-				powerSupervisorKitSpec(), resource_power_supervisor.PowerSupervisorResourceSchema(ctx))
-			for _, problem := range problems {
-				t.Error(problem)
-			}
-		},
-		"site": func(t *testing.T) {
-			for _, problem := range resourcekit.WireNameProblems(siteKitSpec()) {
-				t.Error(problem)
-			}
-			problems := resourcekit.ElideProblems(
-				siteKitSpec(), resource_site.SiteResourceSchema(ctx))
+				bgpKitSpec(), resource_bgp.BgpResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}
