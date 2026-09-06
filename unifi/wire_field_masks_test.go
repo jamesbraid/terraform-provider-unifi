@@ -2,9 +2,6 @@ package unifi
 
 import (
 	"encoding/json"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,80 +12,10 @@ import (
 	"testing"
 
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // --- derivations from source, shared by the surfaces that follow ---
-
-// networkFieldsAssignedBy returns the Network fields a named method assigns.
-func networkFieldsAssignedBy(t *testing.T, path, method string) []string {
-	t.Helper()
-	src, err := os.ReadFile(filepath.Join("..", path))
-	if err != nil {
-		t.Fatalf("reading %s: %v", path, err)
-	}
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, path, src, 0)
-	if err != nil {
-		t.Fatalf("parsing %s: %v", path, err)
-	}
-	bodies := map[string]*ast.FuncDecl{}
-	for _, decl := range file.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok {
-			bodies[fn.Name.Name] = fn
-		}
-	}
-	seen := map[string]bool{}
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != method {
-			continue
-		}
-		// Functions the mapper calls count as the mapper too (one level deep,
-		// within this file only): a helper can assign a field the mapper's
-		// own body never mentions directly. Deeper than one hop would start
-		// crawling into go-unifi and reporting fields no mapper touches.
-		targets := []*ast.FuncDecl{fn}
-		ast.Inspect(fn, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			name, ok := call.Fun.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			if helper, ok := bodies[name.Name]; ok && helper != fn {
-				targets = append(targets, helper)
-			}
-			return true
-		})
-		for _, target := range targets {
-			ast.Inspect(target, func(n ast.Node) bool {
-				switch node := n.(type) {
-				case *ast.AssignStmt:
-					for _, lhs := range node.Lhs {
-						if sel, ok := lhs.(*ast.SelectorExpr); ok {
-							seen[sel.Sel.Name] = true
-						}
-					}
-				case *ast.KeyValueExpr:
-					if key, ok := node.Key.(*ast.Ident); ok {
-						seen[key.Name] = true
-					}
-				}
-				return true
-			})
-		}
-	}
-	out := make([]string, 0, len(seen))
-	for name := range seen {
-		if name != "" && strings.ToUpper(name[:1]) == name[:1] {
-			out = append(out, name)
-		}
-	}
-	sort.Strings(out)
-	return out
-}
 
 // networkJSONTags maps each Network field to its json name.
 func networkJSONTags(t *testing.T) map[string]string {
@@ -203,24 +130,80 @@ func TestNetworkUpdateUsesTheMaskedCall(t *testing.T) {
 	}
 }
 
-// unifi_wan has TWO call sites -- Update (every apply) and adoptExistingWAN
-// (once, on adopt) -- so this counts call sites rather than checking that a
-// masked call exists somewhere, which a fix to only one site would still pass.
+// wanWireFields answers what the surface can write on ANY plan -- the
+// descriptor's Fields wires plus AlwaysWire -- narrowed to what this
+// object's encoding carries, the same shape networkWireFields has.
+func wanWireFields(network *ui.Network) []string {
+	spec := wanKitSpec()
+	declared := map[string]bool{}
+	for _, name := range spec.WireNames() {
+		declared[name] = true
+	}
+	for _, name := range spec.AlwaysWire {
+		declared[name] = true
+	}
+	out := make([]string, 0, len(declared))
+	for name := range declared {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return networkMaskFor(out, network)
+}
+
+// unifi_wan has TWO masked call sites -- Backend.UpdateFields (every apply)
+// and adoptExistingWAN (once, on a create conflict) -- so this counts call
+// sites rather than checking that a masked call exists somewhere, which a
+// fix to only one site would still pass.
 func TestWANUsesTheMaskedCallAtEverySite(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "unifi", "wan_resource.go"))
+	raw, err := os.ReadFile(filepath.Join("..", "unifi", "wan_descriptor.go"))
 	if err != nil {
-		t.Fatalf("reading the resource: %v", err)
+		t.Fatalf("reading the descriptor: %v", err)
 	}
 	src := string(raw)
 
 	if n := strings.Count(src, "UpdateNetworkFields("); n != 2 {
-		t.Errorf("found %d masked calls, want 2 -- Update and adoptExistingWAN", n)
+		t.Errorf("found %d masked calls, want 2 -- Backend.UpdateFields and adoptExistingWAN", n)
 	}
 	if regexp.MustCompile(`UpdateNetwork\(ctx`).MatchString(src) {
-		t.Error("a whole-object UpdateNetwork( call remains in wan_resource.go")
+		t.Error("a whole-object UpdateNetwork( call remains in wan_descriptor.go")
 	}
-	if !strings.Contains(src, "func (r *wanResource) adoptExistingWAN(") {
-		t.Fatal("the file read is not wan_resource.go; the assertions above prove nothing")
+	if !strings.Contains(src, "func adoptExistingWAN(") {
+		t.Fatal("the file read is not wan_descriptor.go; the assertions above prove nothing")
+	}
+}
+
+// Every wire the descriptor can put on a mask must be one the WAN purpose's
+// encoder can emit: go-unifi refuses a mask naming a field the purpose
+// drops, so a wire failing this check fails every apply that plans it. A
+// ReadOnly field never reaches a mask, which is exactly why
+// single_network_lan and mac_override_enabled are ReadOnly -- the WAN
+// encoder drops both -- so those are excluded rather than special-cased.
+func TestWANDeclaredWiresAreAllWANEncodable(t *testing.T) {
+	spec := wanKitSpec()
+	readOnly := map[string]bool{}
+	for _, field := range spec.Fields {
+		if _, ok := field.(interface {
+			Unwrap() resourcekit.Field[wanKitModel, ui.Network]
+		}); ok {
+			readOnly[field.WireName()] = true
+		}
+	}
+	names := append(spec.WireNames(), spec.AlwaysWire...)
+	if len(names) == 0 {
+		t.Fatal("the descriptor declares no wires, so this would check nothing")
+	}
+	if len(readOnly) != 2 {
+		t.Errorf("found %d ReadOnly wires, want 2 (single_network_lan, mac_override_enabled); "+
+			"a new one is a new claim that the WAN encoder drops it", len(readOnly))
+	}
+	for _, wire := range names {
+		if readOnly[wire] {
+			continue
+		}
+		if !ui.NetworkEncodesField(ui.PurposeWAN, wire) {
+			t.Errorf("the descriptor declares %q, which a WAN's encoder never emits; "+
+				"a mask naming it is refused outright", wire)
+		}
 	}
 }
 
@@ -260,29 +243,6 @@ func TestWANMaskExcludesTheFieldsItDoesNotManage(t *testing.T) {
 	}
 	if !slices.Contains(mask, "name") {
 		t.Error("name is missing from the mask, so a rename would not be written")
-	}
-}
-
-// The declared list must match what the resource assigns, same as network's.
-func TestWANManagedWireFieldsMatchTheResource(t *testing.T) {
-	assigned := networkFieldsAssignedBy(t, "unifi/wan_resource.go", "modelToNetwork")
-	if len(assigned) == 0 {
-		t.Fatal("no assignments found; the parse failed")
-	}
-	tags := networkJSONTags(t)
-	declared := map[string]bool{}
-	for _, name := range wanManagedWireFields() {
-		declared[name] = true
-	}
-	for _, field := range assigned {
-		tag, ok := tags[field]
-		if !ok || tag == "_id" || tag == "site_id" {
-			continue
-		}
-		if !declared[tag] {
-			t.Errorf("modelToNetwork assigns %s (Network.%s) but it is not in "+
-				"wanManagedWireFields, so it would never be written", tag, field)
-		}
 	}
 }
 

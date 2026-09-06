@@ -43,7 +43,7 @@
         }
       },
       "disposition": "managed",
-      "structural_name": "ip_aliases",
+      "structural_name": "wan_ip_aliases",
       "terraform_name": "ip_aliases",
       "terraform_type": "list"
     },
@@ -402,6 +402,7 @@
     "interface_mtu",
     "interface_mtu_enabled",
     "internet_access_enabled",
+    "ip_aliases",
     "ip_subnet",
     "ipsec_dh_group",
     "ipsec_dynamic_routing",
@@ -528,7 +529,6 @@
     "wan_gateway",
     "wan_gateway_v6",
     "wan_ip",
-    "wan_ip_aliases",
     "wan_ipv6",
     "wan_netmask",
     "wan_pppoe_password_enabled",

@@ -20,13 +20,6 @@
       "disposition": "managed"
     },
     {
-      "structural_name": "ip_aliases",
-      "terraform_name": "ip_aliases",
-      "structural_type": "array<string>",
-      "terraform_type": "list",
-      "disposition": "managed"
-    },
-    {
       "structural_name": "ipv6_setting_preference",
       "terraform_name": "ipv6_setting_preference",
       "structural_type": "string",
@@ -80,6 +73,13 @@
       "terraform_name": "wan_dslite_remote_host_auto",
       "structural_type": "bool",
       "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_ip_aliases",
+      "terraform_name": "ip_aliases",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
       "disposition": "managed"
     },
     {

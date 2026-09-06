@@ -142,6 +142,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("vpn_server", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := wanKitBackend(api)
+		record("wan", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := wlanKitBackend(api)
 		record("wlan", backend.Create != nil, backend.CreateFields != nil)
 	}
@@ -175,30 +179,41 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		}
 	}
 	sort.Strings(patchingCreates)
-	if len(patchingCreates) != 1 || patchingCreates[0] != "device" {
-		t.Errorf("surfaces whose create is a patch = %v, want exactly [device]; a create "+
+	// wan joined device here when it moved to the kit: its create POSTs a
+	// whole new object first, but on a WanConfigurationForNetworkGroupAlreadyExists
+	// conflict it adopts the existing WAN with a masked overlay, and only
+	// CreateFields hands that path a mask (the plan's own) instead of
+	// asserting unset plan fields to zero over the interface's live config.
+	want := []string{"device", "wan"}
+	if len(patchingCreates) != len(want) {
+		t.Errorf("surfaces whose create is a patch = %v, want exactly %v; a create "+
 			"that patches is one whose object the controller already holds, and that is a "+
-			"claim about the surface rather than a style", patchingCreates)
+			"claim about the surface rather than a style", patchingCreates, want)
+	} else {
+		for i, name := range patchingCreates {
+			if name != want[i] {
+				t.Errorf("patching create[%d] = %s, pinned as %s", i, name, want[i])
+			}
+		}
 	}
 }
 
 // TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre pins the
-// hand-written surfaces whose writes carry no mask at all, so every field
-// their mapper doesn't assign goes out as a Go zero on every apply -- unlike
-// the kit surfaces, nothing else would notice. wan is not among them: both
-// its update and its adopt path go through the masked UpdateNetworkFields.
-// setting dropped off this list once ips_suppression's own write
-// (setting_ips_descriptor.go's ipsSuppressionKitBackend) moved from the
-// deleted writeIpsSuppression's whole-object client.UpdateSetting call to
-// the masked UpdateSettingFields every other unifi_setting section already
-// used -- setting_resource.go now has no whole-object client.Update call
-// left at all.
+// surfaces whose writes carry no mask at all, so every field their mapper
+// doesn't assign goes out as a Go zero on every apply -- unlike the masked
+// paths, nothing else would notice. setting dropped off this list once
+// ips_suppression's own write (setting_ips_descriptor.go's
+// ipsSuppressionKitBackend) moved from the deleted writeIpsSuppression's
+// whole-object client.UpdateSetting call to the masked UpdateSettingFields
+// every other unifi_setting section already used, and wan's migration
+// removed the last client.Update call from any *_resource.go -- the update
+// calls all live in descriptors now, which is where the pattern-liveness
+// control looks when the resource files carry none. Descriptors themselves
+// are out of scope here: client's and setting_usg's read-modify-write
+// updates are whole-object by design, with the fetch supplying every
+// unmodelled field.
 func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
-	want := []string{
-		"dynamic_dns",
-		"power_supervisor",
-		"site",
-	}
+	want := []string{}
 	got := unmaskedHandWrittenSurfaces(t)
 	if len(got) != len(want) {
 		t.Errorf("unmasked hand-written surfaces = %v, pinned as %v", got, want)
@@ -245,8 +260,29 @@ func unmaskedHandWrittenSurfaces(t *testing.T) []string {
 		}
 	}
 	if !sawAnyCall {
-		t.Fatal("no client Update call found in any resource file; the pattern is wrong " +
-			"and this would report an empty list as a clean estate")
+		// wan's migration removed the last client.Update call from any
+		// *_resource.go -- every write now lives in a descriptor -- so the
+		// pattern-liveness control reads those instead: if the regex has
+		// rotted, it finds nothing there either, and an empty list would be
+		// a false clean.
+		descriptors, err := filepath.Glob("*_descriptor.go")
+		if err != nil {
+			t.Fatalf("listing descriptors: %v", err)
+		}
+		for _, file := range descriptors {
+			source, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatalf("reading %s: %v", file, err)
+			}
+			if whole.MatchString(string(source)) {
+				sawAnyCall = true
+				break
+			}
+		}
+		if !sawAnyCall {
+			t.Fatal("no client Update call found in any resource or descriptor file; the " +
+				"pattern is wrong and this would report an empty list as a clean estate")
+		}
 	}
 	sort.Strings(surfaces)
 	return surfaces

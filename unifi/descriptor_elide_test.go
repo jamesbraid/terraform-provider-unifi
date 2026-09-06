@@ -36,6 +36,7 @@ import (
 	resource_traffic_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_traffic_route"
 	resource_vpn_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_client"
 	resource_vpn_server "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_server"
+	resource_wan "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wan"
 	resource_wireguard_peer "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wireguard_peer"
 	resource_wlan "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wlan"
 	resource_wlan_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wlan_group"
@@ -55,6 +56,36 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 	ctx := context.Background()
 
 	checks := map[string]func(*testing.T){
+		"dynamic_dns": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(dynamicDNSKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				dynamicDNSKitSpec(), resource_dynamic_dns.DynamicDnsResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"power_supervisor": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(powerSupervisorKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				powerSupervisorKitSpec(), resource_power_supervisor.PowerSupervisorResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"site": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(siteKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				siteKitSpec(), resource_site.SiteResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
 		"bgp": func(t *testing.T) {
 			for _, problem := range resourcekit.WireNameProblems(bgpKitSpec()) {
 				t.Error(problem)
@@ -71,6 +102,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				dhcpOptionKitSpec(), resource_dhcp_option.DhcpOptionResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"schedule_task": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(scheduleTaskKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				scheduleTaskKitSpec(), resource_schedule_task.ScheduleTaskResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}
@@ -299,6 +340,19 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				deviceKitSpec(), resource_device.DeviceResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"wan": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(wanKitSpec()) {
+				t.Error(problem)
+			}
+			for _, problem := range resourcekit.NestedProblems(wanKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				wanKitSpec(), resource_wan.WanResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

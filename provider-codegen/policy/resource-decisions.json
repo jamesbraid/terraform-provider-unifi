@@ -344,6 +344,16 @@
       },
       "schema_version": 0
     },
+    "unifi_wan": {
+      "sdk_type": "Network",
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_wireguard_peer": {
       "sdk_type": "WireGuardPeer",
       "duration_units": {},

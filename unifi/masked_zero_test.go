@@ -109,8 +109,8 @@ func descriptorsDeclaringScatteredObjectField(t *testing.T) []string {
 // take a generated value reports here rather than joining a silent list, and
 // is pinned below so a new one fails instead of going unnoticed.
 //
-// The walk below is a hand-picked list of six surfaces, checked against the
-// descriptor files themselves before walking anything, so a seventh
+// The walk below is a hand-picked list of seven surfaces, checked against
+// the descriptor files themselves before walking anything, so an eighth
 // ScatteredObjectField fails here rather than shipping unmeasured.
 func TestNoSurfaceMasksAZeroForAPartlyFilledBlock(t *testing.T) {
 	wantScattered := []string{
@@ -119,6 +119,7 @@ func TestNoSurfaceMasksAZeroForAPartlyFilledBlock(t *testing.T) {
 		"traffic_route_descriptor.go",
 		"vpn_client_descriptor.go",
 		"vpn_server_descriptor.go",
+		"wan_descriptor.go",
 		"wlan_descriptor.go",
 	}
 	haveScattered := descriptorsDeclaringScatteredObjectField(t)
@@ -225,6 +226,27 @@ func TestNoSurfaceMasksAZeroForAPartlyFilledBlock(t *testing.T) {
 		}
 	}
 
+	for _, field := range wanKitSpec().Fields {
+		scattered, ok := field.(resourcekit.ScatteredObjectField[wanKitModel, ui.Network])
+		if !ok {
+			continue
+		}
+		report, err := resourcekit.MaskedZeroProblems(t.Context(), scattered,
+			fullProbeObject(t, scattered.AttrTypes), func(n *ui.Network) {
+				n.Purpose = ui.PurposeWAN
+			})
+		if err != nil {
+			note("wan/"+scattered.Wires[0], err)
+			continue
+		}
+		for _, problem := range report.Guarded {
+			t.Errorf("wan: %s", problem)
+		}
+		for _, problem := range report.AlwaysAssigned {
+			t.Errorf("wan: %s", problem)
+		}
+	}
+
 	wlanBenignAlwaysAssigned := map[string]string{
 		"mac_filter_enabled": `carries the schema default false, so a plan never leaves it null`,
 		"mac_filter_policy":  `carries the schema default "deny", so a plan never leaves it null`,
@@ -295,6 +317,11 @@ func TestNoSurfaceMasksAZeroForAPartlyFilledBlock(t *testing.T) {
 	wantUnmeasured := []string{
 		"traffic_route/domains",
 		"vpn_client/x_wireguard_private_key",
+		// The wire's backing field is a *struct, which the sentinel probe
+		// cannot fill distinguishably; the field declares no conditional
+		// wires and Encode writes it whenever the object is set, so there is
+		// no guarded direction to measure.
+		"wan/wan_provider_capabilities",
 	}
 	if len(unmeasured) != len(wantUnmeasured) {
 		t.Errorf("unmeasured = %v, pinned as %v", unmeasured, wantUnmeasured)
@@ -330,6 +357,42 @@ func TestPortForwardConditionalWiresAgreeWithEncode(t *testing.T) {
 	}
 	if checked != 3 {
 		t.Errorf("checked %d scattered field(s) on port_forward, want 3; a field the walk "+
+			"missed is a field nothing here compares against its Encode", checked)
+	}
+}
+
+// TestWANConditionalWiresAgreeWithEncode is the wan copy of the
+// port_forward check above: a declared predicate that no longer matches
+// Encode is invisible to TestNoSurfaceMasksAZeroForAPartlyFilledBlock, which
+// takes the declaration as the answer. The full object and each partial
+// derived from it exercise every predicate in both directions.
+func TestWANConditionalWiresAgreeWithEncode(t *testing.T) {
+	checked := 0
+	for _, field := range wanKitSpec().Fields {
+		scattered, ok := field.(resourcekit.ScatteredObjectField[wanKitModel, ui.Network])
+		if !ok {
+			continue
+		}
+		// wan_provider_capabilities declares no conditional wire and its
+		// backing field is a *struct the sentinel probe cannot fill
+		// distinguishably (see the wantUnmeasured pin above); with nothing
+		// declared there is nothing here to compare.
+		if len(scattered.ConditionalWires) == 0 {
+			continue
+		}
+		full := fullProbeObject(t, scattered.AttrTypes)
+		objects := []types.Object{full}
+		for name := range scattered.AttrTypes {
+			objects = append(objects, withoutProbeMember(t, full, name))
+		}
+		seed := func(n *ui.Network) { n.Purpose = ui.PurposeWAN }
+		for _, problem := range resourcekit.ConditionalWireProblems(scattered, objects, seed) {
+			t.Errorf("wan/%s: %s", scattered.Wires[0], problem)
+		}
+		checked++
+	}
+	if checked != 9 {
+		t.Errorf("checked %d scattered field(s) on wan, want 9; a field the walk "+
 			"missed is a field nothing here compares against its Encode", checked)
 	}
 }

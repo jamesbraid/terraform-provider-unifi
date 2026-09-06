@@ -49,15 +49,6 @@
     "closure signatures across nine working descriptors. Leave it blocked and let",
     "a SECOND parent-scoped surface be the trigger.",
     "",
-    "CLEARED, and \"widening Backend is the only remedy\" was wrong -- it only",
-    "held inside the Backend abstraction. Read and Delete SEE the state before",
-    "the kit does: the surface's own overrides peek network_id (Required and",
-    "RequiresReplace, so state always holds it) and rebind the backend scoped",
-    "to it before delegating to the embedded kit methods. The framework builds",
-    "a fresh resource instance per RPC, so the rebind is request-local. List",
-    "and import were already per-surface overrides on client, the precedent",
-    "this follows. Backend stays (site, id) for the 27 surfaces that fit it.",
-    "",
     "sdk-int MEANS THE SDK FIELD IS A PLAIN int, which no field kind can address:",
     "every integer kind in the kit is int64-based (Int64Field, Int64PtrField,",
     "DurationField, DurationPtrField all take func(*S) *int64 or **int64).",
@@ -111,14 +102,6 @@
     "BeforeSend can do the first. The second is close to read-default and is not",
     "the same thing -- a default is a value the provider chooses, this is a value",
     "only the prior plan holds.",
-    "",
-    "CLEARED, by bgp's own migration. BeforeSend renders the blob and AlwaysWire",
-    "puts frr_bgpd_config on the update mask, so the write half was the existing",
-    "hook. The read half needed nothing new either: an attribute no Field",
-    "touches is left alone by ToModel (a read starts from state) and carried",
-    "forward from the plan by ApplyPlanToState's uncovered copy -- the same",
-    "mechanism that keeps network's vlan. asn, router_id and peers are exactly",
-    "that shape.",
     "",
     "undefined-fields MEANS A WRITE CAN SEND A FIELD THE RESOURCE DOES NOT MODEL,",
     "which is measurable. It previously meant an omission whose decision nobody",
@@ -393,7 +376,32 @@
     "UpdateSiteFields exists precisely to give sites the one masked-update shape",
     "(mask [\"desc\"], addressed by the name BeforeSend carries from state), and the",
     "global list config -- the one shape the kit's shared ListConfig cannot decode",
-    "-- is served by the surface's own List, the same arrangement client ships."
+    "-- is served by the surface's own List, the same arrangement client ships.",
+    "",
+    "wan IS CUT OVER AND ITS nested ENTRY IS GONE. The ten objects became nine",
+    "ScatteredObjectFields plus a one-wire scattered field for",
+    "wan_provider_capabilities -- the one real nested struct; scattered anyway,",
+    "because only a scattered Decode sees prior and the hand read preserved",
+    "state when the API reported nothing. Every member wire is",
+    "ConditionalWires-gated on exactly the member the hand mapper guarded it",
+    "with, and the conditional-wire probe (TestWANConditionalWiresAgreeWithEncode)",
+    "exercises every predicate in both directions.",
+    "",
+    "THE MIGRATION CLOSED TWO LIVE BLANKING BUGS THE HAND MASK CARRIED. The WAN",
+    "purpose encoder force-emits wan_dhcp_options and wan_ip_aliases as [] even",
+    "on a zero object, so the hand's managed-intersect-encoded mask named both",
+    "on EVERY update and sent [] whenever the config omitted them -- clearing",
+    "DHCP options and IP aliases the practitioner never mentioned. The kit's",
+    "plan-derived mask only names them when the plan carries them.",
+    "",
+    "AND IT MEASURED TWO DECLARED WIRES THE WAN ENCODER NEVER EMITS:",
+    "single_network_lan and mac_override_enabled. The hand mask silently",
+    "dropped both (networkMaskFor kept only encoded keys), so the hand resource",
+    "never delivered either to the controller; a kit mask naming them would be",
+    "refused outright by maskedBody. They ship as ReadOnly fields -- decoded,",
+    "never masked -- and ValidateConfig still warns when a configuration sets",
+    "one. TestWANDeclaredWiresAreAllWANEncodable pins the encodability of the",
+    "rest."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -413,17 +421,8 @@
     "undefined-fields"
   ],
   "surfaces": {
-    "dynamic_dns": [
-      "multi-identity"
-    ],
-    "power_supervisor": [
-      "sdk-int"
-    ],
     "setting": [
       "backend-cardinality"
-    ],
-    "wan": [
-      "nested"
     ]
   },
   "resolved_capabilities": {

@@ -10,10 +10,12 @@ import (
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 func TestAccWANList_basic(t *testing.T) {
@@ -360,15 +362,30 @@ func Test_dhcpOptionModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-// Test_wanResource_networkGroup checks the WAN network group is preserved in
-// the update PUT (and HiddenID mirrors it) instead of being hard-coded to
-// "WAN" -- otherwise a secondary uplink (WAN2) collides with the primary and
-// the controller rejects it.
-func Test_wanResource_networkGroup(t *testing.T) {
-	r := &wanResource{}
+// wanEncodedForWrite builds the SDK object the way the write path does: the
+// spec's ToSDK for the Fields, then BeforeSend for the hook-derived wires.
+func wanEncodedForWrite(t *testing.T, model *wanKitModel) *unifi.Network {
+	t.Helper()
 	ctx := context.Background()
+	spec := wanKitSpec()
+	sdk, diags := spec.ToSDK(ctx, model)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	var config wanKitModel
+	var prior wanKitModel
+	if d := spec.BeforeSend(ctx, &config, model, prior, sdk, nil); d.HasError() {
+		t.Fatalf("BeforeSend: %v", d)
+	}
+	return sdk
+}
 
-	base := wanResourceModel{
+// Test_wanNetworkGroup checks the WAN network group is preserved on every
+// write (and HiddenID mirrors it) instead of being hard-coded to "WAN" --
+// otherwise a secondary uplink (WAN2) collides with the primary and the
+// controller rejects it (#334).
+func Test_wanNetworkGroup(t *testing.T) {
+	base := wanKitModel{
 		Name:    types.StringValue("CC Internet SFP"),
 		Enabled: types.BoolValue(true),
 		Type:    types.StringValue("dhcp"),
@@ -377,10 +394,7 @@ func Test_wanResource_networkGroup(t *testing.T) {
 	t.Run("WAN2 is preserved and mirrored to hidden id", func(t *testing.T) {
 		m := base
 		m.NetworkGroup = types.StringValue("WAN2")
-		n, d := r.modelToNetwork(ctx, &m)
-		if d.HasError() {
-			t.Fatalf("modelToNetwork: %v", d)
-		}
+		n := wanEncodedForWrite(t, &m)
 		if n.WANNetworkGroup == nil || *n.WANNetworkGroup != "WAN2" {
 			t.Errorf("WANNetworkGroup = %v, want WAN2", n.WANNetworkGroup)
 		}
@@ -392,10 +406,7 @@ func Test_wanResource_networkGroup(t *testing.T) {
 	t.Run("unset defaults to WAN", func(t *testing.T) {
 		m := base
 		m.NetworkGroup = types.StringNull()
-		n, d := r.modelToNetwork(ctx, &m)
-		if d.HasError() {
-			t.Fatalf("modelToNetwork: %v", d)
-		}
+		n := wanEncodedForWrite(t, &m)
 		if n.WANNetworkGroup == nil || *n.WANNetworkGroup != "WAN" {
 			t.Errorf("WANNetworkGroup = %v, want WAN", n.WANNetworkGroup)
 		}
@@ -405,28 +416,27 @@ func Test_wanResource_networkGroup(t *testing.T) {
 	})
 }
 
-// Test_wanResource_overlayConfig_dslite checks that overlayConfig keeps the
-// user's planned value for wan_dslite_remote_host_auto when it was set in
-// config, and the controller's value when it wasn't -- the controller
-// otherwise forces this back to true server-side.
-func Test_wanResource_overlayConfig_dslite(t *testing.T) {
-	r := &wanResource{}
+// Test_wanDslitePlanOutranksTheEcho pins the #281 behaviour through the
+// kit's plan-over-response rule: the controller forces
+// wan_dslite_remote_host_auto back to true on AFTR auto-detection, so a
+// planned false must survive the read-back, while an unset plan keeps the
+// controller's answer.
+func Test_wanDslitePlanOutranksTheEcho(t *testing.T) {
+	spec := wanKitSpec()
 
 	t.Run("configured false overrides controller true", func(t *testing.T) {
-		state := wanResourceModel{DsliteRemoteHostAuto: types.BoolValue(true)}
-		config := wanResourceModel{DsliteRemoteHostAuto: types.BoolValue(false)}
-		plan := wanResourceModel{DsliteRemoteHostAuto: types.BoolValue(false)}
-		r.overlayConfig(&state, &config, &plan)
+		state := wanKitModel{DsliteRemoteHostAuto: types.BoolValue(true)}
+		plan := wanKitModel{DsliteRemoteHostAuto: types.BoolValue(false)}
+		spec.ApplyPlanToState(&plan, &state)
 		if state.DsliteRemoteHostAuto.ValueBool() {
 			t.Errorf("DsliteRemoteHostAuto = true, want false (planned value)")
 		}
 	})
 
 	t.Run("unset keeps controller value", func(t *testing.T) {
-		state := wanResourceModel{DsliteRemoteHostAuto: types.BoolValue(true)}
-		config := wanResourceModel{DsliteRemoteHostAuto: types.BoolNull()}
-		plan := wanResourceModel{DsliteRemoteHostAuto: types.BoolValue(false)}
-		r.overlayConfig(&state, &config, &plan)
+		state := wanKitModel{DsliteRemoteHostAuto: types.BoolValue(true)}
+		plan := wanKitModel{DsliteRemoteHostAuto: types.BoolNull()}
+		spec.ApplyPlanToState(&plan, &state)
 		if !state.DsliteRemoteHostAuto.ValueBool() {
 			t.Errorf("DsliteRemoteHostAuto = false, want true (controller value kept)")
 		}
@@ -619,7 +629,7 @@ func Test_dhcpWanModel_AttributeTypes(t *testing.T) {
 
 func Test_wanResource_IdentitySchema(t *testing.T) {
 	t.Run("does not panic and returns identity attributes", func(t *testing.T) {
-		r := &wanResource{}
+		r := newWANKitResource()
 		resp := &fwresource.IdentitySchemaResponse{}
 		r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 		if resp.Diagnostics.HasError() {
@@ -637,7 +647,7 @@ func Test_wanResource_IdentitySchema(t *testing.T) {
 // unaddressable WAN. dhcp is the control and must not error.
 func TestWANConfigWithStaticTypeAndNoAddressIsRefused(t *testing.T) {
 	ctx := context.Background()
-	r := &wanResource{}
+	r := newWANKitResource()
 	schemaResp := &fwresource.SchemaResponse{}
 	r.Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
 	if schemaResp.Diagnostics.HasError() {
@@ -646,13 +656,10 @@ func TestWANConfigWithStaticTypeAndNoAddressIsRefused(t *testing.T) {
 
 	configFor := func(t *testing.T, wanType string) tfsdk.Config {
 		t.Helper()
-		model := &wanResourceModel{
-			Name:     types.StringValue("wan1"),
-			Type:     types.StringValue(wanType),
-			Enabled:  types.BoolValue(true),
-			Timeouts: timeoutsNullValue(),
-		}
-		applyWANDefaults(model)
+		model := nullWANKitModel()
+		model.Name = types.StringValue("wan1")
+		model.Type = types.StringValue(wanType)
+		model.Enabled = types.BoolValue(true)
 		staging := tfsdk.State{Schema: schemaResp.Schema}
 		if diags := staging.Set(ctx, model); diags.HasError() {
 			t.Fatalf("set the config: %v", diags)
@@ -682,41 +689,32 @@ func TestWANConfigWithStaticTypeAndNoAddressIsRefused(t *testing.T) {
 	}
 }
 
-func Test_wanResource_modelToNetwork(t *testing.T) {
+// nullWANKitModel is a model with every collection-shaped attribute at its
+// typed null, which is what an empty configuration decodes to.
+func nullWANKitModel() *wanKitModel {
+	return &wanKitModel{
+		Vlan:                 types.ObjectNull(vlanModel{}.AttributeTypes()),
+		EgressQoS:            types.ObjectNull(egressQosModel{}.AttributeTypes()),
+		DNS:                  types.ObjectNull(dnsModel{}.AttributeTypes()),
+		DHCP:                 types.ObjectNull(dhcpWanModel{}.AttributeTypes()),
+		DHCPv6:               types.ObjectNull(dhcpv6WanModel{}.AttributeTypes()),
+		SmartQ:               types.ObjectNull(smartqModel{}.AttributeTypes()),
+		UPnP:                 types.ObjectNull(upnpModel{}.AttributeTypes()),
+		LoadBalance:          types.ObjectNull(loadBalanceModel{}.AttributeTypes()),
+		IGMPProxy:            types.ObjectNull(igmpProxyModel{}.AttributeTypes()),
+		ProviderCapabilities: types.ObjectNull(providerCapabilitiesModel{}.AttributeTypes()),
+		IPAliases:            types.ListNull(types.StringType),
+		Timeouts:             timeoutsNullValue(),
+	}
+}
+
+func Test_wanToSDK(t *testing.T) {
 	t.Run("minimal model converts correctly", func(t *testing.T) {
-		r := &wanResource{}
-		ctx := context.Background()
-		model := &wanResourceModel{
-			Name:                  types.StringValue("test"),
-			Type:                  types.StringValue("dhcp"),
-			TypeV6:                types.StringNull(),
-			Enabled:               types.BoolValue(true),
-			Vlan:                  types.ObjectNull(vlanModel{}.AttributeTypes()),
-			EgressQoS:             types.ObjectNull(egressQosModel{}.AttributeTypes()),
-			DNS:                   types.ObjectNull(dnsModel{}.AttributeTypes()),
-			DHCP:                  types.ObjectNull(dhcpWanModel{}.AttributeTypes()),
-			DHCPv6:                types.ObjectNull(dhcpv6WanModel{}.AttributeTypes()),
-			SmartQ:                types.ObjectNull(smartqModel{}.AttributeTypes()),
-			UPnP:                  types.ObjectNull(upnpModel{}.AttributeTypes()),
-			LoadBalance:           types.ObjectNull(loadBalanceModel{}.AttributeTypes()),
-			IGMPProxy:             types.ObjectNull(igmpProxyModel{}.AttributeTypes()),
-			ProviderCapabilities:  types.ObjectNull(providerCapabilitiesModel{}.AttributeTypes()),
-			ReportWANEvent:        types.BoolNull(),
-			IPAliases:             types.ListNull(types.StringType),
-			SettingPreference:     types.StringNull(),
-			IPv6SettingPreference: types.StringNull(),
-			SingleNetworkLAN:      types.StringNull(),
-			MACOverrideEnabled:    types.BoolNull(),
-			DsliteRemoteHost:      types.StringNull(),
-			DsliteRemoteHostAuto:  types.BoolNull(),
-		}
-		got, diags := r.modelToNetwork(ctx, model)
-		if diags.HasError() {
-			t.Fatalf("modelToNetwork() returned errors: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("modelToNetwork() returned nil network")
-		}
+		model := nullWANKitModel()
+		model.Name = types.StringValue("test")
+		model.Type = types.StringValue("dhcp")
+		model.Enabled = types.BoolValue(true)
+		got := wanEncodedForWrite(t, model)
 		if got.Name == nil || *got.Name != "test" {
 			t.Errorf("expected Name=test, got %v", got.Name)
 		}
@@ -732,9 +730,9 @@ func Test_wanResource_modelToNetwork(t *testing.T) {
 	})
 }
 
-func Test_wanResource_networkToModel(t *testing.T) {
+func Test_wanToModel(t *testing.T) {
 	t.Run("converts API network back to model", func(t *testing.T) {
-		r := &wanResource{}
+		spec := wanKitSpec()
 		ctx := context.Background()
 		wanType := "dhcp"
 		name := "test-wan"
@@ -745,11 +743,15 @@ func Test_wanResource_networkToModel(t *testing.T) {
 			WANType: &wanType,
 			Enabled: true,
 		}
-		model := &wanResourceModel{}
-		applyWANDefaults(model)
-		diags := r.networkToModel(ctx, network, model, "default")
+		model := nullWANKitModel()
+		diags := spec.ToModel(ctx, network, model, "default")
 		if diags.HasError() {
-			t.Fatalf("networkToModel() returned errors: %v", diags)
+			t.Fatalf("ToModel() returned errors: %v", diags)
+		}
+		var prior wanKitModel
+		diags = spec.AfterReceive(ctx, network, model, prior, nil)
+		if diags.HasError() {
+			t.Fatalf("AfterReceive() returned errors: %v", diags)
 		}
 		if model.ID.ValueString() != "abc123" {
 			t.Errorf("expected ID=abc123, got %v", model.ID.ValueString())
@@ -763,38 +765,115 @@ func Test_wanResource_networkToModel(t *testing.T) {
 		if model.Type.ValueString() != "dhcp" {
 			t.Errorf("expected Type=dhcp, got %v", model.Type.ValueString())
 		}
+		// The group is defaulted the way the hand read did (#334).
+		if model.NetworkGroup.ValueString() != "WAN" {
+			t.Errorf("expected NetworkGroup=WAN, got %v", model.NetworkGroup.ValueString())
+		}
 	})
 }
 
-func Test_applyWANDefaults(t *testing.T) {
-	t.Run("applies defaults to empty model", func(t *testing.T) {
-		model := &wanResourceModel{}
-		applyWANDefaults(model)
-		if !model.Vlan.IsNull() {
-			t.Error("expected Vlan to be null after defaults")
-		}
-		if !model.EgressQoS.IsNull() {
-			t.Error("expected EgressQoS to be null after defaults")
-		}
-		if !model.SmartQ.IsNull() {
-			t.Error("expected SmartQ to be null after defaults")
-		}
-		if !model.DNS.IsNull() {
-			t.Error("expected DNS to be null after defaults")
-		}
-		if !model.IPAliases.IsNull() {
-			t.Error("expected IPAliases to be null after defaults")
-		}
-	})
+// Test_wanDecodeAbsence pins the read shape for an unconfigured WAN: vlan is
+// always materialized (the controller omits the id when unset, and the object
+// carries the schema default instead, #262), while every other nested object
+// and the alias list stay typed nulls until the API reports data.
+func Test_wanDecodeAbsence(t *testing.T) {
+	spec := wanKitSpec()
+	ctx := context.Background()
+	model := nullWANKitModel()
+	diags := spec.ToModel(ctx, &unifi.Network{Purpose: "wan"}, model, "default")
+	if diags.HasError() {
+		t.Fatalf("ToModel() returned errors: %v", diags)
+	}
+	if model.Vlan.IsNull() {
+		t.Error("expected Vlan to be materialized with defaults")
+	}
+	if !model.EgressQoS.IsNull() {
+		t.Error("expected EgressQoS to stay null")
+	}
+	if !model.SmartQ.IsNull() {
+		t.Error("expected SmartQ to stay null")
+	}
+	if !model.DNS.IsNull() {
+		t.Error("expected DNS to stay null")
+	}
+	if !model.IPAliases.IsNull() {
+		t.Error("expected IPAliases to stay null")
+	}
 }
 
 func Test_wanResource_ListResourceConfigSchema(t *testing.T) {
 	t.Run("does not panic", func(t *testing.T) {
-		r := &wanResource{}
+		r := newWANKitResource()
 		resp := &fwlist.ListResourceSchemaResponse{}
 		r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 		if resp.Diagnostics.HasError() {
 			t.Fatalf("ListResourceConfigSchema() returned errors: %v", resp.Diagnostics)
 		}
 	})
+}
+
+// unknownWANAttr builds the unknown value of one member type, for the probe
+// below. The switch covers every member type wan's objects declare.
+func unknownWANAttr(t *testing.T, typ attr.Type) attr.Value {
+	t.Helper()
+	switch concrete := typ.(type) {
+	case basetypes.BoolType:
+		return types.BoolUnknown()
+	case basetypes.Int64Type:
+		return types.Int64Unknown()
+	case basetypes.StringType:
+		return types.StringUnknown()
+	case types.ListType:
+		return types.ListUnknown(concrete.ElemType)
+	}
+	t.Fatalf("no unknown value for member type %T; teach unknownWANAttr about it", typ)
+	return nil
+}
+
+// Test_wanDecodeResolvesUnknownPriorMembers hands every scattered Decode a
+// prior whose members are all unknown -- the shape a create hands it when
+// the configuration sets the object but omits its Optional+Computed
+// members -- against a response carrying none of the wires. Every member
+// must come back known (a value or null): Terraform refuses an unknown
+// after apply, which is how dns.ipv6_preference, load_balance.type and
+// load_balance.weight failed TestAccWANFramework_withNestedObjects.
+func Test_wanDecodeResolvesUnknownPriorMembers(t *testing.T) {
+	ctx := context.Background()
+	checked := 0
+	for _, field := range wanKitSpec().Fields {
+		scattered, ok := field.(resourcekit.ScatteredObjectField[wanKitModel, unifi.Network])
+		if !ok {
+			continue
+		}
+		members := make(map[string]attr.Value, len(scattered.AttrTypes))
+		for name, typ := range scattered.AttrTypes {
+			members[name] = unknownWANAttr(t, typ)
+		}
+		prior, d := types.ObjectValue(scattered.AttrTypes, members)
+		if d.HasError() {
+			t.Fatalf("%s: building the all-unknown prior: %v", scattered.Wires[0], d)
+		}
+		object, d := scattered.Decode(ctx, &unifi.Network{Purpose: unifi.PurposeWAN}, prior)
+		if d.HasError() {
+			t.Fatalf("%s: Decode: %v", scattered.Wires[0], d)
+		}
+		checked++
+		if object.IsUnknown() {
+			t.Errorf("%s: Decode returned an unknown object", scattered.Wires[0])
+			continue
+		}
+		if object.IsNull() {
+			continue
+		}
+		for name, value := range object.Attributes() {
+			if value.IsUnknown() {
+				t.Errorf("%s: member %q is still unknown after Decode; Terraform refuses "+
+					"an unknown after apply", scattered.Wires[0], name)
+			}
+		}
+	}
+	if checked != 10 {
+		t.Errorf("checked %d scattered field(s), want 10; a field the walk missed is one "+
+			"whose Decode nothing here holds to the known-members rule", checked)
+	}
 }

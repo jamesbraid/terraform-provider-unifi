@@ -147,8 +147,9 @@ func (p *parsedPackage) planCarriers() map[funcKey]map[string]bool {
 		return true
 	}
 
-	// A plan reaches this package through req.Plan.Get(ctx, &v) and nowhere
-	// else; anything else called a plan is a copy of one.
+	// A plan reaches this package through req.Plan.Get(ctx, &v) or through a
+	// kit hook parameter (seeded below); anything else called a plan is a
+	// copy of one.
 	for key, fn := range decls {
 		ast.Inspect(fn.Body, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
@@ -165,6 +166,50 @@ func (p *parsedPackage) planCarriers() map[funcKey]map[string]bool {
 			}
 			if ident, ok := identOf(call.Args[len(call.Args)-1]); ok {
 				mark(key, ident)
+			}
+			return true
+		})
+	}
+
+	// The resource kit moved every req.Plan.Get out of this package, so a
+	// descriptor now sees plan-derived values only through its hook
+	// parameters. Spec's own signatures say which those are --
+	// BeforeSend(ctx, config, effective, prior, sdk, prefetched) carries the
+	// practitioner's config, the effective model and the prior state (the
+	// plan, on create); AfterReceive(ctx, sdk, model, prior, prefetched)
+	// carries prior the same way -- so the functions a Spec literal binds to
+	// those keys are rooted here by parameter position.
+	hookParams := map[string][]int{
+		"BeforeSend":   {1, 2, 3},
+		"AfterReceive": {3},
+	}
+	for key, fn := range decls {
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			kv, ok := n.(*ast.KeyValueExpr)
+			if !ok {
+				return true
+			}
+			field, ok := kv.Key.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			positions, hook := hookParams[field.Name]
+			if !hook {
+				return true
+			}
+			target, ok := kv.Value.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			callee, ok := p.resolveCall(key, &ast.CallExpr{Fun: target}, byName)
+			if !ok {
+				return true
+			}
+			params := parameterNames(decls[callee])
+			for _, i := range positions {
+				if i < len(params) {
+					mark(callee, params[i])
+				}
 			}
 			return true
 		})

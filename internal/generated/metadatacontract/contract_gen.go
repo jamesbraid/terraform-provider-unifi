@@ -51,7 +51,7 @@ var FrozenTypeNames = map[string]string{
 	"unifiProvider":               "unifi",
 	"vpnClientResource":           "unifi_vpn_client",
 	"vpnServerResource":           "unifi_vpn_server",
-	"wanResource":                 "unifi_wan",
+	"wanKitResource":              "unifi_wan",
 	"wireguardPeerKitResource":    "unifi_wireguard_peer",
 	"wlanFrameworkResource":       "unifi_wlan",
 	"wlanGroupKitResource":        "unifi_wlan_group",
