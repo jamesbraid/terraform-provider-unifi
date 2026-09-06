@@ -153,6 +153,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		backend := scheduleTaskKitBackend(api)
 		record("schedule_task", backend.Create != nil, backend.CreateFields != nil)
 	}
+	{
+		backend := wireguardPeerKitBackend(api, "")
+		record("wireguard_peer", backend.Create != nil, backend.CreateFields != nil)
+	}
 
 	sort.Strings(seen)
 	served := kitServedSurfaces(t)
@@ -194,7 +198,6 @@ func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
 		"dynamic_dns",
 		"power_supervisor",
 		"site",
-		"wireguard_peer",
 	}
 	got := unmaskedHandWrittenSurfaces(t)
 	if len(got) != len(want) {

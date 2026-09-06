@@ -344,6 +344,17 @@
       },
       "schema_version": 0
     },
+    "unifi_wireguard_peer": {
+      "sdk_type": "WireGuardPeer",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_wlan": {
       "sdk_type": "WLAN",
       "duration_units": {},

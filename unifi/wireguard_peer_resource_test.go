@@ -177,7 +177,7 @@ func TestNewWireguardPeerListResource(t *testing.T) {
 }
 
 func Test_wireguardPeerResource_IdentitySchema(t *testing.T) {
-	r := &wireguardPeerResource{}
+	r := newWireguardPeerKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -191,9 +191,9 @@ func Test_wireguardPeerResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_wireguardPeerResource_modelToPeer(t *testing.T) {
+func Test_wireguardPeer_ToSDK(t *testing.T) {
 	ctx := context.Background()
-	r := &wireguardPeerResource{}
+	spec := wireguardPeerKitSpec()
 
 	t.Run("maps all fields", func(t *testing.T) {
 		allowedIPs, _ := types.ListValueFrom(
@@ -201,18 +201,18 @@ func Test_wireguardPeerResource_modelToPeer(t *testing.T) {
 			types.StringType,
 			[]string{"10.0.0.0/8", "192.168.1.0/24"},
 		)
-		model := &wireguardPeerResourceModel{
+		model := &wireguardPeerKitModel{
 			Name:        types.StringValue("my-peer"),
 			InterfaceIP: types.StringValue("10.0.0.2"),
 			PublicKey:   types.StringValue("abc123=="),
 			AllowedIPs:  allowedIPs,
 		}
-		got, diags := r.modelToPeer(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
 		if diags.HasError() {
-			t.Fatalf("modelToPeer() errors: %v", diags)
+			t.Fatalf("ToSDK() errors: %v", diags)
 		}
 		if got == nil {
-			t.Fatal("modelToPeer() returned nil")
+			t.Fatal("ToSDK() returned nil")
 		}
 		if got.Name != "my-peer" {
 			t.Errorf("Name = %q, want my-peer", got.Name)
@@ -229,15 +229,15 @@ func Test_wireguardPeerResource_modelToPeer(t *testing.T) {
 	})
 
 	t.Run("null allowed_ips gives empty slice", func(t *testing.T) {
-		model := &wireguardPeerResourceModel{
+		model := &wireguardPeerKitModel{
 			Name:        types.StringValue("peer2"),
 			InterfaceIP: types.StringValue("10.0.0.3"),
 			PublicKey:   types.StringValue("xyz=="),
 			AllowedIPs:  types.ListNull(types.StringType),
 		}
-		got, diags := r.modelToPeer(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
 		if diags.HasError() {
-			t.Fatalf("modelToPeer() errors: %v", diags)
+			t.Fatalf("ToSDK() errors: %v", diags)
 		}
 		if got.AllowedIPs == nil {
 			t.Error("AllowedIPs should be non-nil empty slice, got nil")
@@ -248,9 +248,9 @@ func Test_wireguardPeerResource_modelToPeer(t *testing.T) {
 	})
 }
 
-func Test_wireguardPeerResource_peerToModel(t *testing.T) {
+func Test_wireguardPeer_ToModel(t *testing.T) {
 	ctx := context.Background()
-	r := &wireguardPeerResource{}
+	spec := wireguardPeerKitSpec()
 
 	t.Run("populates all model fields", func(t *testing.T) {
 		peer := &unifi.WireGuardPeer{
@@ -261,10 +261,10 @@ func Test_wireguardPeerResource_peerToModel(t *testing.T) {
 			PublicKey:   "pubkey==",
 			AllowedIPs:  []string{"172.16.0.0/12"},
 		}
-		var model wireguardPeerResourceModel
-		diags := r.peerToModel(ctx, peer, &model, "default")
+		var model wireguardPeerKitModel
+		diags := spec.ToModel(ctx, peer, &model, "default")
 		if diags.HasError() {
-			t.Fatalf("peerToModel() errors: %v", diags)
+			t.Fatalf("ToModel() errors: %v", diags)
 		}
 		if model.ID.ValueString() != "peer-abc" {
 			t.Errorf("ID = %q, want peer-abc", model.ID.ValueString())
@@ -298,10 +298,10 @@ func Test_wireguardPeerResource_peerToModel(t *testing.T) {
 			PublicKey:   "k==",
 			AllowedIPs:  []string{},
 		}
-		var model wireguardPeerResourceModel
-		diags := r.peerToModel(ctx, peer, &model, "site1")
+		var model wireguardPeerKitModel
+		diags := spec.ToModel(ctx, peer, &model, "site1")
 		if diags.HasError() {
-			t.Fatalf("peerToModel() errors: %v", diags)
+			t.Fatalf("ToModel() errors: %v", diags)
 		}
 		if model.AllowedIPs.IsNull() {
 			t.Error("AllowedIPs should not be null for empty slice")
@@ -316,7 +316,7 @@ func Test_wireguardPeerResource_peerToModel(t *testing.T) {
 }
 
 func Test_wireguardPeerResource_ListResourceConfigSchema(t *testing.T) {
-	r := &wireguardPeerResource{}
+	r := newWireguardPeerKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {

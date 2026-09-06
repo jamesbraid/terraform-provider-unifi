@@ -49,6 +49,15 @@
     "closure signatures across nine working descriptors. Leave it blocked and let",
     "a SECOND parent-scoped surface be the trigger.",
     "",
+    "CLEARED, and \"widening Backend is the only remedy\" was wrong -- it only",
+    "held inside the Backend abstraction. Read and Delete SEE the state before",
+    "the kit does: the surface's own overrides peek network_id (Required and",
+    "RequiresReplace, so state always holds it) and rebind the backend scoped",
+    "to it before delegating to the embedded kit methods. The framework builds",
+    "a fresh resource instance per RPC, so the rebind is request-local. List",
+    "and import were already per-surface overrides on client, the precedent",
+    "this follows. Backend stays (site, id) for the 27 surfaces that fit it.",
+    "",
     "sdk-int MEANS THE SDK FIELD IS A PLAIN int, which no field kind can address:",
     "every integer kind in the kit is int64-based (Int64Field, Int64PtrField,",
     "DurationField, DurationPtrField all take func(*S) *int64 or **int64).",
@@ -415,9 +424,6 @@
     ],
     "wan": [
       "nested"
-    ],
-    "wireguard_peer": [
-      "parent-key"
     ]
   },
   "resolved_capabilities": {

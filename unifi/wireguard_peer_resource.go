@@ -3,112 +3,76 @@ package unifi
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_wireguard_peer"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wireguard_peer"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	resource_wireguard_peer "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wireguard_peer"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-// Ensure provider defined types fully satisfy framework interfaces.
+// wireguardPeerKitResource is the one parent-scoped surface: every SDK call
+// for a peer names the WireGuard server network it lives under. Create and
+// update carry that key on the object, but the kit's Read, Delete and List
+// closures only receive (site, id), so this wrapper overrides those three --
+// Read and Delete peek network_id out of state and rebind the backend before
+// delegating, and List decodes its own scoped config (as client's does).
+type wireguardPeerKitResource struct {
+	resourcekit.Resource[wireguardPeerKitModel, ui.WireGuardPeer]
+
+	// scopedBackend builds the backend for one parent network. A factory
+	// rather than a client field, so the overrides' rebinding stays
+	// injectable: a test can hand in a factory returning a fake and still
+	// see exactly which network the resource asked for.
+	scopedBackend func(networkID string) resourcekit.Backend[ui.WireGuardPeer]
+}
+
 var (
-	_ resource.Resource                = &wireguardPeerResource{}
-	_ resource.ResourceWithImportState = &wireguardPeerResource{}
-	_ resource.ResourceWithIdentity    = &wireguardPeerResource{}
+	_ resource.Resource                = &wireguardPeerKitResource{}
+	_ resource.ResourceWithImportState = &wireguardPeerKitResource{}
+	_ resource.ResourceWithIdentity    = &wireguardPeerKitResource{}
+	_ list.ListResource                = &wireguardPeerKitResource{}
+	_ list.ListResourceWithConfigure   = &wireguardPeerKitResource{}
 )
 
-// Ensure provider defined types fully satisfy list interfaces.
-var (
-	_ list.ListResource              = &wireguardPeerResource{}
-	_ list.ListResourceWithConfigure = &wireguardPeerResource{}
-)
-
-func NewWireguardPeerResource() resource.Resource {
-	return &wireguardPeerResource{}
+func newWireguardPeerKitResource() *wireguardPeerKitResource {
+	r := &wireguardPeerKitResource{}
+	r.Spec = wireguardPeerKitSpec()
+	r.SchemaSpec = wireguardPeerKitSchema()
+	r.ListSurface = wireguardPeerKitList()
+	return r
 }
 
-func NewWireguardPeerListResource() list.ListResource {
-	return &wireguardPeerResource{}
-}
+func NewWireguardPeerResource() resource.Resource { return newWireguardPeerKitResource() }
 
-// wireguardPeerResource defines the resource implementation.
-type wireguardPeerResource struct {
-	client *Client
-}
+func NewWireguardPeerListResource() list.ListResource { return newWireguardPeerKitResource() }
 
-// wireguardPeerResourceModel describes the resource data model.
-type wireguardPeerResourceModel struct {
-	ID          types.String   `tfsdk:"id"`
-	Site        types.String   `tfsdk:"site"`
-	NetworkID   types.String   `tfsdk:"network_id"`
-	Name        types.String   `tfsdk:"name"`
-	InterfaceIP types.String   `tfsdk:"interface_ip"`
-	PublicKey   types.String   `tfsdk:"public_key"`
-	AllowedIPs  types.List     `tfsdk:"allowed_ips"`
-	Timeouts    timeouts.Value `tfsdk:"timeouts"`
-}
-
-// wireguardPeerListConfigModel describes the list configuration model. Peers
-// belong to a WireGuard server network, so `network_id` is required.
-type wireguardPeerListConfigModel struct {
-	Site      types.String `tfsdk:"site"`
-	NetworkID types.String `tfsdk:"network_id"`
-	Filter    types.List   `tfsdk:"filter"`
-}
-
-// wireguardPeerListFilterModel represents a single name/value filter entry.
-type wireguardPeerListFilterModel struct {
-	Name  types.String `tfsdk:"name"`
-	Value types.String `tfsdk:"value"`
-}
-
-func (r *wireguardPeerResource) Metadata(
+func (r *wireguardPeerKitResource) Schema(
 	ctx context.Context,
+	_ resource.SchemaRequest,
+	resp *resource.SchemaResponse,
+) {
+	resp.Schema = resource_wireguard_peer.WireguardPeerResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true})
+}
+
+// Metadata is here, not promoted from an embedded type: descriptor_policy_test.go's
+// kitServedSurfaces resolves each surface's TypeName by parsing this method.
+func (r *wireguardPeerKitResource) Metadata(
+	_ context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
 ) {
 	resp.TypeName = req.ProviderTypeName + "_wireguard_peer"
 }
 
-// IdentitySchema implements [resource.ResourceWithIdentity].
-func (r *wireguardPeerResource) IdentitySchema(
+func (r *wireguardPeerKitResource) Configure(
 	_ context.Context,
-	_ resource.IdentitySchemaRequest,
-	resp *resource.IdentitySchemaResponse,
-) {
-	resp.IdentitySchema = identityschema.Schema{
-		Attributes: map[string]identityschema.Attribute{
-			"id": identityschema.StringAttribute{
-				RequiredForImport: true,
-			},
-		},
-	}
-}
-
-func (r *wireguardPeerResource) Schema(
-	ctx context.Context,
-	req resource.SchemaRequest,
-	resp *resource.SchemaResponse,
-) {
-	resp.Schema = resource_wireguard_peer.WireguardPeerResourceSchema(ctx)
-	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx, timeouts.Opts{
-		Create: true,
-		Read:   true,
-		Update: true,
-		Delete: true,
-	})
-}
-
-func (r *wireguardPeerResource) Configure(
-	ctx context.Context,
 	req resource.ConfigureRequest,
 	resp *resource.ConfigureResponse,
 ) {
@@ -116,333 +80,168 @@ func (r *wireguardPeerResource) Configure(
 	if !ok {
 		return
 	}
-
-	r.client = client
+	r.scopedBackend = func(networkID string) resourcekit.Backend[ui.WireGuardPeer] {
+		return wireguardPeerKitBackend(client.ApiClient, networkID)
+	}
+	// Bound without a parent network: Create and UpdateFields read it off
+	// the object, and the Read/Delete overrides rebind with the real one.
+	r.Spec.Backend = r.scopedBackend("")
+	r.DefaultSite = client.Site
 }
 
-func (r *wireguardPeerResource) Create(
-	ctx context.Context,
-	req resource.CreateRequest,
-	resp *resource.CreateResponse,
-) {
-	var data wireguardPeerResourceModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	createTimeout, timeoutDiags := data.Timeouts.Create(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, createTimeout)
-	defer cancel()
-
-	peer, diags := r.modelToPeer(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	createdPeer, err := r.client.CreateWireGuardPeer(ctx, site, data.NetworkID.ValueString(), peer)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Creating WireGuard Peer", resourcekit.DiagErrorText(err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(r.peerToModel(ctx, createdPeer, &data, site)...)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), data.ID)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *wireguardPeerResource) Read(
+// Read rebinds the backend to the network the peer belongs to, then runs the
+// kit's Read. network_id is Required and RequiresReplace, so state always
+// holds it -- an import supplies it through the import handle.
+func (r *wireguardPeerKitResource) Read(
 	ctx context.Context,
 	req resource.ReadRequest,
 	resp *resource.ReadResponse,
 ) {
-	var data wireguardPeerResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	var networkID types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("network_id"), &networkID)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	readTimeout, timeoutDiags := data.Timeouts.Read(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, readTimeout)
-	defer cancel()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	peer, err := r.client.GetWireGuardPeer(
-		ctx,
-		site,
-		data.NetworkID.ValueString(),
-		data.ID.ValueString(),
-	)
-	if err != nil {
-		if _, ok := err.(*unifi.NotFoundError); ok {
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Error Reading WireGuard Peer",
-			"Could not read WireGuard peer with ID "+data.ID.ValueString()+": "+resourcekit.DiagErrorText(err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(r.peerToModel(ctx, peer, &data, site)...)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), data.ID)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	r.Spec.Backend = r.scopedBackend(networkID.ValueString())
+	r.Resource.Read(ctx, req, resp)
 }
 
-func (r *wireguardPeerResource) Update(
-	ctx context.Context,
-	req resource.UpdateRequest,
-	resp *resource.UpdateResponse,
-) {
-	var data wireguardPeerResourceModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updateTimeout, timeoutDiags := data.Timeouts.Update(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-	defer cancel()
-
-	peer, diags := r.modelToPeer(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	peer.ID = data.ID.ValueString()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	updatedPeer, err := r.client.UpdateWireGuardPeer(ctx, site, data.NetworkID.ValueString(), peer)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Updating WireGuard Peer", resourcekit.DiagErrorText(err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(r.peerToModel(ctx, updatedPeer, &data, site)...)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), data.ID)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *wireguardPeerResource) Delete(
+// Delete rebinds the same way Read does.
+func (r *wireguardPeerKitResource) Delete(
 	ctx context.Context,
 	req resource.DeleteRequest,
 	resp *resource.DeleteResponse,
 ) {
-	var data wireguardPeerResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	var networkID types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("network_id"), &networkID)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	deleteTimeout, timeoutDiags := data.Timeouts.Delete(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
-	defer cancel()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	err := r.client.DeleteWireGuardPeer(
-		ctx,
-		site,
-		data.NetworkID.ValueString(),
-		data.ID.ValueString(),
-	)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Deleting WireGuard Peer", resourcekit.DiagErrorText(err),
-		)
-	}
+	r.Spec.Backend = r.scopedBackend(networkID.ValueString())
+	r.Resource.Delete(ctx, req, resp)
 }
 
-func (r *wireguardPeerResource) ImportState(
+// ImportState accepts "site:network_id:id" or "network_id:id" for the
+// default site: the parent network is part of a peer's address, so the
+// kit's uniform "site:id" form cannot name one.
+func (r *wireguardPeerKitResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
 ) {
-	// Import format: "site:network_id:id" or "network_id:id" for default site
 	idParts := strings.Split(req.ID, ":")
 
+	var handle string
 	switch len(idParts) {
 	case 3:
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), idParts[0])...)
 		resp.Diagnostics.Append(
 			resp.State.SetAttribute(ctx, path.Root("network_id"), idParts[1])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), idParts[2])...)
+		handle = idParts[2]
 	case 2:
 		resp.Diagnostics.Append(
 			resp.State.SetAttribute(ctx, path.Root("network_id"), idParts[0])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), idParts[1])...)
+		handle = idParts[1]
 	default:
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
 			"Import ID must be in format 'site:network_id:id' or 'network_id:id'",
 		)
+		return
+	}
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), handle)...)
+	// Identity is set here too, not only in Read: the framework pre-populates
+	// the post-import read's identity from this response, and leaving it null
+	// turns a clean not-found into "Missing Resource Identity After Read".
+	if resp.Identity != nil {
+		resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), handle)...)
 	}
 }
 
-// modelToPeer converts the Terraform model to the API struct.
-func (r *wireguardPeerResource) modelToPeer(
-	ctx context.Context,
-	model *wireguardPeerResourceModel,
-) (*unifi.WireGuardPeer, diag.Diagnostics) {
-	peer := &unifi.WireGuardPeer{
-		Name:        model.Name.ValueString(),
-		InterfaceIP: model.InterfaceIP.ValueString(),
-		PublicKey:   model.PublicKey.ValueString(),
-		AllowedIPs:  []string{},
-	}
-
-	var diags diag.Diagnostics
-	if !model.AllowedIPs.IsNull() && !model.AllowedIPs.IsUnknown() {
-		diags = model.AllowedIPs.ElementsAs(ctx, &peer.AllowedIPs, false)
-	}
-
-	return peer, diags
+// wireguardPeerListConfigModel is resourcekit.ListConfig plus the parent
+// network: peers can only be listed within a WireGuard server network, so
+// `network_id` is required.
+type wireguardPeerListConfigModel struct {
+	Site      types.String `tfsdk:"site"`
+	NetworkID types.String `tfsdk:"network_id"`
+	Filter    types.List   `tfsdk:"filter"`
 }
 
-// peerToModel converts the API struct to the Terraform model.
-func (r *wireguardPeerResource) peerToModel(
-	ctx context.Context,
-	peer *unifi.WireGuardPeer,
-	model *wireguardPeerResourceModel,
-	site string,
-) diag.Diagnostics {
-	model.ID = types.StringValue(peer.ID)
-	model.Site = types.StringValue(site)
-	model.NetworkID = types.StringValue(peer.NetworkID)
-	model.Name = types.StringValue(peer.Name)
-	model.InterfaceIP = types.StringValue(peer.InterfaceIP)
-	model.PublicKey = types.StringValue(peer.PublicKey)
-
-	allowedIPs, diags := types.ListValueFrom(ctx, types.StringType, peer.AllowedIPs)
-	model.AllowedIPs = allowedIPs
-	return diags
-}
-
-// ListResourceConfigSchema implements [list.ListResource]. Peers belong to a
-// WireGuard server network, so `network_id` is required.
-func (r *wireguardPeerResource) ListResourceConfigSchema(
-	ctx context.Context,
-	_ list.ListResourceSchemaRequest,
-	resp *list.ListResourceSchemaResponse,
-) {
-	resp.Schema = listresource_wireguard_peer.WireguardPeerListResourceSchema(ctx)
-}
-
-// List implements [list.ListResource].
-func (r *wireguardPeerResource) List(
+// List implements [list.ListResource]. The kit's List decodes the uniform
+// two-attribute config, which this surface's network_id does not fit, so the
+// walk lives here -- same shape, scoped fetch.
+func (r *wireguardPeerKitResource) List(
 	ctx context.Context,
 	req list.ListRequest,
 	stream *list.ListResultsStream,
 ) {
 	var config wireguardPeerListConfigModel
-
-	diags := req.Config.Get(ctx, &config)
-	if diags.HasError() {
+	if diags := req.Config.Get(ctx, &config); diags.HasError() {
 		stream.Results = list.ListResultsStreamDiagnostics(diags)
 		return
 	}
 
 	site := config.Site.ValueString()
 	if site == "" {
-		site = r.client.Site
+		site = r.DefaultSite
 	}
 
-	var filters []wireguardPeerListFilterModel
+	wanted := map[string]string{}
 	if !config.Filter.IsNull() && !config.Filter.IsUnknown() {
-		config.Filter.ElementsAs(ctx, &filters, false)
+		var filters []resourcekit.ListFilter
+		if diags := config.Filter.ElementsAs(ctx, &filters, false); diags.HasError() {
+			stream.Results = list.ListResultsStreamDiagnostics(diags)
+			return
+		}
+		for _, f := range filters {
+			wanted[f.Name.ValueString()] = f.Value.ValueString()
+		}
 	}
 
-	postFilters := make(map[string]string)
-	for _, f := range filters {
-		postFilters[f.Name.ValueString()] = f.Value.ValueString()
+	// The same refusal the kit's List makes: a filter naming no field would
+	// otherwise match everything, which reads as "nothing matched" rather
+	// than as the practitioner's mistake.
+	var unknown diag.Diagnostics
+	for name := range wanted {
+		if name != "name" {
+			unknown.AddError("Unknown filter",
+				"This resource has no filterable field named "+name+
+					". A filter that names nothing would match everything.")
+		}
+	}
+	if unknown.HasError() {
+		stream.Results = list.ListResultsStreamDiagnostics(unknown)
+		return
 	}
 
-	// Peers belong to a VPN-server network; network_id is required.
-	peers, err := r.client.ListWireGuardPeers(ctx, site, config.NetworkID.ValueString())
+	peers, err := r.scopedBackend(config.NetworkID.ValueString()).List(ctx, site)
 	if err != nil {
 		var d diag.Diagnostics
-		d.AddError(
-			"Error Listing WireGuard Peers",
-			"Could not list WireGuard peers: "+resourcekit.DiagErrorText(err),
-		)
+		d.AddError("Error Listing WireGuard Peers", resourcekit.DiagErrorText(err))
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return
 	}
 
 	stream.Results = func(push func(list.ListResult) bool) {
 		for i := range peers {
-			peer := peers[i]
-
-			if val, ok := postFilters["name"]; ok {
-				if peer.Name != val {
-					continue
-				}
+			peer := &peers[i]
+			if value, ok := wanted["name"]; ok && peer.Name != value {
+				continue
 			}
 
 			result := req.NewListResult(ctx)
-
 			if peer.Name != "" {
 				result.DisplayName = peer.Name
 			} else {
 				result.DisplayName = peer.ID
 			}
+			result.Diagnostics.Append(result.Identity.SetAttribute(
+				ctx, path.Root("id"), types.StringValue(peer.ID))...)
 
-			result.Diagnostics.Append(
-				result.Identity.SetAttribute(
-					ctx,
-					path.Root("id"),
-					types.StringValue(peer.ID),
-				)...,
-			)
-
-			var model wireguardPeerResourceModel
-			result.Diagnostics.Append(r.peerToModel(ctx, &peer, &model, site)...)
-			if !result.Diagnostics.HasError() {
-				model.Timeouts = timeoutsNullValue()
-				result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
-			}
+			var model wireguardPeerKitModel
+			result.Diagnostics.Append(r.Spec.ToModel(ctx, peer, &model, site)...)
+			model.Timeouts = timeoutsNullValue()
+			result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
 
 			if !push(result) {
 				return

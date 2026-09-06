@@ -36,6 +36,7 @@ import (
 	resource_traffic_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_traffic_route"
 	resource_vpn_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_client"
 	resource_vpn_server "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_server"
+	resource_wireguard_peer "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wireguard_peer"
 	resource_wlan "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wlan"
 	resource_wlan_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wlan_group"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -324,6 +325,17 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				clientKitSpec(), resource_client.ClientResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"wireguard_peer": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(wireguardPeerKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				wireguardPeerKitSpec(),
+				resource_wireguard_peer.WireguardPeerResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}
