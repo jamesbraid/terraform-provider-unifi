@@ -3,7 +3,7 @@ module github.com/ubiquiti-community/terraform-provider-unifi
 go 1.25.8
 
 require (
-	github.com/dlclark/regexp2 v1.11.0
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/docker/compose/v2 v2.40.3
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/hashicorp/terraform-plugin-codegen-spec v0.2.0
