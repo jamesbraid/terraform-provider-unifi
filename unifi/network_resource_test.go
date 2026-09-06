@@ -1,8 +1,11 @@
 package unifi
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
@@ -1807,4 +1810,177 @@ func Test_networkDecodeResolvesUnknownPriorMembers(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestAccNetworkFramework_importThenPlanClean pins the import round-trip the
+// downstream reconcile scenario measured broken on v0.109.0 (ubitofu
+// controllertest, 2026-09-05, unifi-network 10.6.101): the controller
+// stores neither gateway_type nor dhcpd_leasetime, so both must import as
+// null and stay unplanned. Unlike the older import steps above, gateway_type
+// and dhcp_server are deliberately NOT in ImportStateVerifyIgnore -- their
+// round-trip is the regression this test exists to catch (both carried
+// static defaults before, so every imported network planned
+// "+ gateway_type" and "+ dhcp_server.leasetime" forever). The final
+// PlanOnly step is the downstream complaint verbatim: a plan straight after
+// import must be empty.
+func TestAccNetworkFramework_importThenPlanClean(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkFrameworkConfig_importThenPlanClean(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_import_plan", "name", "Test Import Plan"),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_import_plan", "dhcp_server.start", "192.168.26.10"),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_import_plan", "dhcp_server.stop", "192.168.26.254"),
+					// The controller stores no gateway_type and discards
+					// dhcpd_leasetime, so neither may surface as a value.
+					resource.TestCheckNoResourceAttr(
+						"unifi_network.test_import_plan", "gateway_type"),
+					resource.TestCheckNoResourceAttr(
+						"unifi_network.test_import_plan", "dhcp_server.leasetime"),
+				),
+			},
+			{
+				ResourceName:      "unifi_network.test_import_plan",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateId:     "name=Test Import Plan",
+			},
+			{
+				Config:   testAccNetworkFrameworkConfig_importThenPlanClean(),
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
+func testAccNetworkFrameworkConfig_importThenPlanClean() string {
+	return `
+resource "unifi_network" "test_import_plan" {
+	name   = "Test Import Plan"
+	subnet = "192.168.26.1/24"
+	vlan   = 26
+
+	dhcp_server = {
+		enabled = true
+		start   = "192.168.26.10"
+		stop    = "192.168.26.254"
+	}
+}
+`
+}
+
+// TestAccNetworkFramework_dhcpEnableWithoutRange enables DHCP on an
+// imported network whose stored document carries no dhcpd_start/dhcpd_stop,
+// without configuring a range -- the downstream reconcile scenario verbatim
+// (ubitofu controllertest, 2026-09-05, provider 0.109.0 on unifi-network
+// 10.6.101). The masked update's response carries a range anyway (the SDK's
+// corporate encoder derives one from ip_subnet when the caller holds none);
+// before networkKeepPriorNulls the decode wrote it into state where the
+// plan held null and Terraform killed the apply with "was null, but now
+// cty.StringVal(...)". Both members must stay null through the apply and
+// the step's own post-apply plan must come back empty.
+//
+// The range-free document has to be fabricated with a raw create: every
+// SDK write path runs the corporate encoder, which fills dhcpd_start and
+// dhcpd_stop whenever they are empty, so no unifi_network apply -- and no
+// out-of-band UpdateNetwork -- can produce a document without them
+// (measured here on the pinned 10.6.101 image).
+func TestAccNetworkFramework_dhcpEnableWithoutRange(t *testing.T) {
+	createRangeFreeNetworkOutOfBand := func() {
+		base, client := rawWireSession(t)
+		encoded, err := json.Marshal(map[string]any{
+			"name":          "Test DHCP Range",
+			"purpose":       "corporate",
+			"ip_subnet":     "192.168.27.1/24",
+			"vlan":          27,
+			"vlan_enabled":  true,
+			"dhcpd_enabled": false,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		request, err := http.NewRequestWithContext(context.Background(),
+			http.MethodPost, base+"/api/s/default/rest/networkconf", bytes.NewReader(encoded))
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.Header.Set("Content-Type", "application/json")
+		response, err := client.Do(request)
+		if err != nil {
+			t.Fatalf("raw networkconf create: %v", err)
+		}
+		defer response.Body.Close()
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("raw networkconf create returned %d", response.StatusCode)
+		}
+		documents, ok := rawDocuments(t, base, client, "/api/s/default/rest/networkconf")
+		if !ok {
+			t.Fatal("unable to list networkconf documents for the positive control")
+		}
+		for _, document := range documents {
+			if document["name"] != "Test DHCP Range" {
+				continue
+			}
+			_, hasStart := document["dhcpd_start"]
+			_, hasStop := document["dhcpd_stop"]
+			if hasStart || hasStop {
+				t.Fatalf("the stored document carries dhcpd_start/dhcpd_stop "+
+					"(start %v, stop %v), so the plan-null precondition this test "+
+					"needs cannot be established and it would pass vacuously",
+					hasStart, hasStop)
+			}
+			t.Log("POSITIVE CONTROL: the stored document carries no dhcpd_start/dhcpd_stop")
+			return
+		}
+		t.Fatal("the raw create succeeded but the document is not listed")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				PreConfig:          createRangeFreeNetworkOutOfBand,
+				Config:             testAccNetworkFrameworkConfig_dhcpRange(false),
+				ResourceName:       "unifi_network.test_dhcp_range",
+				ImportState:        true,
+				ImportStateId:      "name=Test DHCP Range",
+				ImportStatePersist: true,
+			},
+			{
+				Config: testAccNetworkFrameworkConfig_dhcpRange(true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_range", "dhcp_server.enabled", "true"),
+					// The range stays delegated: the plan held both members
+					// null (the imported document carried neither), so the
+					// update response's range must not reach state.
+					resource.TestCheckNoResourceAttr(
+						"unifi_network.test_dhcp_range", "dhcp_server.start"),
+					resource.TestCheckNoResourceAttr(
+						"unifi_network.test_dhcp_range", "dhcp_server.stop"),
+				),
+			},
+		},
+	})
+}
+
+func testAccNetworkFrameworkConfig_dhcpRange(enabled bool) string {
+	return fmt.Sprintf(`
+resource "unifi_network" "test_dhcp_range" {
+	name   = "Test DHCP Range"
+	subnet = "192.168.27.1/24"
+	vlan   = 27
+
+	dhcp_server = {
+		enabled = %t
+	}
+}
+`, enabled)
 }
