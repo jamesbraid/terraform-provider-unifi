@@ -1,10 +1,29 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "enabledManagers": ["gomod", "github-actions"],
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "gomod",
+    "github-actions"
+  ],
   "prConcurrentLimit": 5,
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "gomod": {
-    "postUpdateOptions": ["gomodTidy"]
-  }
+    "postUpdateOptions": [
+      "gomodTidy"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "The go-unifi pin is program-managed: shas are chosen deliberately (capture-stage commits, post-merge batches) in coordination with the SDK lane and taken through the full acceptance gate. Renovate must not propose or move it.",
+      "matchPackageNames": [
+        "github.com/jamesbraid/go-unifi",
+        "github.com/ubiquiti-community/go-unifi"
+      ],
+      "enabled": false
+    }
+  ]
 }
