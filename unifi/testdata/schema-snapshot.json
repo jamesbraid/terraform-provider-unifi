@@ -4066,9 +4066,11 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`.",
+          "description": "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Left unset, the controller applies its own default of `24h`.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to 24h0m0s",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
         "dhcp_server.ntp_enabled": {
@@ -4292,9 +4294,11 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "The gateway type. Must be one of `default` or `switch`.",
+          "description": "The gateway type. Must be one of `default` or `switch`. Left unset, the controller manages it.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to default",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
           "validators": [
             "stringvalidator.oneOfValidator: value must be one of: [\"default\" \"switch\"]"
           ]

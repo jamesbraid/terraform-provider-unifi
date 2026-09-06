@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -173,9 +172,11 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						CustomType:          timetypes.GoDurationType{},
 						Optional:            true,
 						Computed:            true,
-						Description:         "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`.",
-						MarkdownDescription: "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`.",
-						Default:             stringdefault.StaticString("24h0m0s"),
+						Description:         "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Left unset, the controller applies its own default of `24h`.",
+						MarkdownDescription: "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Left unset, the controller applies its own default of `24h`.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"ntp_enabled": schema.BoolAttribute{
 						Optional:            true,
@@ -370,12 +371,14 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 			"gateway_type": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "The gateway type. Must be one of `default` or `switch`.",
-				MarkdownDescription: "The gateway type. Must be one of `default` or `switch`.",
+				Description:         "The gateway type. Must be one of `default` or `switch`. Left unset, the controller manages it.",
+				MarkdownDescription: "The gateway type. Must be one of `default` or `switch`. Left unset, the controller manages it.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("default", "switch"),
 				},
-				Default: stringdefault.StaticString("default"),
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,

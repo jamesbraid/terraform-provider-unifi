@@ -58,14 +58,12 @@ unifi_network.dhcp_server.conflict_checking
 unifi_network.dhcp_server.dns_enabled
 unifi_network.dhcp_server.enabled
 unifi_network.dhcp_server.gateway_enabled
-unifi_network.dhcp_server.leasetime
 unifi_network.dhcp_server.ntp_enabled
 unifi_network.dhcp_server.time_offset_enabled
 unifi_network.dhcp_server.wins
 unifi_network.dhcp_server.wins.enabled
 unifi_network.dhcp_v6_server.enabled
 unifi_network.enabled
-unifi_network.gateway_type
 unifi_network.igmp_snooping
 unifi_network.internet_access
 unifi_network.network_isolation

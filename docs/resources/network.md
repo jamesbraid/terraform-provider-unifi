@@ -100,7 +100,7 @@ resource "unifi_network" "third_party" {
 - `domain_name` (String) The domain name for the network.
 - `enabled` (Boolean) Specifies whether the network is enabled.
 - `firewall_zone_id` (String) The ID of the firewall zone (`unifi_firewall_zone`) this network belongs to.
-- `gateway_type` (String) The gateway type. Must be one of `default` or `switch`.
+- `gateway_type` (String) The gateway type. Must be one of `default` or `switch`. Left unset, the controller manages it.
 - `igmp_snooping` (Boolean) Specifies whether IGMP snooping is enabled.
 - `internet_access` (Boolean) Specifies whether internet access is enabled.
 - `ip_aliases` (List of String) List of IP aliases for the network.
@@ -162,7 +162,7 @@ Optional:
 - `dns_servers` (List of String) List of DNS server addresses for DHCP clients.
 - `enabled` (Boolean) Specifies whether DHCP server is enabled.
 - `gateway_enabled` (Boolean) Specifies whether DHCP gateway is enabled.
-- `leasetime` (String) Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`.
+- `leasetime` (String) Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Left unset, the controller applies its own default of `24h`.
 - `ntp_enabled` (Boolean) Specifies whether DHCP NTP is enabled.
 - `ntp_servers` (List of String) List of NTP server addresses for DHCP clients (maximum 2).
 - `start` (String) The IPv4 address where the DHCP range starts.
