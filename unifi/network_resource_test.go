@@ -16,10 +16,13 @@ import (
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 func strPtr(s string) *string { return &s }
@@ -1596,4 +1599,212 @@ func (r *networkKitResource) networkToModel(
 	diags := r.Spec.ToModel(ctx, network, model, site)
 	diags.Append(r.Spec.AfterReceive(ctx, network, model, prior, nil)...)
 	return diags
+}
+
+// dhcpDecodeFixture is a response carrying a value for every nullable member
+// of the four scattered DHCP objects, so the probes below exercise every
+// member type networkNullOf must cover.
+func dhcpDecodeFixture() *unifi.Network {
+	return &unifi.Network{
+		ID:                     "net-1",
+		Purpose:                unifi.PurposeCorporate,
+		DHCPguardEnabled:       true,
+		DHCPDIP1:               "192.168.1.5",
+		DHCPDEnabled:           true,
+		DHCPDStart:             strPtr("192.168.1.6"),
+		DHCPDStop:              strPtr("192.168.1.254"),
+		DHCPDGatewayEnabled:    true,
+		DHCPDConflictChecking:  true,
+		DHCPDNtpEnabled:        true,
+		DHCPDTimeOffsetEnabled: true,
+		DHCPDDNSEnabled:        true,
+		DHCPDLeaseTime:         util.Ptr(int64(86400)),
+		DHCPDWPAdUrl:           strPtr("http://wpad.example/wpad.dat"),
+		DHCPDTFTPServer:        strPtr("192.168.1.2"),
+		DHCPDUnifiController:   strPtr("192.168.1.3"),
+		DHCPDDNS1:              strPtr("1.1.1.1"),
+		DHCPDBootEnabled:       true,
+		DHCPDBootServer:        "192.168.1.4",
+		DHCPDBootFilename:      strPtr("pxelinux.0"),
+		DHCPDWinsEnabled:       true,
+		DHCPDWins1:             strPtr("192.168.1.7"),
+		DHCPDNtp1:              strPtr("192.168.1.8"),
+		DHCPDV6Enabled:         true,
+		DHCPDV6DNSAuto:         true,
+		DHCPDV6Start:           strPtr("::2"),
+		DHCPDV6Stop:            strPtr("::7d1"),
+		DHCPDV6LeaseTime:       util.Ptr(int64(86400)),
+		DHCPDV6DNS1:            strPtr("2001:4860:4860::8888"),
+		DHCPRelayEnabled:       true,
+		DHCPRelayServers:       []string{"192.168.1.9"},
+	}
+}
+
+// networkScatteredFields collects the four scattered DHCP objects from the
+// spec, failing loudly if the count drifts so a new object cannot dodge the
+// probes below.
+func networkScatteredFields(t *testing.T) []resourcekit.ScatteredObjectField[netModel, unifi.Network] {
+	t.Helper()
+	var scattered []resourcekit.ScatteredObjectField[netModel, unifi.Network]
+	for _, field := range networkKitSpec().Fields {
+		if s, ok := field.(resourcekit.ScatteredObjectField[netModel, unifi.Network]); ok {
+			scattered = append(scattered, s)
+		}
+	}
+	if len(scattered) != 4 {
+		t.Fatalf("found %d scattered field(s), want 4; a field this walk missed is one "+
+			"whose Decode nothing here holds to the prior-null and known-members rules",
+			len(scattered))
+	}
+	return scattered
+}
+
+// nullNetworkAttr builds the null value of one member type via networkNullOf,
+// failing the test where the switch has no case -- the same loud path
+// networkKeepPriorNulls takes at decode time.
+func nullNetworkAttr(t *testing.T, typ attr.Type) attr.Value {
+	t.Helper()
+	null, ok := networkNullOf(typ)
+	if !ok {
+		t.Fatalf("no null value for member type %T; teach networkNullOf about it", typ)
+	}
+	return null
+}
+
+// Test_networkDecodePreservesPriorNulls hands the dhcp_server Decode a prior
+// whose members are all null -- the shape an update hands it for members the
+// plan never set -- against a response carrying a value for every one of
+// them. start, stop and leasetime must come back null: on an update the
+// prior is the plan, Terraform kills the apply when a plan-null member turns
+// into a value, and go-unifi's corporate encoder invents dhcpd_start and
+// dhcpd_stop from ip_subnet on every masked update, so the response carries
+// them for a plan that never set a range (ubitofu controllertest reconcile
+// scenario, 2026-09-05, provider 0.109.0 on unifi-network 10.6.101).
+//
+// Every OTHER member must take the response despite the null prior: those
+// values only exist on the wire when the controller really holds them, and
+// re-nulling them hides drift a refresh must surface -- the masked write
+// then re-asserts an enable flag without its operand and the controller
+// rejects it (api.err.MissingIPAddress for dhcpguard_enabled without
+// dhcpd_ip_1, api.err.NtpAddressInvalid for dhcpd_ntp_enabled with an
+// empty dhcpd_ntp_1; both measured here on the pinned 10.6.101 image when
+// the rule was blanket). The null-prior contrast at the end proves the rule
+// is prior-conditioned: an import (no prior at all) decodes the full
+// response, range included.
+func Test_networkDecodePreservesPriorNulls(t *testing.T) {
+	ctx := context.Background()
+	network := dhcpDecodeFixture()
+	preserved := map[string]bool{"start": true, "stop": true, "leasetime": true}
+	probed := false
+	for _, scattered := range networkScatteredFields(t) {
+		members := make(map[string]attr.Value, len(scattered.AttrTypes))
+		for name, typ := range scattered.AttrTypes {
+			members[name] = nullNetworkAttr(t, typ)
+		}
+		prior, d := types.ObjectValue(scattered.AttrTypes, members)
+		if d.HasError() {
+			t.Fatalf("%s: building the all-null prior: %v", scattered.Wires[0], d)
+		}
+		object, d := scattered.Decode(ctx, network, prior)
+		if d.HasError() {
+			t.Fatalf("%s: Decode: %v", scattered.Wires[0], d)
+		}
+		isDHCPServer := scattered.Wires[0] == "dhcpd_enabled"
+		for name, value := range object.Attributes() {
+			if isDHCPServer && preserved[name] {
+				probed = true
+				if !value.IsNull() {
+					t.Errorf("dhcp_server member %q = %v, want null; the prior (the "+
+						"plan, on an update) holds it as null and Terraform refuses "+
+						"an apply that turns a plan-null into a value", name, value)
+				}
+				continue
+			}
+			// The fixture carries a wire value for every drift-bearing
+			// member, so a null here means the decode dropped real
+			// controller state.
+			if name == "boot" || name == "wins" {
+				continue // nested objects: their members decode from always-present wires
+			}
+			if value.IsNull() {
+				t.Errorf("%s: member %q is null despite the response carrying it; "+
+					"a null prior must not hide controller-side state from a refresh",
+					scattered.Wires[0], name)
+			}
+		}
+
+		// The contrast: no prior at all (an import's first read) takes the
+		// response, range included.
+		object, d = scattered.Decode(ctx, network, types.ObjectNull(scattered.AttrTypes))
+		if d.HasError() {
+			t.Fatalf("%s: Decode with null prior: %v", scattered.Wires[0], d)
+		}
+		if isDHCPServer {
+			start := object.Attributes()["start"]
+			if start.IsNull() {
+				t.Error("dhcp_server.start is null on an import's first read; the rule " +
+					"must only preserve nulls the prior asserts, not stop decoding")
+			}
+		}
+	}
+	if !probed {
+		t.Fatal("the walk never reached dhcp_server's preserved members; " +
+			"the probe proved nothing")
+	}
+}
+
+// unknownNetworkAttr builds the unknown value of one member type, for the
+// probe below. The switch covers every member type network's objects declare.
+func unknownNetworkAttr(t *testing.T, typ attr.Type) attr.Value {
+	t.Helper()
+	switch concrete := typ.(type) {
+	case basetypes.BoolType:
+		return types.BoolUnknown()
+	case basetypes.Int64Type:
+		return types.Int64Unknown()
+	case basetypes.StringType:
+		return types.StringUnknown()
+	case timetypes.GoDurationType:
+		return timetypes.NewGoDurationUnknown()
+	case types.ListType:
+		return types.ListUnknown(concrete.ElemType)
+	case types.ObjectType:
+		return types.ObjectUnknown(concrete.AttrTypes)
+	}
+	t.Fatalf("no unknown value for member type %T; teach unknownNetworkAttr about it", typ)
+	return nil
+}
+
+// Test_networkDecodeResolvesUnknownPriorMembers holds network's scattered
+// Decodes to the same known-members rule wan's wanResolveUnknowns enforces:
+// a prior full of unknowns (a create whose configuration sets the object but
+// omits its Optional+Computed members) must leave every member known, since
+// Terraform refuses an unknown after apply.
+func Test_networkDecodeResolvesUnknownPriorMembers(t *testing.T) {
+	ctx := context.Background()
+	network := &unifi.Network{ID: "net-1", Purpose: unifi.PurposeCorporate}
+	for _, scattered := range networkScatteredFields(t) {
+		members := make(map[string]attr.Value, len(scattered.AttrTypes))
+		for name, typ := range scattered.AttrTypes {
+			members[name] = unknownNetworkAttr(t, typ)
+		}
+		prior, d := types.ObjectValue(scattered.AttrTypes, members)
+		if d.HasError() {
+			t.Fatalf("%s: building the all-unknown prior: %v", scattered.Wires[0], d)
+		}
+		object, d := scattered.Decode(ctx, network, prior)
+		if d.HasError() {
+			t.Fatalf("%s: Decode: %v", scattered.Wires[0], d)
+		}
+		if object.IsUnknown() {
+			t.Errorf("%s: Decode returned an unknown object", scattered.Wires[0])
+			continue
+		}
+		for name, value := range object.Attributes() {
+			if value.IsUnknown() {
+				t.Errorf("%s: member %q is still unknown after Decode; Terraform refuses "+
+					"an unknown after apply", scattered.Wires[0], name)
+			}
+		}
+	}
 }

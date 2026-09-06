@@ -103,6 +103,86 @@ func strPtrOrNull(ptr *string) types.String {
 	return types.StringValue(*ptr)
 }
 
+// networkKeepPriorNulls re-nulls the NAMED decoded members where prior holds
+// them null. prior is the plan's object on create and the state with the
+// plan applied on update, so a null member there is one the plan asserts as
+// null -- Terraform refuses an apply that turns it into a value.
+//
+// The rule is member-scoped, not blanket, because only dhcpd_start and
+// dhcpd_stop can meet a response value while the plan holds null with no
+// drift involved: go-unifi's corporate encoder derives both from ip_subnet
+// whenever the caller holds none, so every masked update plants them and
+// the response echoes them back. For every other member a response value
+// can only be real controller-side state, and a refresh must surface it --
+// re-nulling those hides drift and then re-asserts an enable flag without
+// its operand (dhcpguard_enabled without dhcpd_ip_1, dhcpd_ntp_enabled
+// with an empty dhcpd_ntp_1), which the controller rejects.
+func networkKeepPriorNulls(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	prior, decoded types.Object,
+	members ...string,
+) types.Object {
+	if prior.IsNull() || prior.IsUnknown() || decoded.IsNull() || decoded.IsUnknown() {
+		return decoded
+	}
+	attrTypes := decoded.AttributeTypes(ctx)
+	priorMembers := prior.Attributes()
+	// Copied, not aliased: Attributes may hand back the object's own map.
+	resolved := make(map[string]attr.Value, len(attrTypes))
+	for name, value := range decoded.Attributes() {
+		resolved[name] = value
+	}
+	changed := false
+	for _, name := range members {
+		priorValue, held := priorMembers[name]
+		if !held || !priorValue.IsNull() || resolved[name].IsNull() {
+			continue
+		}
+		null, ok := networkNullOf(attrTypes[name])
+		if !ok {
+			// Loud rather than passed through: the apply fails on the
+			// inconsistency anyway, but with a message blaming Terraform.
+			diags.AddError("Decoding a network object",
+				"member "+name+" has a type networkNullOf does not cover, so its "+
+					"plan-asserted null cannot be preserved")
+			return decoded
+		}
+		resolved[name] = null
+		changed = true
+	}
+	if !changed {
+		return decoded
+	}
+	object, d := types.ObjectValue(attrTypes, resolved)
+	diags.Append(d...)
+	if d.HasError() {
+		return decoded
+	}
+	return object
+}
+
+// networkNullOf builds the null value of one member type. The switch covers
+// every member type network's objects declare; a member named past it is
+// reported by networkKeepPriorNulls rather than silently passed through.
+func networkNullOf(typ attr.Type) (attr.Value, bool) {
+	switch concrete := typ.(type) {
+	case basetypes.BoolType:
+		return types.BoolNull(), true
+	case basetypes.Int64Type:
+		return types.Int64Null(), true
+	case basetypes.StringType:
+		return types.StringNull(), true
+	case timetypes.GoDurationType:
+		return timetypes.NewGoDurationNull(), true
+	case types.ListType:
+		return types.ListNull(concrete.ElemType), true
+	case types.ObjectType:
+		return types.ObjectNull(concrete.AttrTypes), true
+	}
+	return nil, false
+}
+
 func networkKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Network] {
 	return resourcekit.Backend[ui.Network]{
 		// A network IS created -- unlike a device, which is adopted -- so the
@@ -522,7 +602,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					return diags
 				},
 				Decode: func(
-					ctx context.Context, sdk *ui.Network, _ types.Object,
+					ctx context.Context, sdk *ui.Network, prior types.Object,
 				) (types.Object, diag.Diagnostics) {
 					var diags diag.Diagnostics
 					value := dhcpServerModel{
@@ -545,6 +625,12 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					}
 					object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
 					diags.Append(d...)
+					// leasetime rides along defensively: 10.6.101 discards
+					// dhcpd_leasetime writes and never stores it, so today the
+					// branch is unreachable, but a controller that starts
+					// echoing it would hit the same plan-null inconsistency.
+					object = networkKeepPriorNulls(ctx, &diags, prior, object,
+						"start", "stop", "leasetime")
 					return object, diags
 				},
 				Elide: resourcekit.KeepZero,
