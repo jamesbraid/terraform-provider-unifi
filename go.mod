@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-log v0.10.0
 	github.com/hashicorp/terraform-plugin-testing v1.16.0
-	github.com/moby/moby/api v1.54.2
+	github.com/moby/moby/api v1.56.0
 	github.com/testcontainers/testcontainers-go v0.43.0
 	github.com/testcontainers/testcontainers-go/modules/compose v0.43.0
 	github.com/ubiquiti-community/go-unifi v1.103.0
