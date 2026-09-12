@@ -94,29 +94,15 @@ func TestNewBGPResource(t *testing.T) {
 	}
 }
 
-func Test_bgpPeerModel_AttributeTypes(t *testing.T) {
-	tests := []struct {
-		name string
-		m    bgpPeerModel
-		want map[string]attr.Type
-	}{
-		{
-			name: "returns correct types",
-			m:    bgpPeerModel{},
-			want: map[string]attr.Type{
-				"name":        types.StringType,
-				"remote_as":   types.Int64Type,
-				"description": types.StringType,
-				"networks":    types.ListType{ElemType: types.StringType},
-			},
-		},
+func Test_bgpPeersAttrTypes(t *testing.T) {
+	want := map[string]attr.Type{
+		"name":        types.StringType,
+		"remote_as":   types.Int64Type,
+		"description": types.StringType,
+		"networks":    types.ListType{ElemType: types.StringType},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.m.AttributeTypes(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("bgpPeerModel.AttributeTypes() = %v, want %v", got, tt.want)
-			}
-		})
+	if !reflect.DeepEqual(bgpPeersAttrTypes, want) {
+		t.Errorf("bgpPeersAttrTypes = %v, want %v", bgpPeersAttrTypes, want)
 	}
 }
 
@@ -197,7 +183,7 @@ func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
 				ASN:      types.Int64Value(65001),
 				RouterID: types.StringValue("10.0.0.2"),
 				Peers: types.ListNull(
-					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+					types.ObjectType{AttrTypes: bgpPeersAttrTypes},
 				),
 				UploadFileName: types.StringValue("new.conf"),
 				Description:    types.StringValue("new desc"),
@@ -209,7 +195,7 @@ func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
 				ASN:      types.Int64Value(65000),
 				RouterID: types.StringValue("10.0.0.1"),
 				Peers: types.ListNull(
-					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+					types.ObjectType{AttrTypes: bgpPeersAttrTypes},
 				),
 				UploadFileName: types.StringValue("old.conf"),
 				Description:    types.StringValue("old desc"),
@@ -246,7 +232,7 @@ func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
 				ASN:      types.Int64Null(),
 				RouterID: types.StringNull(),
 				Peers: types.ListNull(
-					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+					types.ObjectType{AttrTypes: bgpPeersAttrTypes},
 				),
 				UploadFileName: types.StringNull(),
 				Description:    types.StringNull(),
@@ -258,7 +244,7 @@ func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
 				ASN:      types.Int64Value(65000),
 				RouterID: types.StringValue("10.0.0.1"),
 				Peers: types.ListNull(
-					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+					types.ObjectType{AttrTypes: bgpPeersAttrTypes},
 				),
 				UploadFileName: types.StringValue("keep.conf"),
 				Description:    types.StringValue("keep desc"),
@@ -283,7 +269,7 @@ func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
 				ASN:      types.Int64Unknown(),
 				RouterID: types.StringUnknown(),
 				Peers: types.ListUnknown(
-					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+					types.ObjectType{AttrTypes: bgpPeersAttrTypes},
 				),
 				UploadFileName: types.StringUnknown(),
 				Description:    types.StringUnknown(),
@@ -294,7 +280,7 @@ func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
 				ASN:      types.Int64Value(65002),
 				RouterID: types.StringValue("1.2.3.4"),
 				Peers: types.ListNull(
-					types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()},
+					types.ObjectType{AttrTypes: bgpPeersAttrTypes},
 				),
 				UploadFileName: types.StringValue("kept.conf"),
 				Description:    types.StringValue("kept desc"),
@@ -318,9 +304,9 @@ func Test_bgpSpec_ApplyPlanToState(t *testing.T) {
 }
 
 // helper to build a peers list for testing.
-func testBuildPeersList(t *testing.T, peers []bgpPeerModel) types.List {
+func testBuildPeersList(t *testing.T, peers []bgpPeersModel) types.List {
 	t.Helper()
-	peerAttrTypes := bgpPeerModel{}.AttributeTypes()
+	peerAttrTypes := bgpPeersAttrTypes
 	objType := types.ObjectType{AttrTypes: peerAttrTypes}
 
 	vals := make([]attr.Value, len(peers))
@@ -347,7 +333,7 @@ func Test_bgp_renderFRRConfig(t *testing.T) {
 		types.StringValue("fd00:10::/64"),
 	})
 
-	peersList := testBuildPeersList(t, []bgpPeerModel{
+	peersList := testBuildPeersList(t, []bgpPeersModel{
 		{
 			Name:        types.StringValue("CILIUM"),
 			RemoteAS:    types.Int64Value(65001),
@@ -390,7 +376,7 @@ func Test_bgp_renderFRRConfig(t *testing.T) {
 			model: &bgpKitModel{
 				ASN:      types.Int64Value(65100),
 				RouterID: types.StringValue("192.168.1.1"),
-				Peers: testBuildPeersList(t, []bgpPeerModel{
+				Peers: testBuildPeersList(t, []bgpPeersModel{
 					{
 						Name:        types.StringValue("UPSTREAM"),
 						RemoteAS:    types.Int64Value(65200),
@@ -443,7 +429,7 @@ func bgpModelToSDK(
 
 func Test_bgp_modelToSDK(t *testing.T) {
 	ctx := context.Background()
-	peerObjType := types.ObjectType{AttrTypes: bgpPeerModel{}.AttributeTypes()}
+	peerObjType := types.ObjectType{AttrTypes: bgpPeersAttrTypes}
 
 	t.Run("raw config mode", func(t *testing.T) {
 		got, errored := bgpModelToSDK(ctx, t, &bgpKitModel{
@@ -475,7 +461,7 @@ func Test_bgp_modelToSDK(t *testing.T) {
 			Config:   types.StringNull(),
 			ASN:      types.Int64Value(65000),
 			RouterID: types.StringValue("10.0.0.1"),
-			Peers: testBuildPeersList(t, []bgpPeerModel{
+			Peers: testBuildPeersList(t, []bgpPeersModel{
 				{
 					Name:        types.StringValue("TEST"),
 					RemoteAS:    types.Int64Value(65001),

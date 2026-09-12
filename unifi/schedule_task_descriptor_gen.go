@@ -4,6 +4,7 @@ package unifi
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -18,6 +19,14 @@ type scheduleTaskKitModel struct {
 	Name            types.String   `tfsdk:"name"`
 	UpgradeTargets  types.List     `tfsdk:"upgrade_targets"`
 	Timeouts        timeouts.Value `tfsdk:"timeouts"`
+}
+
+type scheduleTaskUpgradeTargetsModel struct {
+	MAC types.String `tfsdk:"mac"`
+}
+
+var scheduleTaskUpgradeTargetsAttrTypes = map[string]attr.Type{
+	"mac": types.StringType,
 }
 
 // scheduleTaskGenFields is every unifi_schedule_task attribute whose mapping the pipeline's

@@ -14,17 +14,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-// scheduleTaskTargetModel describes one nested upgrade_targets entry.
-type scheduleTaskTargetModel struct {
-	MAC types.String `tfsdk:"mac"`
-}
-
-func (m scheduleTaskTargetModel) AttributeTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"mac": types.StringType,
-	}
-}
-
 // scheduleTaskKitSpec maps the ScheduleTask struct. action is the sole enum
 // value the SDK records ("upgrade") and defaults to it, so a minimal config
 // is a cron, a once/repeat flag and the devices to upgrade. The four attr_*
@@ -44,7 +33,7 @@ func scheduleTaskKitSpec() resourcekit.Spec[scheduleTaskKitModel, ui.ScheduleTas
 				Wire:      "upgrade_targets",
 				Model:     func(m *scheduleTaskKitModel) *types.List { return &m.UpgradeTargets },
 				SDK:       func(s *ui.ScheduleTask) *[]ui.ScheduleTaskUpgradeTargets { return &s.UpgradeTargets },
-				AttrTypes: scheduleTaskTargetModel{}.AttributeTypes(),
+				AttrTypes: scheduleTaskUpgradeTargetsAttrTypes,
 				Encode:    scheduleTaskTargetToAPI,
 				Decode:    scheduleTaskTargetFromAPI,
 				Elide:     resourcekit.KeepZero,
@@ -63,7 +52,7 @@ func scheduleTaskKitSpec() resourcekit.Spec[scheduleTaskKitModel, ui.ScheduleTas
 // scheduleTaskTargetToAPI encodes one upgrade_targets element.
 func scheduleTaskTargetToAPI(ctx context.Context, object types.Object) (ui.ScheduleTaskUpgradeTargets, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	var m scheduleTaskTargetModel
+	var m scheduleTaskUpgradeTargetsModel
 	diags.Append(object.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
 		return ui.ScheduleTaskUpgradeTargets{}, diags
@@ -73,7 +62,7 @@ func scheduleTaskTargetToAPI(ctx context.Context, object types.Object) (ui.Sched
 
 // scheduleTaskTargetFromAPI decodes one upgrade_targets element.
 func scheduleTaskTargetFromAPI(_ context.Context, e ui.ScheduleTaskUpgradeTargets) (types.Object, diag.Diagnostics) {
-	return types.ObjectValue(scheduleTaskTargetModel{}.AttributeTypes(), map[string]attr.Value{
+	return types.ObjectValue(scheduleTaskUpgradeTargetsAttrTypes, map[string]attr.Value{
 		"mac": types.StringValue(e.MAC),
 	})
 }

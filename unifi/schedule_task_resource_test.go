@@ -138,9 +138,9 @@ func TestScheduleTaskDescriptorRoundTripsEveryField(t *testing.T) {
 	spec := scheduleTaskKitSpec()
 
 	targets, d := types.ListValue(
-		types.ObjectType{AttrTypes: scheduleTaskTargetModel{}.AttributeTypes()},
+		types.ObjectType{AttrTypes: scheduleTaskUpgradeTargetsAttrTypes},
 		[]attr.Value{
-			types.ObjectValueMust(scheduleTaskTargetModel{}.AttributeTypes(), map[string]attr.Value{
+			types.ObjectValueMust(scheduleTaskUpgradeTargetsAttrTypes, map[string]attr.Value{
 				"mac": types.StringValue("00:11:22:33:44:55"),
 			}),
 		},
