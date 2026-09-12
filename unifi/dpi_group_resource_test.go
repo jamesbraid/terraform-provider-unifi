@@ -79,7 +79,7 @@ func TestDpiGroupDescriptorRoundTripsEveryField(t *testing.T) {
 	model := dpiGroupKitModel{
 		ID:        types.StringValue("group-1"),
 		Name:      types.StringValue("Streaming"),
-		DPIappIDs: types.ListValueMust(types.StringType, []attr.Value{types.StringValue("app-1")}),
+		DpiappIDs: types.ListValueMust(types.StringType, []attr.Value{types.StringValue("app-1")}),
 		Enabled:   types.BoolValue(true),
 	}
 
@@ -108,8 +108,8 @@ func TestDpiGroupDescriptorRoundTripsEveryField(t *testing.T) {
 	if back.Name != model.Name {
 		t.Errorf("name round trip: %v want %v", back.Name, model.Name)
 	}
-	if !back.DPIappIDs.Equal(model.DPIappIDs) {
-		t.Errorf("dpiapp_ids round trip: %v want %v", back.DPIappIDs, model.DPIappIDs)
+	if !back.DpiappIDs.Equal(model.DpiappIDs) {
+		t.Errorf("dpiapp_ids round trip: %v want %v", back.DpiappIDs, model.DpiappIDs)
 	}
 }
 

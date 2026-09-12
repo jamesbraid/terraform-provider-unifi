@@ -11,15 +11,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type dpiGroupKitModel struct {
-	ID        types.String   `tfsdk:"id"`
-	Site      types.String   `tfsdk:"site"`
-	Name      types.String   `tfsdk:"name"`
-	DPIappIDs types.List     `tfsdk:"dpiapp_ids"`
-	Enabled   types.Bool     `tfsdk:"enabled"`
-	Timeouts  timeouts.Value `tfsdk:"timeouts"`
-}
-
 // dpiGroupKitSpec: a DPI group gathers DPI application rules under one name so
 // the controller can apply them together. enabled is non-omitempty on the
 // wire and takes a schema default; dpiapp_ids is an optional id list; the four
@@ -33,25 +24,7 @@ func dpiGroupKitSpec() resourcekit.Spec[dpiGroupKitModel, ui.DpiGroup] {
 		ID:       func(m *dpiGroupKitModel) *types.String { return &m.ID },
 		Site:     func(m *dpiGroupKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *dpiGroupKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[dpiGroupKitModel, ui.DpiGroup]{
-			resourcekit.StringField[dpiGroupKitModel, ui.DpiGroup]{
-				Wire:  "name",
-				Model: func(m *dpiGroupKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.DpiGroup) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringListField[dpiGroupKitModel, ui.DpiGroup]{
-				Wire:  "dpiapp_ids",
-				Model: func(m *dpiGroupKitModel) *types.List { return &m.DPIappIDs },
-				SDK:   func(s *ui.DpiGroup) *[]string { return &s.DPIappIDs },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[dpiGroupKitModel, ui.DpiGroup]{
-				Wire:  "enabled",
-				Model: func(m *dpiGroupKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.DpiGroup) *bool { return &s.Enabled },
-			},
-		},
+		Fields:   dpiGroupGenFields(),
 		// Seeded here as well as in dpiGroupKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.

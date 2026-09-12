@@ -271,3 +271,9 @@ package providercodegen
 // Must run after nested-custom-type-strip: that pass removes the only remaining
 // references to the generated value types, so running this first would break the build.
 //go:generate go run ../cmd/generated-value-strip ../internal/generated
+
+// The descriptor emitter writes the mechanical half of each kit descriptor
+// (unifi/*_descriptor_gen.go) from the mapping artifacts above, the
+// generated schemas and the SDK structs; the hand descriptors keep the
+// judgment half and lay it over the generated list with resourcekit.Override.
+//go:generate go run ../cmd/descriptor-emitter -mappings generated -descriptors ../unifi
