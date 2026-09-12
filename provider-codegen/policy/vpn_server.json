@@ -757,9 +757,12 @@
                   "imports": [
                     {
                       "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    },
+                    {
+                      "path": "github.com/ubiquiti-community/go-unifi/unifi"
                     }
                   ],
-                  "schema_definition": "int64validator.Between(1, 65535)"
+                  "schema_definition": "int64validator.Between(unifi.NetworkLocalPortMin, unifi.NetworkLocalPortMax)"
                 }
               }
             ]
@@ -833,9 +836,12 @@
                   "imports": [
                     {
                       "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    },
+                    {
+                      "path": "github.com/ubiquiti-community/go-unifi/unifi"
                     }
                   ],
-                  "schema_definition": "int64validator.Between(1, 65535)"
+                  "schema_definition": "int64validator.Between(unifi.NetworkLocalPortMin, unifi.NetworkLocalPortMax)"
                 }
               }
             ]
