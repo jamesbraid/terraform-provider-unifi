@@ -746,7 +746,7 @@
           "description_kind": "markdown",
           "default": "int64default.staticInt64Default: value defaults to -1",
           "validators": [
-            "int64validator.betweenValidator: value must be between 2 and 100000"
+            "int64validator.anyValidator: Value must satisfy at least one of the validations: value must be one of: [\"-1\"] + value must be between 2 and 100000"
           ]
         },
         "qos_rate_max_up": {
@@ -758,7 +758,7 @@
           "description_kind": "markdown",
           "default": "int64default.staticInt64Default: value defaults to -1",
           "validators": [
-            "int64validator.betweenValidator: value must be between 2 and 100000"
+            "int64validator.anyValidator: Value must satisfy at least one of the validations: value must be one of: [\"-1\"] + value must be between 2 and 100000"
           ]
         },
         "site": {

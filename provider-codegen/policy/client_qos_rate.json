@@ -46,7 +46,7 @@
                   "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
                 }
               ],
-              "schema_definition": "int64validator.Between(2, 100000)"
+              "schema_definition": "int64validator.Any(int64validator.OneOf(-1), int64validator.Between(2, 100000))"
             }
           }
         ]
@@ -70,7 +70,7 @@
                   "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
                 }
               ],
-              "schema_definition": "int64validator.Between(2, 100000)"
+              "schema_definition": "int64validator.Any(int64validator.OneOf(-1), int64validator.Between(2, 100000))"
             }
           }
         ]
