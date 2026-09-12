@@ -80,11 +80,11 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		}
 		attribute, ok := built.Attributes[name]
 		if !ok {
-			// A block is implicitly optional and can never be Computed, so the
-			// rule that applies is the Optional-and-not-Computed one: NullZero,
-			// since an absent block is an absence, not a configured empty.
+			// A block's rule (DerivedElide's own comment) is NullZero: an
+			// absent block is an absence, not a configured empty.
 			if _, isBlock := built.Blocks[name]; isBlock {
-				if elide.Kind() == reflect.Bool && elide.Bool() != bool(NullZero) {
+				want, _ := DerivedElide(built, name, false)
+				if elide.Kind() == reflect.Bool && ElideZero(elide.Bool()) != want {
 					problems = append(problems, fmt.Sprintf(
 						"%s.%s is KeepZero but it is a block, which is optional and never "+
 							"computed, so an absent one is an absence and wants NullZero",
@@ -114,30 +114,10 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 			}
 			continue
 		}
-		// Required and Computed-only keep the zero (config always supplies
-		// it, or it must round-trip as given). Optional-not-Computed nulls
-		// it. Optional+Computed keeps it unless the zero is a value none of
-		// the attribute's own validators would accept -- unless a schema
-		// default is itself that zero, since a default outranks the
-		// validator that rejects it (validators run against config, defaults
-		// land in the plan, and the two can disagree).
-		//
-		// elidesTheEmptyString is field-kind-specific: string kinds elide the
-		// literal "", but DurationPtrField elides the number 0 (a value
-		// GoDuration holds happily as "0s"), so asking its type about ""
-		// would ask the wrong question.
+		// The rule itself lives in DerivedElide, shared with the descriptor
+		// emitter so the two cannot disagree.
 		elidesTheEmptyString := kind == "StringField" || kind == "StringLikeField"
-		want := KeepZero
-		switch {
-		case attribute.IsRequired():
-			want = KeepZero
-		case attribute.IsOptional() && !attribute.IsComputed():
-			want = NullZero
-		case attribute.IsOptional() && attribute.IsComputed() &&
-			zeroIsRejected(built, attribute, elidesTheEmptyString) &&
-			!zeroIsTheDefault(attribute):
-			want = NullZero
-		}
+		want, _ := DerivedElide(built, name, elidesTheEmptyString)
 		if got := ElideZero(elide.Bool()); got != want {
 			problems = append(problems, fmt.Sprintf(
 				"%s.%s is %s but the schema declares it %s, which wants %s",
