@@ -16,19 +16,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type radiusUserKitModel struct {
-	ID               types.String   `tfsdk:"id"`
-	Site             types.String   `tfsdk:"site"`
-	Name             types.String   `tfsdk:"name"`
-	Password         types.String   `tfsdk:"password"`
-	TunnelType       types.Int64    `tfsdk:"tunnel_type"`
-	TunnelMediumType types.Int64    `tfsdk:"tunnel_medium_type"`
-	NetworkID        types.String   `tfsdk:"network_id"`
-	VLAN             types.Int64    `tfsdk:"vlan"`
-	TunnelConfigType types.String   `tfsdk:"tunnel_config_type"`
-	Timeouts         timeouts.Value `tfsdk:"timeouts"`
-}
-
 func radiusUserKitSpec() resourcekit.Spec[radiusUserKitModel, ui.Account] {
 	return resourcekit.Spec[radiusUserKitModel, ui.Account]{
 		TypeName: "radius_user",
@@ -44,47 +31,7 @@ func radiusUserKitSpec() resourcekit.Spec[radiusUserKitModel, ui.Account] {
 		// network_id.
 		AlwaysWire: []string{"vlan"},
 
-		Fields: []resourcekit.Field[radiusUserKitModel, ui.Account]{
-			resourcekit.StringField[radiusUserKitModel, ui.Account]{
-				Wire:  "name",
-				Model: func(m *radiusUserKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.Account) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			// The controller calls it x_password. The Terraform name is
-			// password, and nothing but the wire-name check would catch a
-			// descriptor that used the Terraform spelling here -- the mask
-			// would name an attribute the controller does not have and the
-			// password would never change.
-			resourcekit.StringField[radiusUserKitModel, ui.Account]{
-				Wire:  "x_password",
-				Model: func(m *radiusUserKitModel) *types.String { return &m.Password },
-				SDK:   func(s *ui.Account) *string { return &s.Password },
-				Elide: resourcekit.KeepZero,
-			},
-			// OmitZero: the schema default (3/6) means an unset plan value is
-			// never actually Unknown at ToSDK time, and the schema validator
-			// already refuses a literal 0 in config -- so this is defensive
-			// parity with the class, not a live fix (R2-C Task 10b fix round
-			// 1's census, internal/resourcekit/omit_zero_check.go).
-			resourcekit.Int64PtrField[radiusUserKitModel, ui.Account]{
-				Wire:  "tunnel_type",
-				Model: func(m *radiusUserKitModel) *types.Int64 { return &m.TunnelType },
-				SDK:   func(s *ui.Account) **int64 { return &s.TunnelType },
-				Elide: resourcekit.KeepZero, OmitZero: true,
-			},
-			resourcekit.Int64PtrField[radiusUserKitModel, ui.Account]{
-				Wire:  "tunnel_medium_type",
-				Model: func(m *radiusUserKitModel) *types.Int64 { return &m.TunnelMediumType },
-				SDK:   func(s *ui.Account) **int64 { return &s.TunnelMediumType },
-				Elide: resourcekit.KeepZero, OmitZero: true,
-			},
-			resourcekit.StringField[radiusUserKitModel, ui.Account]{
-				Wire:  "networkconf_id",
-				Model: func(m *radiusUserKitModel) *types.String { return &m.NetworkID },
-				SDK:   func(s *ui.Account) *string { return &s.NetworkID },
-				Elide: resourcekit.NullZero,
-			},
+		Fields: resourcekit.Override(radiusUserGenFields(), []resourcekit.Field[radiusUserKitModel, ui.Account]{
 			// OmitZero: Optional+Computed with UseStateForUnknown and no
 			// schema default -- the dtim_6e shape exactly (R2-C Task 10b):
 			// an unset plan value is genuinely Unknown on create, and
@@ -96,13 +43,7 @@ func radiusUserKitSpec() resourcekit.Spec[radiusUserKitModel, ui.Account] {
 				SDK:   func(s *ui.Account) **int64 { return &s.VLAN },
 				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
-			resourcekit.StringField[radiusUserKitModel, ui.Account]{
-				Wire:  "tunnel_config_type",
-				Model: func(m *radiusUserKitModel) *types.String { return &m.TunnelConfigType },
-				SDK:   func(s *ui.Account) *string { return &s.TunnelConfigType },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		}),
 		// Seeded here as well as in radiusUserKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.

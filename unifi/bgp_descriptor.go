@@ -16,23 +16,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-// bgpKitModel is the resource model. asn, router_id and peers have no
-// BGPConfig field to map: they render into frr_bgpd_config on write (see
-// bgpBeforeSend) and are preserved from state on read, since nothing can
-// recover them from the config text.
-type bgpKitModel struct {
-	ID             types.String   `tfsdk:"id"`
-	Site           types.String   `tfsdk:"site"`
-	Enabled        types.Bool     `tfsdk:"enabled"`
-	Config         types.String   `tfsdk:"config"`
-	ASN            types.Int64    `tfsdk:"asn"`
-	RouterID       types.String   `tfsdk:"router_id"`
-	Peers          types.List     `tfsdk:"peers"`
-	UploadFileName types.String   `tfsdk:"upload_file_name"`
-	Description    types.String   `tfsdk:"description"`
-	Timeouts       timeouts.Value `tfsdk:"timeouts"`
-}
-
 // bgpPeerModel describes a single BGP peer in the peers list.
 type bgpPeerModel struct {
 	Name        types.String `tfsdk:"name"`
@@ -195,31 +178,14 @@ func bgpKitSpec() resourcekit.Spec[bgpKitModel, ui.BGPConfig] {
 		ID:       func(m *bgpKitModel) *types.String { return &m.ID },
 		Site:     func(m *bgpKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *bgpKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[bgpKitModel, ui.BGPConfig]{
-			resourcekit.BoolField[bgpKitModel, ui.BGPConfig]{
-				Wire:  "enabled",
-				Model: func(m *bgpKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.BGPConfig) *bool { return &s.Enabled },
-			},
+		Fields: resourcekit.Override(bgpGenFields(), []resourcekit.Field[bgpKitModel, ui.BGPConfig]{
 			resourcekit.StringField[bgpKitModel, ui.BGPConfig]{
 				Wire:  "frr_bgpd_config",
 				Model: func(m *bgpKitModel) *types.String { return &m.Config },
 				SDK:   func(s *ui.BGPConfig) *string { return &s.Config },
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.StringField[bgpKitModel, ui.BGPConfig]{
-				Wire:  "description",
-				Model: func(m *bgpKitModel) *types.String { return &m.Description },
-				SDK:   func(s *ui.BGPConfig) *string { return &s.Description },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[bgpKitModel, ui.BGPConfig]{
-				Wire:  "uploaded_file_name",
-				Model: func(m *bgpKitModel) *types.String { return &m.UploadFileName },
-				SDK:   func(s *ui.BGPConfig) *string { return &s.UploadedFileName },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		}),
 		BeforeSend: bgpBeforeSend,
 		// frr_bgpd_config is set by bgpBeforeSend when the structured
 		// attributes are in use, and asn/router_id/peers are not Fields, so

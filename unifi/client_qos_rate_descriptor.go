@@ -11,17 +11,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-// clientQosRateKitModel is the generated model. The tfsdk tags are what the
-// framework reflects on, and what ElideProblems follows to reach the schema.
-type clientQosRateKitModel struct {
-	ID             types.String   `tfsdk:"id"`
-	Site           types.String   `tfsdk:"site"`
-	Name           types.String   `tfsdk:"name"`
-	QOSRateMaxDown types.Int64    `tfsdk:"qos_rate_max_down"`
-	QOSRateMaxUp   types.Int64    `tfsdk:"qos_rate_max_up"`
-	Timeouts       timeouts.Value `tfsdk:"timeouts"`
-}
-
 // clientQosRateKitSpec is the whole of what varies. Elide is derived, not
 // chosen: name is Required so its zero must survive, and the two rate fields
 // are Optional+Computed so they're also KeepZero -- a practitioner may set an
@@ -37,34 +26,7 @@ func clientQosRateKitSpec() resourcekit.Spec[clientQosRateKitModel, ui.ClientGro
 		ID:       func(m *clientQosRateKitModel) *types.String { return &m.ID },
 		Site:     func(m *clientQosRateKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *clientQosRateKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[clientQosRateKitModel, ui.ClientGroup]{
-			resourcekit.StringField[clientQosRateKitModel, ui.ClientGroup]{
-				Wire:  "name",
-				Model: func(m *clientQosRateKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.ClientGroup) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			// OmitZero: unrelated to the Elide reasoning above -- the
-			// controller's own pattern (-1|[2-9]|...|100000) rejects a
-			// literal 0 outright, and the schema default (-1) means an
-			// unset value is never actually Unknown at ToSDK time, so this
-			// is defensive parity with the class rather than a live fix
-			// (R2-C Task 10b fix round 1's census).
-			resourcekit.Int64PtrField[clientQosRateKitModel, ui.ClientGroup]{
-				Wire:     "qos_rate_max_down",
-				Model:    func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxDown },
-				SDK:      func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxDown },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[clientQosRateKitModel, ui.ClientGroup]{
-				Wire:     "qos_rate_max_up",
-				Model:    func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxUp },
-				SDK:      func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxUp },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-		},
+		Fields:   clientQosRateGenFields(),
 	}
 }
 

@@ -14,14 +14,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
 )
 
-type apGroupKitModel struct {
-	ID         types.String   `tfsdk:"id"`
-	Site       types.String   `tfsdk:"site"`
-	Name       types.String   `tfsdk:"name"`
-	DeviceMacs types.Set      `tfsdk:"device_macs"`
-	Timeouts   timeouts.Value `tfsdk:"timeouts"`
-}
-
 func apGroupKitSpec() resourcekit.Spec[apGroupKitModel, ui.APGroup] {
 	return resourcekit.Spec[apGroupKitModel, ui.APGroup]{
 		TypeName: "ap_group",
@@ -34,13 +26,7 @@ func apGroupKitSpec() resourcekit.Spec[apGroupKitModel, ui.APGroup] {
 		// Nothing declares for_wlanconf, and that is the whole of the fix: the
 		// mask is derived from the list below, so a field absent from it has
 		// no wire name and cannot be sent.
-		Fields: []resourcekit.Field[apGroupKitModel, ui.APGroup]{
-			resourcekit.StringField[apGroupKitModel, ui.APGroup]{
-				Wire:  "name",
-				Model: func(m *apGroupKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.APGroup) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(apGroupGenFields(), []resourcekit.Field[apGroupKitModel, ui.APGroup]{
 			resourcekit.StringSetField[apGroupKitModel, ui.APGroup]{
 				Wire:  "device_macs",
 				Model: func(m *apGroupKitModel) *types.Set { return &m.DeviceMacs },
@@ -60,7 +46,7 @@ func apGroupKitSpec() resourcekit.Spec[apGroupKitModel, ui.APGroup] {
 				// controller accepts a group with no members.
 				Elide: resourcekit.KeepZero,
 			},
-		},
+		}),
 
 		// The controller stores MACs lowercased and colon-separated. Normalising
 		// on the write path is what makes the object it returns match what was

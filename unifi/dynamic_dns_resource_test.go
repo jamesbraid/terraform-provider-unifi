@@ -101,7 +101,7 @@ func TestDynamicDNSDescriptorRoundTripsEveryField(t *testing.T) {
 	ctx := context.Background()
 	spec := dynamicDNSKitSpec()
 
-	model := dynamicDNSKitModel{
+	model := dynamicDnsKitModel{
 		ID:        types.StringValue("abc123"),
 		HostName:  types.StringValue("test.example.com"),
 		Interface: types.StringValue("wan"),
@@ -129,7 +129,7 @@ func TestDynamicDNSDescriptorRoundTripsEveryField(t *testing.T) {
 		t.Errorf("ToSDK produced %+v, want %+v", sdk, want)
 	}
 
-	var back dynamicDNSKitModel
+	var back dynamicDnsKitModel
 	for _, field := range spec.Fields {
 		if d := field.ToModel(ctx, &sdk, &back); d.HasError() {
 			t.Fatalf("ToModel(%s): %v", field.WireName(), d)
@@ -156,7 +156,7 @@ func TestDynamicDNSOptionalFieldsStayAbsent(t *testing.T) {
 	ctx := context.Background()
 	spec := dynamicDNSKitSpec()
 
-	model := dynamicDNSKitModel{
+	model := dynamicDnsKitModel{
 		HostName:  types.StringValue("test.example.com"),
 		Interface: types.StringValue("wan"),
 		Service:   types.StringValue("dyndns"),
@@ -174,7 +174,7 @@ func TestDynamicDNSOptionalFieldsStayAbsent(t *testing.T) {
 		t.Errorf("null optional fields reached the SDK struct: %+v", sdk)
 	}
 
-	var back dynamicDNSKitModel
+	var back dynamicDnsKitModel
 	for _, field := range spec.Fields {
 		if d := field.ToModel(ctx, &sdk, &back); d.HasError() {
 			t.Fatalf("ToModel(%s): %v", field.WireName(), d)

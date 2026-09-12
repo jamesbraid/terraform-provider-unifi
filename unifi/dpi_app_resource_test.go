@@ -91,8 +91,8 @@ func TestDpiAppDescriptorRoundTripsEveryField(t *testing.T) {
 		Blocked:        types.BoolValue(true),
 		Enabled:        types.BoolValue(true),
 		Log:            types.BoolValue(false),
-		QOSRateMaxDown: types.Int64Value(1000),
-		QOSRateMaxUp:   types.Int64Value(500),
+		QoSRateMaxDown: types.Int64Value(1000),
+		QoSRateMaxUp:   types.Int64Value(500),
 	}
 
 	var sdk ui.DpiApp
@@ -126,8 +126,8 @@ func TestDpiAppDescriptorRoundTripsEveryField(t *testing.T) {
 	if !back.Cats.Equal(model.Cats) {
 		t.Errorf("cats round trip: %v want %v", back.Cats, model.Cats)
 	}
-	if back.QOSRateMaxUp != model.QOSRateMaxUp {
-		t.Errorf("qos_rate_max_up round trip: %v want %v", back.QOSRateMaxUp, model.QOSRateMaxUp)
+	if back.QoSRateMaxUp != model.QoSRateMaxUp {
+		t.Errorf("qos_rate_max_up round trip: %v want %v", back.QoSRateMaxUp, model.QoSRateMaxUp)
 	}
 }
 

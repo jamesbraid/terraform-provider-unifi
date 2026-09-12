@@ -12,16 +12,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type firewallZoneKitModel struct {
-	ID          types.String   `tfsdk:"id"`
-	Site        types.String   `tfsdk:"site"`
-	Name        types.String   `tfsdk:"name"`
-	NetworkIDs  types.List     `tfsdk:"network_ids"`
-	ZoneKey     types.String   `tfsdk:"zone_key"`
-	DefaultZone types.Bool     `tfsdk:"default_zone"`
-	Timeouts    timeouts.Value `tfsdk:"timeouts"`
-}
-
 // firewallZoneKitSpec: every value is read off the mapping artifact joined to
 // the bootstrap on structural_name, except the SDK method names.
 //
@@ -43,22 +33,7 @@ func firewallZoneKitSpec() resourcekit.Spec[firewallZoneKitModel, ui.FirewallZon
 		// ... -- whose id is controller-assigned and not known up front; see
 		// Spec.Name and firewallZoneKitBackend's ReadByName.
 		Name: func(m *firewallZoneKitModel) *types.String { return &m.Name },
-		Fields: []resourcekit.Field[firewallZoneKitModel, ui.FirewallZone]{
-			resourcekit.StringField[firewallZoneKitModel, ui.FirewallZone]{
-				Wire:  "name",
-				Model: func(m *firewallZoneKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.FirewallZone) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			// The slice is emptied rather than left nil, inside the field kind:
-			// network_ids is the SDK's only field without omitempty, so an empty
-			// list is sent as [] and a nil one would be sent as null -- which the
-			// controller reads as a different request.
-			resourcekit.StringListField[firewallZoneKitModel, ui.FirewallZone]{
-				Wire:  "network_ids",
-				Model: func(m *firewallZoneKitModel) *types.List { return &m.NetworkIDs },
-				SDK:   func(s *ui.FirewallZone) *[]string { return &s.NetworkIDs },
-			},
+		Fields: resourcekit.Override(firewallZoneGenFields(), []resourcekit.Field[firewallZoneKitModel, ui.FirewallZone]{
 			resourcekit.ReadOnly[firewallZoneKitModel, ui.FirewallZone](
 				resourcekit.StringField[firewallZoneKitModel, ui.FirewallZone]{
 					Wire:  "zone_key",
@@ -76,7 +51,7 @@ func firewallZoneKitSpec() resourcekit.Spec[firewallZoneKitModel, ui.FirewallZon
 					Model: func(m *firewallZoneKitModel) *types.Bool { return &m.DefaultZone },
 					SDK:   func(s *ui.FirewallZone) **bool { return &s.DefaultZone },
 				}),
-		},
+		}),
 	}
 }
 

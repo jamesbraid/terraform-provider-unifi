@@ -1,8 +1,5 @@
 package unifi
 
-// The dns_record descriptor is hand-written, not yet generated: this is what
-// cmd/provider-spec-compiler will emit.
-
 import (
 	"context"
 	"fmt"
@@ -20,34 +17,10 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// dnsRecordKitModel is the generated model. Identical in shape to the
-// hand-written one; the tfsdk tags are what the framework reflects on.
-type dnsRecordKitModel struct {
-	ID         types.String         `tfsdk:"id"`
-	Site       types.String         `tfsdk:"site"`
-	Name       types.String         `tfsdk:"name"`
-	Enabled    types.Bool           `tfsdk:"enabled"`
-	Port       types.Int64          `tfsdk:"port"`
-	Priority   types.Int64          `tfsdk:"priority"`
-	RecordType types.String         `tfsdk:"record_type"`
-	TTL        timetypes.GoDuration `tfsdk:"ttl"`
-	Value      types.String         `tfsdk:"value"`
-	Weight     types.Int64          `tfsdk:"weight"`
-	Timeouts   timeouts.Value       `tfsdk:"timeouts"`
-}
-
-// dnsRecordKitSpec is the whole of what varies.
-//
-// Four values here come from nowhere an artifact carries, and they are the
-// compiler's remaining gap rather than an authoring choice:
-//
-//	the Go identifier per field   key -> Key, ttl -> Ttl, record_type -> RecordType
-//	pointer-ness                  port is *int64 where the mapping says int64
-//	the duration unit             ttl counts seconds
-//	the SDK method names          and whether the update is field-masked
-//
-// The first two are readable from the SDK struct -- cmd/sdk-bootstrap already
-// parses it and discards them. The last two are decisions.
+// dnsRecordKitSpec keeps the two entries the artifacts cannot state: ttl's
+// unit (the controller counts seconds) and port's OmitZero staying off --
+// the derivation would turn it on, and omit_zero_census_test.go's pin
+// records why that fix was declined.
 func dnsRecordKitSpec() resourcekit.Spec[dnsRecordKitModel, ui.DNSRecord] {
 	return resourcekit.Spec[dnsRecordKitModel, ui.DNSRecord]{
 		TypeName: "dns_record",
@@ -56,35 +29,12 @@ func dnsRecordKitSpec() resourcekit.Spec[dnsRecordKitModel, ui.DNSRecord] {
 		ID:       func(m *dnsRecordKitModel) *types.String { return &m.ID },
 		Site:     func(m *dnsRecordKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *dnsRecordKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[dnsRecordKitModel, ui.DNSRecord]{
-			resourcekit.BoolField[dnsRecordKitModel, ui.DNSRecord]{
-				Wire:  "enabled",
-				Model: func(m *dnsRecordKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.DNSRecord) *bool { return &s.Enabled },
-			},
-			resourcekit.StringField[dnsRecordKitModel, ui.DNSRecord]{
-				Wire:  "key",
-				Model: func(m *dnsRecordKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.DNSRecord) *string { return &s.Key },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(dnsRecordGenFields(), []resourcekit.Field[dnsRecordKitModel, ui.DNSRecord]{
 			resourcekit.Int64PtrField[dnsRecordKitModel, ui.DNSRecord]{
 				Wire:  "port",
 				Model: func(m *dnsRecordKitModel) *types.Int64 { return &m.Port },
 				SDK:   func(s *ui.DNSRecord) **int64 { return &s.Port },
 				Elide: resourcekit.NullZero,
-			},
-			resourcekit.Int64Field[dnsRecordKitModel, ui.DNSRecord]{
-				Wire:  "priority",
-				Model: func(m *dnsRecordKitModel) *types.Int64 { return &m.Priority },
-				SDK:   func(s *ui.DNSRecord) *int64 { return &s.Priority },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[dnsRecordKitModel, ui.DNSRecord]{
-				Wire:  "record_type",
-				Model: func(m *dnsRecordKitModel) *types.String { return &m.RecordType },
-				SDK:   func(s *ui.DNSRecord) *string { return &s.RecordType },
-				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.DurationField[dnsRecordKitModel, ui.DNSRecord]{
 				Wire:  "ttl",
@@ -93,19 +43,7 @@ func dnsRecordKitSpec() resourcekit.Spec[dnsRecordKitModel, ui.DNSRecord] {
 				Units: time.Second,
 				Elide: resourcekit.NullZero,
 			},
-			resourcekit.StringField[dnsRecordKitModel, ui.DNSRecord]{
-				Wire:  "value",
-				Model: func(m *dnsRecordKitModel) *types.String { return &m.Value },
-				SDK:   func(s *ui.DNSRecord) *string { return &s.Value },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64Field[dnsRecordKitModel, ui.DNSRecord]{
-				Wire:  "weight",
-				Model: func(m *dnsRecordKitModel) *types.Int64 { return &m.Weight },
-				SDK:   func(s *ui.DNSRecord) *int64 { return &s.Weight },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		}),
 	}
 }
 

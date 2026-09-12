@@ -11,17 +11,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type wireguardPeerKitModel struct {
-	ID          types.String   `tfsdk:"id"`
-	Site        types.String   `tfsdk:"site"`
-	NetworkID   types.String   `tfsdk:"network_id"`
-	Name        types.String   `tfsdk:"name"`
-	InterfaceIP types.String   `tfsdk:"interface_ip"`
-	PublicKey   types.String   `tfsdk:"public_key"`
-	AllowedIPs  types.List     `tfsdk:"allowed_ips"`
-	Timeouts    timeouts.Value `tfsdk:"timeouts"`
-}
-
 func wireguardPeerKitSpec() resourcekit.Spec[wireguardPeerKitModel, ui.WireGuardPeer] {
 	return resourcekit.Spec[wireguardPeerKitModel, ui.WireGuardPeer]{
 		TypeName: "wireguard_peer",
@@ -31,42 +20,7 @@ func wireguardPeerKitSpec() resourcekit.Spec[wireguardPeerKitModel, ui.WireGuard
 		ID:       func(m *wireguardPeerKitModel) *types.String { return &m.ID },
 		Site:     func(m *wireguardPeerKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *wireguardPeerKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[wireguardPeerKitModel, ui.WireGuardPeer]{
-			// The parent key, doubling as a body field: the batch endpoints
-			// carry the network in their URL, and Create clears it from the
-			// body (see wireguardPeerKitBackend), but UpdateFields reads it
-			// off the object to build that URL.
-			resourcekit.StringField[wireguardPeerKitModel, ui.WireGuardPeer]{
-				Wire:  "network_id",
-				Model: func(m *wireguardPeerKitModel) *types.String { return &m.NetworkID },
-				SDK:   func(s *ui.WireGuardPeer) *string { return &s.NetworkID },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[wireguardPeerKitModel, ui.WireGuardPeer]{
-				Wire:  "name",
-				Model: func(m *wireguardPeerKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.WireGuardPeer) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[wireguardPeerKitModel, ui.WireGuardPeer]{
-				Wire:  "interface_ip",
-				Model: func(m *wireguardPeerKitModel) *types.String { return &m.InterfaceIP },
-				SDK:   func(s *ui.WireGuardPeer) *string { return &s.InterfaceIP },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[wireguardPeerKitModel, ui.WireGuardPeer]{
-				Wire:  "public_key",
-				Model: func(m *wireguardPeerKitModel) *types.String { return &m.PublicKey },
-				SDK:   func(s *ui.WireGuardPeer) *string { return &s.PublicKey },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringListField[wireguardPeerKitModel, ui.WireGuardPeer]{
-				Wire:  "allowed_ips",
-				Model: func(m *wireguardPeerKitModel) *types.List { return &m.AllowedIPs },
-				SDK:   func(s *ui.WireGuardPeer) *[]string { return &s.AllowedIPs },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   wireguardPeerGenFields(),
 		// Seeded here as well as in wireguardPeerKitBackend, so a unit test
 		// calling ToModel on an unconfigured spec does not dereference nil.
 		Backend: resourcekit.Backend[ui.WireGuardPeer]{

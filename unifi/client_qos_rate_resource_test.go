@@ -156,8 +156,8 @@ func TestClientQosRateDescriptorRoundTripsEveryField(t *testing.T) {
 	model := clientQosRateKitModel{
 		ID:             types.StringValue("group-id"),
 		Name:           types.StringValue("test-group"),
-		QOSRateMaxDown: types.Int64Value(1000),
-		QOSRateMaxUp:   types.Int64Value(500),
+		QoSRateMaxDown: types.Int64Value(1000),
+		QoSRateMaxUp:   types.Int64Value(500),
 	}
 
 	sdk := ui.ClientGroup{}
@@ -187,11 +187,11 @@ func TestClientQosRateDescriptorRoundTripsEveryField(t *testing.T) {
 	if back.Name != model.Name {
 		t.Errorf("name round trip: got %v want %v", back.Name, model.Name)
 	}
-	if back.QOSRateMaxDown != model.QOSRateMaxDown {
-		t.Errorf("qos_rate_max_down round trip: got %v want %v", back.QOSRateMaxDown, model.QOSRateMaxDown)
+	if back.QoSRateMaxDown != model.QoSRateMaxDown {
+		t.Errorf("qos_rate_max_down round trip: got %v want %v", back.QoSRateMaxDown, model.QoSRateMaxDown)
 	}
-	if back.QOSRateMaxUp != model.QOSRateMaxUp {
-		t.Errorf("qos_rate_max_up round trip: got %v want %v", back.QOSRateMaxUp, model.QOSRateMaxUp)
+	if back.QoSRateMaxUp != model.QoSRateMaxUp {
+		t.Errorf("qos_rate_max_up round trip: got %v want %v", back.QoSRateMaxUp, model.QoSRateMaxUp)
 	}
 }
 

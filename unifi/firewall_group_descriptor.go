@@ -11,15 +11,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type firewallGroupKitModel struct {
-	ID       types.String   `tfsdk:"id"`
-	Site     types.String   `tfsdk:"site"`
-	Name     types.String   `tfsdk:"name"`
-	Type     types.String   `tfsdk:"type"`
-	Members  types.Set      `tfsdk:"members"`
-	Timeouts timeouts.Value `tfsdk:"timeouts"`
-}
-
 // firewallGroupKitSpec is the whole of what varies.
 //
 // All three fields are Required, so all three are KeepZero. members is the
@@ -39,30 +30,7 @@ func firewallGroupKitSpec() resourcekit.Spec[firewallGroupKitModel, ui.FirewallG
 		ID:       func(m *firewallGroupKitModel) *types.String { return &m.ID },
 		Site:     func(m *firewallGroupKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *firewallGroupKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[firewallGroupKitModel, ui.FirewallGroup]{
-			resourcekit.StringField[firewallGroupKitModel, ui.FirewallGroup]{
-				Wire:  "name",
-				Model: func(m *firewallGroupKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.FirewallGroup) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			// group_type on the wire, type in the configuration.
-			resourcekit.StringField[firewallGroupKitModel, ui.FirewallGroup]{
-				Wire:  "group_type",
-				Model: func(m *firewallGroupKitModel) *types.String { return &m.Type },
-				SDK:   func(s *ui.FirewallGroup) *string { return &s.GroupType },
-				Elide: resourcekit.KeepZero,
-			},
-			// group_members on the wire, members in the configuration. A set,
-			// because membership is unordered: a controller returning the same
-			// members in another sequence must not read as a change.
-			resourcekit.StringSetField[firewallGroupKitModel, ui.FirewallGroup]{
-				Wire:  "group_members",
-				Model: func(m *firewallGroupKitModel) *types.Set { return &m.Members },
-				SDK:   func(s *ui.FirewallGroup) *[]string { return &s.GroupMembers },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   firewallGroupGenFields(),
 	}
 }
 

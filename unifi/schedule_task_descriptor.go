@@ -25,17 +25,6 @@ func (m scheduleTaskTargetModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-type scheduleTaskKitModel struct {
-	ID              types.String   `tfsdk:"id"`
-	Site            types.String   `tfsdk:"site"`
-	Action          types.String   `tfsdk:"action"`
-	CronExpr        types.String   `tfsdk:"cron_expr"`
-	ExecuteOnlyOnce types.Bool     `tfsdk:"execute_only_once"`
-	Name            types.String   `tfsdk:"name"`
-	UpgradeTargets  types.List     `tfsdk:"upgrade_targets"`
-	Timeouts        timeouts.Value `tfsdk:"timeouts"`
-}
-
 // scheduleTaskKitSpec maps the ScheduleTask struct. action is the sole enum
 // value the SDK records ("upgrade") and defaults to it, so a minimal config
 // is a cron, a once/repeat flag and the devices to upgrade. The four attr_*
@@ -50,30 +39,7 @@ func scheduleTaskKitSpec() resourcekit.Spec[scheduleTaskKitModel, ui.ScheduleTas
 		ID:       func(m *scheduleTaskKitModel) *types.String { return &m.ID },
 		Site:     func(m *scheduleTaskKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *scheduleTaskKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[scheduleTaskKitModel, ui.ScheduleTask]{
-			resourcekit.StringField[scheduleTaskKitModel, ui.ScheduleTask]{
-				Wire:  "action",
-				Model: func(m *scheduleTaskKitModel) *types.String { return &m.Action },
-				SDK:   func(s *ui.ScheduleTask) *string { return &s.Action },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[scheduleTaskKitModel, ui.ScheduleTask]{
-				Wire:  "cron_expr",
-				Model: func(m *scheduleTaskKitModel) *types.String { return &m.CronExpr },
-				SDK:   func(s *ui.ScheduleTask) *string { return &s.CronExpr },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[scheduleTaskKitModel, ui.ScheduleTask]{
-				Wire:  "execute_only_once",
-				Model: func(m *scheduleTaskKitModel) *types.Bool { return &m.ExecuteOnlyOnce },
-				SDK:   func(s *ui.ScheduleTask) *bool { return &s.ExecuteOnlyOnce },
-			},
-			resourcekit.StringField[scheduleTaskKitModel, ui.ScheduleTask]{
-				Wire:  "name",
-				Model: func(m *scheduleTaskKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.ScheduleTask) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(scheduleTaskGenFields(), []resourcekit.Field[scheduleTaskKitModel, ui.ScheduleTask]{
 			resourcekit.ObjectListField[scheduleTaskKitModel, ui.ScheduleTask, ui.ScheduleTaskUpgradeTargets]{
 				Wire:      "upgrade_targets",
 				Model:     func(m *scheduleTaskKitModel) *types.List { return &m.UpgradeTargets },
@@ -83,7 +49,7 @@ func scheduleTaskKitSpec() resourcekit.Spec[scheduleTaskKitModel, ui.ScheduleTas
 				Decode:    scheduleTaskTargetFromAPI,
 				Elide:     resourcekit.KeepZero,
 			},
-		},
+		}),
 		// Seeded here as well as in scheduleTaskKitBackend, because Configure
 		// binds the real Backend and a unit test calling ToModel on an
 		// unconfigured spec still needs the identity accessors.

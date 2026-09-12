@@ -27,8 +27,8 @@ type clientQosRateDataSourceModel struct {
 	ID             types.String   `tfsdk:"id"`
 	Site           types.String   `tfsdk:"site"`
 	Name           types.String   `tfsdk:"name"`
-	QOSRateMaxDown types.Int64    `tfsdk:"qos_rate_max_down"`
-	QOSRateMaxUp   types.Int64    `tfsdk:"qos_rate_max_up"`
+	QoSRateMaxDown types.Int64    `tfsdk:"qos_rate_max_down"`
+	QoSRateMaxUp   types.Int64    `tfsdk:"qos_rate_max_up"`
 	Timeouts       timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -104,8 +104,8 @@ func (d *clientQosRateDataSource) Read(
 	data.ID = types.StringValue(clientGroup.ID)
 	data.Site = types.StringValue(site)
 	data.Name = types.StringValue(clientGroup.Name)
-	data.QOSRateMaxDown = types.Int64PointerValue(clientGroup.QOSRateMaxDown)
-	data.QOSRateMaxUp = types.Int64PointerValue(clientGroup.QOSRateMaxUp)
+	data.QoSRateMaxDown = types.Int64PointerValue(clientGroup.QOSRateMaxDown)
+	data.QoSRateMaxUp = types.Int64PointerValue(clientGroup.QOSRateMaxUp)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
