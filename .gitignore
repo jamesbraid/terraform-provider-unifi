@@ -85,10 +85,17 @@ __debug_bin*
 # THE FIRST ATTEMPT AT THIS RULE SAT DEAD IN THIS FILE FOR ITS ENTIRE LIFE:
 # a missing newline joined this rule's ignore pattern to an unrelated entry
 # above it, producing one path that matched nothing rather than two that
-# matched something. It was split and repaired in 9c654f56. This list is the
-# complete set of cmd/ names, kept in sync so a partial one never reads as
-# an omission.
+# matched something. It was split and repaired in 9c654f56.
+#
+# The list is literal because gitignore cannot derive it from cmd/, and it
+# drifted the moment a tenth tool arrived: descriptor-emitter landed with no
+# line here, while the comment above went on claiming the set was complete.
+# TestGitignoreListsEveryCommand in internal/cmdio compares the two markers'
+# contents against cmd/ in both directions, so the next omission fails a test
+# instead of reading as a decision.
+# cmd binaries begin
 /action-gen
+/descriptor-emitter
 /generated-value-strip
 /list-resource-gen
 /metadata-contract-gen
@@ -96,6 +103,7 @@ __debug_bin*
 /nested-type-dedup
 /provider-spec-compiler
 /sdk-bootstrap
+# cmd binaries end
 
 # provider-codegen's compiler intermediates. *.provider-code-spec.json is the
 # hand-off between provider-spec-compiler and tfplugingen-framework/
