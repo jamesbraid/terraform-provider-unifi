@@ -70,7 +70,7 @@ func TestEverySettingSectionIsServedByExactlyOneSpecSection(t *testing.T) {
 // nested schema.Schema pair that name owns. A closure, not a Spec value
 // directly, because every section's Spec is generic over a different model
 // and SDK type -- there is no single field type a slice of rows could share
-// across settingRadiusModel/settings.Radius, settingUSGModel/settings.Usg,
+// across settingRadiusModel/settings.Radius, settingUsgModel/settings.Usg,
 // and the rest.
 type settingSectionConformanceCase struct {
 	name string

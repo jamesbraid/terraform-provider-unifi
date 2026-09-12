@@ -33,60 +33,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
-)
-
-// settingMdnsCustomServiceModel is one element of mdns's custom_services
-// list.
-type settingMdnsCustomServiceModel struct {
-	Address types.String `tfsdk:"address"`
-	Name    types.String `tfsdk:"name"`
-}
-
-// settingMdnsPredefinedServiceModel is one element of mdns's
-// predefined_services list. settings.SettingMdnsPredefinedServices carries
-// only "code" on the wire, so this list_nested element mirrors that single
-// field rather than flattening to a bare string list -- the same
-// one-field-object shape dashboard's widgets and ether_lighting's overrides
-// already use for their own multi-field elements.
-type settingMdnsPredefinedServiceModel struct {
-	Code types.String `tfsdk:"code"`
-}
-
-// settingMdnsModel is mdns's own section model, decoded out of
-// settingResourceModel.Mdns.
-type settingMdnsModel struct {
-	Mode               types.String `tfsdk:"mode"`
-	CustomServices     types.List   `tfsdk:"custom_services"`
-	PredefinedServices types.List   `tfsdk:"predefined_services"`
-}
-
-// mdnsCustomServiceAttrTypes, mdnsPredefinedServiceAttrTypes and
-// mdnsAttrTypes type mdns's two lists' elements and mdns's own object in
-// state; all three must match the generated schema exactly.
-var (
-	mdnsCustomServiceAttrTypes = map[string]attr.Type{
-		"address": types.StringType,
-		"name":    types.StringType,
-	}
-	mdnsPredefinedServiceAttrTypes = map[string]attr.Type{
-		"code": types.StringType,
-	}
-	mdnsAttrTypes = map[string]attr.Type{
-		"mode": types.StringType,
-		"custom_services": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes},
-		},
-		"predefined_services": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: mdnsPredefinedServiceAttrTypes},
-		},
-	}
 )
 
 // mdnsKitSpec maps every attribute of the generated mdns schema
@@ -101,18 +52,12 @@ func mdnsKitSpec() resourcekit.Spec[settingMdnsModel, settings.Mdns] {
 		TypeName: "setting_mdns",
 		Subject:  "mDNS Setting",
 		New:      func() *settings.Mdns { return &settings.Mdns{} },
-		Fields: []resourcekit.Field[settingMdnsModel, settings.Mdns]{
-			resourcekit.StringField[settingMdnsModel, settings.Mdns]{
-				Wire:  "mode",
-				Model: func(m *settingMdnsModel) *types.String { return &m.Mode },
-				SDK:   func(s *settings.Mdns) *string { return &s.Mode },
-				Elide: resourcekit.NullZero,
-			},
+		Fields: resourcekit.Override(settingMdnsGenFields(), []resourcekit.Field[settingMdnsModel, settings.Mdns]{
 			resourcekit.ObjectListField[settingMdnsModel, settings.Mdns, settings.SettingMdnsCustomServices]{
 				Wire:      "custom_services",
 				Model:     func(m *settingMdnsModel) *types.List { return &m.CustomServices },
 				SDK:       func(s *settings.Mdns) *[]settings.SettingMdnsCustomServices { return &s.CustomServices },
-				AttrTypes: mdnsCustomServiceAttrTypes,
+				AttrTypes: mdnsCustomServicesAttrTypes,
 				Encode:    mdnsCustomServiceEncode,
 				Decode:    mdnsCustomServiceDecode,
 				Elide:     resourcekit.KeepZero,
@@ -123,19 +68,19 @@ func mdnsKitSpec() resourcekit.Spec[settingMdnsModel, settings.Mdns] {
 				SDK: func(s *settings.Mdns) *[]settings.SettingMdnsPredefinedServices {
 					return &s.PredefinedServices
 				},
-				AttrTypes: mdnsPredefinedServiceAttrTypes,
+				AttrTypes: mdnsPredefinedServicesAttrTypes,
 				Encode:    mdnsPredefinedServiceEncode,
 				Decode:    mdnsPredefinedServiceDecode,
 				Elide:     resourcekit.KeepZero,
 			},
-		},
+		}),
 	}
 }
 
 func mdnsCustomServiceEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingMdnsCustomServices, diag.Diagnostics) {
-	var model settingMdnsCustomServiceModel
+	var model mdnsCustomServicesModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingMdnsCustomServices{
 		Address: model.Address.ValueString(),
@@ -146,7 +91,7 @@ func mdnsCustomServiceEncode(
 func mdnsCustomServiceDecode(
 	ctx context.Context, element settings.SettingMdnsCustomServices,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, mdnsCustomServiceAttrTypes, settingMdnsCustomServiceModel{
+	return types.ObjectValueFrom(ctx, mdnsCustomServicesAttrTypes, mdnsCustomServicesModel{
 		Address: types.StringValue(element.Address),
 		Name:    types.StringValue(element.Name),
 	})
@@ -155,7 +100,7 @@ func mdnsCustomServiceDecode(
 func mdnsPredefinedServiceEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingMdnsPredefinedServices, diag.Diagnostics) {
-	var model settingMdnsPredefinedServiceModel
+	var model mdnsPredefinedServicesModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingMdnsPredefinedServices{
 		Code: model.Code.ValueString(),
@@ -165,7 +110,7 @@ func mdnsPredefinedServiceEncode(
 func mdnsPredefinedServiceDecode(
 	ctx context.Context, element settings.SettingMdnsPredefinedServices,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, mdnsPredefinedServiceAttrTypes, settingMdnsPredefinedServiceModel{
+	return types.ObjectValueFrom(ctx, mdnsPredefinedServicesAttrTypes, mdnsPredefinedServicesModel{
 		Code: types.StringValue(element.Code),
 	})
 }
@@ -197,23 +142,13 @@ func mdnsAfterReceive(
 		return nil
 	}
 	var diags diag.Diagnostics
-	customServices, d := types.ListValue(types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}, []attr.Value{})
+	customServices, d := types.ListValue(types.ObjectType{AttrTypes: mdnsCustomServicesAttrTypes}, []attr.Value{})
 	diags.Append(d...)
-	predefinedServices, d := types.ListValue(types.ObjectType{AttrTypes: mdnsPredefinedServiceAttrTypes}, []attr.Value{})
+	predefinedServices, d := types.ListValue(types.ObjectType{AttrTypes: mdnsPredefinedServicesAttrTypes}, []attr.Value{})
 	diags.Append(d...)
 	model.CustomServices = customServices
 	model.PredefinedServices = predefinedServices
 	return diags
-}
-
-// mdnsNestedSchema is the mdns SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built
-// for a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func mdnsNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	mdns := built.Attributes["mdns"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // mdns is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: mdns.Attributes}
 }
 
 // mdnsKitBackend binds mdnsKitSpec to a client: Read is GetSetting[*Mdns],

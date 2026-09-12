@@ -30,28 +30,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingIgmpSnoopingModel is igmp_snooping's own section model, decoded
-// out of settingResourceModel.IgmpSnooping.
-type settingIgmpSnoopingModel struct {
-	Enabled    types.Bool `tfsdk:"enabled"`
-	NetworkIDs types.List `tfsdk:"network_ids"`
-}
-
-// igmpSnoopingAttrTypes types igmp_snooping's own object in state; it must
-// match the generated schema exactly.
-var igmpSnoopingAttrTypes = map[string]attr.Type{
-	"enabled":     types.BoolType,
-	"network_ids": types.ListType{ElemType: types.StringType},
-}
 
 // igmpSnoopingKitSpec maps the two managed attributes of the generated
 // igmp_snooping schema (resource_setting/setting_resource_gen.go's
@@ -66,35 +49,8 @@ func igmpSnoopingKitSpec() resourcekit.Spec[settingIgmpSnoopingModel, settings.I
 		TypeName: "setting_igmp_snooping",
 		Subject:  "IGMP Snooping Setting",
 		New:      func() *settings.IgmpSnooping { return &settings.IgmpSnooping{} },
-		Fields: []resourcekit.Field[settingIgmpSnoopingModel, settings.IgmpSnooping]{
-			resourcekit.BoolField[settingIgmpSnoopingModel, settings.IgmpSnooping]{
-				Wire:  "enabled",
-				Model: func(m *settingIgmpSnoopingModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.IgmpSnooping) *bool { return &s.Enabled },
-			},
-			resourcekit.StringListField[settingIgmpSnoopingModel, settings.IgmpSnooping]{
-				Wire:  "network_ids",
-				Model: func(m *settingIgmpSnoopingModel) *types.List { return &m.NetworkIDs },
-				SDK:   func(s *settings.IgmpSnooping) *[]string { return &s.NetworkIDs },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   settingIgmpSnoopingGenFields(),
 	}
-}
-
-// igmpSnoopingNestedSchema is the igmp_snooping SingleNestedAttribute's own
-// Attributes, wrapped as a schema.Schema so resourcekit's conformance
-// checks -- built for a whole resource's top-level schema -- can run
-// against one section of unifi_setting instead. Unlike every other section
-// migrated so far, igmp_snooping's own top-level attribute is Optional-only
-// (not Computed): resourcekit.SpecSection.Configured keys on the object
-// being non-null in the plan, which needs no Computed flag to work, and
-// TestIgmpSnoopingKitSpecConformance is what confirms the instrument
-// accepts that shape.
-func igmpSnoopingNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	igmp := built.Attributes["igmp_snooping"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // igmp_snooping is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: igmp.Attributes}
 }
 
 // igmpSnoopingKitBackend binds igmpSnoopingKitSpec to a client: Read is

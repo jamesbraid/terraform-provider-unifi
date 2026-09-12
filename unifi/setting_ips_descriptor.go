@@ -49,116 +49,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
-)
-
-// settingIpsHoneypotModel is one element of ips's honeypot list.
-type settingIpsHoneypotModel struct {
-	IPAddress types.String `tfsdk:"ip_address"`
-	NetworkID types.String `tfsdk:"network_id"`
-	Version   types.String `tfsdk:"version"`
-}
-
-// settingIpsWhitelistModel is one element of ips's suppression_whitelist
-// list, owned by ipsSuppressionKitSpec. Its shape (direction/mode/value) is
-// identical to settingIpsTrackingModel's own -- schema_model_agreement_test.go
-// declares both "unifi_setting.ips.suppression_alerts.tracking" and
-// "unifi_setting.ips.suppression_whitelist" ambiguous between the two for
-// exactly this reason. TestIpsSuppressionAttributesMapToNamedSDKMembers is
-// what actually resolves which wire each one carries.
-type settingIpsWhitelistModel struct {
-	Direction types.String `tfsdk:"direction"`
-	Mode      types.String `tfsdk:"mode"`
-	Value     types.String `tfsdk:"value"`
-}
-
-// settingIpsTrackingModel is one element of an alert's own tracking list --
-// nested two levels deep (ips.suppression_alerts[].tracking[]), which no
-// Field kind reaches directly; ipsAlertEncode/ipsAlertDecode convert it by
-// hand, the same way settingIpsAlertModel's other members are.
-type settingIpsTrackingModel struct {
-	Direction types.String `tfsdk:"direction"`
-	Mode      types.String `tfsdk:"mode"`
-	Value     types.String `tfsdk:"value"`
-}
-
-// settingIpsAlertModel is one element of ips's suppression_alerts list,
-// owned by ipsSuppressionKitSpec.
-type settingIpsAlertModel struct {
-	Category  types.String `tfsdk:"category"`
-	Gid       types.Int64  `tfsdk:"gid"`
-	ID        types.Int64  `tfsdk:"id"`
-	Signature types.String `tfsdk:"signature"`
-	Type      types.String `tfsdk:"type"`
-	Tracking  types.List   `tfsdk:"tracking"`
-}
-
-// settingIpsModel is ips's own section model, decoded out of
-// settingResourceModel.Ips. Its SuppressionWhitelist/SuppressionAlerts
-// members are mapped by ipsSuppressionKitSpec, not ipsKitSpec -- see this
-// file's own top comment.
-type settingIpsModel struct {
-	AdvancedFilteringPreference         types.String `tfsdk:"advanced_filtering_preference"`
-	ContentFilteringBlockingPageEnabled types.Bool   `tfsdk:"content_filtering_blocking_page_enabled"`
-	EnabledCategories                   types.List   `tfsdk:"enabled_categories"`
-	EnabledNetworks                     types.List   `tfsdk:"enabled_networks"`
-	Honeypot                            types.List   `tfsdk:"honeypot"`
-	HoneypotEnabled                     types.Bool   `tfsdk:"honeypot_enabled"`
-	IPSMode                             types.String `tfsdk:"ips_mode"`
-	MemoryOptimized                     types.Bool   `tfsdk:"memory_optimized"`
-	RestrictTorrents                    types.Bool   `tfsdk:"restrict_torrents"`
-	SuppressionWhitelist                types.List   `tfsdk:"suppression_whitelist"`
-	SuppressionAlerts                   types.List   `tfsdk:"suppression_alerts"`
-}
-
-// ipsHoneypotAttrTypes, ipsWhitelistAttrTypes, ipsTrackingAttrTypes,
-// ipsAlertAttrTypes and ipsAttrTypes type ips's own nested lists and its own
-// object in state; all must match the generated schema exactly.
-var (
-	ipsHoneypotAttrTypes = map[string]attr.Type{
-		"ip_address": types.StringType,
-		"network_id": types.StringType,
-		"version":    types.StringType,
-	}
-	ipsWhitelistAttrTypes = map[string]attr.Type{
-		"direction": types.StringType,
-		"mode":      types.StringType,
-		"value":     types.StringType,
-	}
-	ipsTrackingAttrTypes = map[string]attr.Type{
-		"direction": types.StringType,
-		"mode":      types.StringType,
-		"value":     types.StringType,
-	}
-	ipsAlertAttrTypes = map[string]attr.Type{
-		"category":  types.StringType,
-		"gid":       types.Int64Type,
-		"id":        types.Int64Type,
-		"signature": types.StringType,
-		"type":      types.StringType,
-		"tracking":  types.ListType{ElemType: types.ObjectType{AttrTypes: ipsTrackingAttrTypes}},
-	}
-	ipsAttrTypes = map[string]attr.Type{
-		"advanced_filtering_preference":           types.StringType,
-		"content_filtering_blocking_page_enabled": types.BoolType,
-		"enabled_categories":                      types.ListType{ElemType: types.StringType},
-		"enabled_networks":                        types.ListType{ElemType: types.StringType},
-		"honeypot": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: ipsHoneypotAttrTypes},
-		},
-		"honeypot_enabled":  types.BoolType,
-		"ips_mode":          types.StringType,
-		"memory_optimized":  types.BoolType,
-		"restrict_torrents": types.BoolType,
-		"suppression_whitelist": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: ipsWhitelistAttrTypes},
-		},
-		"suppression_alerts": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: ipsAlertAttrTypes},
-		},
-	}
 )
 
 // ipsKitSpec maps every non-suppression attribute of the generated ips
@@ -183,30 +75,7 @@ func ipsKitSpec() resourcekit.Spec[settingIpsModel, settings.Ips] {
 		// surface; ipsSuppressionKitSpec (no TypeName of its own) is the Spec
 		// that actually carries and verifies them.
 		MappedElsewhere: []string{"alerts", "whitelist"},
-		Fields: []resourcekit.Field[settingIpsModel, settings.Ips]{
-			resourcekit.StringField[settingIpsModel, settings.Ips]{
-				Wire:  "advanced_filtering_preference",
-				Model: func(m *settingIpsModel) *types.String { return &m.AdvancedFilteringPreference },
-				SDK:   func(s *settings.Ips) *string { return &s.AdvancedFilteringPreference },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[settingIpsModel, settings.Ips]{
-				Wire:  "content_filtering_blocking_page_enabled",
-				Model: func(m *settingIpsModel) *types.Bool { return &m.ContentFilteringBlockingPageEnabled },
-				SDK:   func(s *settings.Ips) *bool { return &s.ContentFilteringBlockingPageEnabled },
-			},
-			resourcekit.StringListField[settingIpsModel, settings.Ips]{
-				Wire:  "enabled_categories",
-				Model: func(m *settingIpsModel) *types.List { return &m.EnabledCategories },
-				SDK:   func(s *settings.Ips) *[]string { return &s.EnabledCategories },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringListField[settingIpsModel, settings.Ips]{
-				Wire:  "enabled_networks",
-				Model: func(m *settingIpsModel) *types.List { return &m.EnabledNetworks },
-				SDK:   func(s *settings.Ips) *[]string { return &s.EnabledNetworks },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(settingIpsGenFields(), []resourcekit.Field[settingIpsModel, settings.Ips]{
 			resourcekit.ObjectListField[settingIpsModel, settings.Ips, settings.SettingIpsHoneypot]{
 				Wire:      "honeypot",
 				Model:     func(m *settingIpsModel) *types.List { return &m.Honeypot },
@@ -216,35 +85,14 @@ func ipsKitSpec() resourcekit.Spec[settingIpsModel, settings.Ips] {
 				Decode:    ipsHoneypotDecode,
 				Elide:     resourcekit.KeepZero,
 			},
-			resourcekit.BoolField[settingIpsModel, settings.Ips]{
-				Wire:  "honeypot_enabled",
-				Model: func(m *settingIpsModel) *types.Bool { return &m.HoneypotEnabled },
-				SDK:   func(s *settings.Ips) *bool { return &s.HoneypotEnabled },
-			},
-			resourcekit.StringField[settingIpsModel, settings.Ips]{
-				Wire:  "ips_mode",
-				Model: func(m *settingIpsModel) *types.String { return &m.IPSMode },
-				SDK:   func(s *settings.Ips) *string { return &s.IPsMode },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[settingIpsModel, settings.Ips]{
-				Wire:  "memory_optimized",
-				Model: func(m *settingIpsModel) *types.Bool { return &m.MemoryOptimized },
-				SDK:   func(s *settings.Ips) *bool { return &s.MemoryOptimized },
-			},
-			resourcekit.BoolField[settingIpsModel, settings.Ips]{
-				Wire:  "restrict_torrents",
-				Model: func(m *settingIpsModel) *types.Bool { return &m.RestrictTorrents },
-				SDK:   func(s *settings.Ips) *bool { return &s.RestrictTorrents },
-			},
-		},
+		}),
 	}
 }
 
 func ipsHoneypotEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingIpsHoneypot, diag.Diagnostics) {
-	var model settingIpsHoneypotModel
+	var model ipsHoneypotModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingIpsHoneypot{
 		IPAddress: model.IPAddress.ValueString(),
@@ -256,7 +104,7 @@ func ipsHoneypotEncode(
 func ipsHoneypotDecode(
 	ctx context.Context, element settings.SettingIpsHoneypot,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, ipsHoneypotAttrTypes, settingIpsHoneypotModel{
+	return types.ObjectValueFrom(ctx, ipsHoneypotAttrTypes, ipsHoneypotModel{
 		IPAddress: types.StringValue(element.IPAddress),
 		NetworkID: types.StringValue(element.NetworkID),
 		Version:   types.StringValue(element.Version),
@@ -268,7 +116,7 @@ func ipsHoneypotDecode(
 func ipsWhitelistEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingIpsSuppressionWhitelist, diag.Diagnostics) {
-	var model settingIpsWhitelistModel
+	var model ipsSuppressionWhitelistModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingIpsSuppressionWhitelist{
 		Direction: model.Direction.ValueString(),
@@ -280,7 +128,7 @@ func ipsWhitelistEncode(
 func ipsWhitelistDecode(
 	ctx context.Context, element settings.SettingIpsSuppressionWhitelist,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, ipsWhitelistAttrTypes, settingIpsWhitelistModel{
+	return types.ObjectValueFrom(ctx, ipsSuppressionWhitelistAttrTypes, ipsSuppressionWhitelistModel{
 		Direction: types.StringValue(element.Direction),
 		Mode:      types.StringValue(element.Mode),
 		Value:     types.StringValue(element.Value),
@@ -293,7 +141,7 @@ func ipsWhitelistDecode(
 func ipsTrackingEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingIpsSuppressionTracking, diag.Diagnostics) {
-	var model settingIpsTrackingModel
+	var model ipsSuppressionAlertsTrackingModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingIpsSuppressionTracking{
 		Direction: model.Direction.ValueString(),
@@ -305,7 +153,7 @@ func ipsTrackingEncode(
 func ipsTrackingDecode(
 	ctx context.Context, element settings.SettingIpsSuppressionTracking,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, ipsTrackingAttrTypes, settingIpsTrackingModel{
+	return types.ObjectValueFrom(ctx, ipsSuppressionAlertsTrackingAttrTypes, ipsSuppressionAlertsTrackingModel{
 		Direction: types.StringValue(element.Direction),
 		Mode:      types.StringValue(element.Mode),
 		Value:     types.StringValue(element.Value),
@@ -333,7 +181,7 @@ func ipsTrackingDecode(
 func ipsAlertEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingIpsSuppressionAlerts, diag.Diagnostics) {
-	var model settingIpsAlertModel
+	var model ipsSuppressionAlertsModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	alert := settings.SettingIpsSuppressionAlerts{
 		Category:  model.Category.ValueString(),
@@ -378,9 +226,9 @@ func ipsAlertDecode(
 	// tracking list is never plan-conditioned at this nested level, only the
 	// top-level suppression_alerts list is (see ipsAfterReceive) -- so this
 	// is always a real (possibly empty) list, never null.
-	trackingList, d := types.ListValue(types.ObjectType{AttrTypes: ipsTrackingAttrTypes}, trackingValues)
+	trackingList, d := types.ListValue(types.ObjectType{AttrTypes: ipsSuppressionAlertsTrackingAttrTypes}, trackingValues)
 	diags.Append(d...)
-	object, d := types.ObjectValueFrom(ctx, ipsAlertAttrTypes, settingIpsAlertModel{
+	object, d := types.ObjectValueFrom(ctx, ipsSuppressionAlertsAttrTypes, ipsSuppressionAlertsModel{
 		Category:  util.StringValueOrNull(element.Category),
 		Gid:       types.Int64PointerValue(element.Gid),
 		ID:        types.Int64PointerValue(element.ID),
@@ -425,7 +273,7 @@ func ipsAfterReceive(
 	model.RestrictTorrents = boolOrNull(prior.RestrictTorrents, model.RestrictTorrents)
 
 	model.AdvancedFilteringPreference = stringOrNull(prior.AdvancedFilteringPreference, model.AdvancedFilteringPreference)
-	model.IPSMode = stringOrNull(prior.IPSMode, model.IPSMode)
+	model.IPsMode = stringOrNull(prior.IPsMode, model.IPsMode)
 
 	if prior.EnabledCategories.IsNull() || prior.EnabledCategories.IsUnknown() {
 		model.EnabledCategories = types.ListNull(types.StringType)
@@ -437,23 +285,13 @@ func ipsAfterReceive(
 		model.Honeypot = types.ListNull(types.ObjectType{AttrTypes: ipsHoneypotAttrTypes})
 	}
 	if prior.SuppressionWhitelist.IsNull() || prior.SuppressionWhitelist.IsUnknown() {
-		model.SuppressionWhitelist = types.ListNull(types.ObjectType{AttrTypes: ipsWhitelistAttrTypes})
+		model.SuppressionWhitelist = types.ListNull(types.ObjectType{AttrTypes: ipsSuppressionWhitelistAttrTypes})
 	}
 	if prior.SuppressionAlerts.IsNull() || prior.SuppressionAlerts.IsUnknown() {
-		model.SuppressionAlerts = types.ListNull(types.ObjectType{AttrTypes: ipsAlertAttrTypes})
+		model.SuppressionAlerts = types.ListNull(types.ObjectType{AttrTypes: ipsSuppressionAlertsAttrTypes})
 	}
 
 	return nil
-}
-
-// ipsNestedSchema is the ips SingleNestedAttribute's own Attributes, wrapped
-// as a schema.Schema so resourcekit's conformance checks -- built for a
-// whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func ipsNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	ips := built.Attributes["ips"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // ips is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: ips.Attributes}
 }
 
 // ipsSuppressionNestedSchema is the subset of ips's own nested schema that
@@ -516,7 +354,7 @@ func ipsSuppressionKitSpec() resourcekit.Spec[settingIpsModel, settings.IpsSuppr
 				Wire:      "alerts",
 				Model:     func(m *settingIpsModel) *types.List { return &m.SuppressionAlerts },
 				SDK:       func(s *settings.IpsSuppression) *[]settings.SettingIpsSuppressionAlerts { return &s.Alerts },
-				AttrTypes: ipsAlertAttrTypes,
+				AttrTypes: ipsSuppressionAlertsAttrTypes,
 				Encode:    ipsAlertEncode,
 				Decode:    ipsAlertDecode,
 				Elide:     resourcekit.KeepZero,
@@ -527,7 +365,7 @@ func ipsSuppressionKitSpec() resourcekit.Spec[settingIpsModel, settings.IpsSuppr
 				SDK: func(s *settings.IpsSuppression) *[]settings.SettingIpsSuppressionWhitelist {
 					return &s.Whitelist
 				},
-				AttrTypes: ipsWhitelistAttrTypes,
+				AttrTypes: ipsSuppressionWhitelistAttrTypes,
 				Encode:    ipsWhitelistEncode,
 				Decode:    ipsWhitelistDecode,
 				Elide:     resourcekit.KeepZero,
