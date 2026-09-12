@@ -32,10 +32,10 @@ type radiusProfileDataSourceModel struct {
 	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
 	InterimUpdateEnabled  types.Bool           `tfsdk:"interim_update_enabled"`
 	InterimUpdateInterval timetypes.GoDuration `tfsdk:"interim_update_interval"`
-	UseUSGAcctServer      types.Bool           `tfsdk:"use_usg_acct_server"`
-	UseUSGAuthServer      types.Bool           `tfsdk:"use_usg_auth_server"`
-	VlanEnabled           types.Bool           `tfsdk:"vlan_enabled"`
-	VlanWlanMode          types.String         `tfsdk:"vlan_wlan_mode"`
+	UseUsgAcctServer      types.Bool           `tfsdk:"use_usg_acct_server"`
+	UseUsgAuthServer      types.Bool           `tfsdk:"use_usg_auth_server"`
+	VLANEnabled           types.Bool           `tfsdk:"vlan_enabled"`
+	VLANWLANMode          types.String         `tfsdk:"vlan_wlan_mode"`
 
 	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
@@ -118,10 +118,10 @@ func (d *radiusProfileDataSource) Read(
 		radiusProfile.InterimUpdateInterval,
 		time.Second,
 	)
-	data.UseUSGAcctServer = types.BoolValue(radiusProfile.UseUsgAcctServer)
-	data.UseUSGAuthServer = types.BoolValue(radiusProfile.UseUsgAuthServer)
-	data.VlanEnabled = types.BoolValue(radiusProfile.VLANEnabled)
-	data.VlanWlanMode = types.StringValue(radiusProfile.VLANWLANMode)
+	data.UseUsgAcctServer = types.BoolValue(radiusProfile.UseUsgAcctServer)
+	data.UseUsgAuthServer = types.BoolValue(radiusProfile.UseUsgAuthServer)
+	data.VLANEnabled = types.BoolValue(radiusProfile.VLANEnabled)
+	data.VLANWLANMode = types.StringValue(radiusProfile.VLANWLANMode)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

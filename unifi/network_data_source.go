@@ -43,27 +43,27 @@ type networkDataSourceModel struct {
 	NetworkIsolation       types.Bool   `tfsdk:"network_isolation"`
 	SettingPreference      types.String `tfsdk:"setting_preference"`
 	InternetAccess         types.Bool   `tfsdk:"internet_access"`
-	IgmpSnooping           types.Bool   `tfsdk:"igmp_snooping"`
+	IGMPSnooping           types.Bool   `tfsdk:"igmp_snooping"`
 	MulticastDNS           types.Bool   `tfsdk:"multicast_dns"`
 	GatewayType            types.String `tfsdk:"gateway_type"`
 	IPv6InterfaceType      types.String `tfsdk:"ipv6_interface_type"`
-	LteLan                 types.Bool   `tfsdk:"lte_lan"`
+	LteLAN                 types.Bool   `tfsdk:"lte_lan"`
 	IPAliases              types.List   `tfsdk:"ip_aliases"`
 	IPv6Aliases            types.List   `tfsdk:"ipv6_aliases"`
 	ThirdPartyGateway      types.Bool   `tfsdk:"third_party_gateway"`
-	NatOutboundIPAddresses types.List   `tfsdk:"nat_outbound_ip_addresses"`
-	DhcpGuarding           types.Object `tfsdk:"dhcp_guarding"`
-	DhcpServer             types.Object `tfsdk:"dhcp_server"`
-	DhcpRelay              types.Object `tfsdk:"dhcp_relay"`
+	NATOutboundIPAddresses types.List   `tfsdk:"nat_outbound_ip_addresses"`
+	DHCPGuarding           types.Object `tfsdk:"dhcp_guarding"`
+	DHCPServer             types.Object `tfsdk:"dhcp_server"`
+	DHCPRelay              types.Object `tfsdk:"dhcp_relay"`
 
 	// Data-source-only informational fields
 	Purpose      types.String `tfsdk:"purpose"`
-	NetworkGroup types.String `tfsdk:"network_group"`
+	Networkgroup types.String `tfsdk:"network_group"`
 
 	// IPv6 detail fields (DS-only)
 	IPv6StaticSubnet        types.String         `tfsdk:"ipv6_static_subnet"`
 	IPv6PDInterface         types.String         `tfsdk:"ipv6_pd_interface"`
-	IPv6PDPrefixID          types.String         `tfsdk:"ipv6_pd_prefixid"`
+	IPv6PDPrefixid          types.String         `tfsdk:"ipv6_pd_prefixid"`
 	IPv6PDStart             types.String         `tfsdk:"ipv6_pd_start"`
 	IPv6PDStop              types.String         `tfsdk:"ipv6_pd_stop"`
 	IPv6RA                  types.Bool           `tfsdk:"ipv6_ra"`
@@ -72,7 +72,7 @@ type networkDataSourceModel struct {
 	IPv6RAValidLifetime     timetypes.GoDuration `tfsdk:"ipv6_ra_valid_lifetime"`
 
 	// DHCPv6 server (DS-only)
-	DhcpV6Server types.Object `tfsdk:"dhcp_v6_server"`
+	DHCPV6Server types.Object `tfsdk:"dhcp_v6_server"`
 
 	// WAN fields (DS-only)
 	WanDNS          types.List   `tfsdk:"wan_dns"`
@@ -206,7 +206,7 @@ func (d *networkDataSource) setDataSourceData(
 	model.Site = types.StringValue(site)
 	model.Name = types.StringPointerValue(network.Name)
 	model.Purpose, model.ThirdPartyGateway = networkDataSourcePurposeFromNetwork(network)
-	model.NetworkGroup = types.StringPointerValue(network.NetworkGroup)
+	model.Networkgroup = types.StringPointerValue(network.NetworkGroup)
 
 	// Shared with resource fields
 	model.Enabled = types.BoolValue(network.Enabled)
@@ -217,11 +217,11 @@ func (d *networkDataSource) setDataSourceData(
 	model.NetworkIsolation = types.BoolValue(network.NetworkIsolationEnabled)
 	model.SettingPreference = types.StringPointerValue(network.SettingPreference)
 	model.InternetAccess = types.BoolValue(network.InternetAccessEnabled)
-	model.IgmpSnooping = types.BoolValue(network.IGMPSnooping)
+	model.IGMPSnooping = types.BoolValue(network.IGMPSnooping)
 	model.MulticastDNS = types.BoolValue(network.MdnsEnabled) //nolint:staticcheck // the only wire for a released attribute
 	model.GatewayType = types.StringPointerValue(network.GatewayType)
 	model.IPv6InterfaceType = types.StringPointerValue(network.IPV6InterfaceType)
-	model.LteLan = types.BoolValue(network.LteLanEnabled)
+	model.LteLAN = types.BoolValue(network.LteLanEnabled)
 
 	if len(network.IPAliases) > 0 {
 		ipAliasesList, d := types.ListValueFrom(ctx, types.StringType, network.IPAliases)
@@ -235,7 +235,7 @@ func (d *networkDataSource) setDataSourceData(
 	model.IPv6Aliases = types.ListNull(types.StringType)
 
 	// nat_outbound_ip_addresses — not populated by API read
-	model.NatOutboundIPAddresses = types.ListNull(
+	model.NATOutboundIPAddresses = types.ListNull(
 		types.ObjectType{AttrTypes: natOutboundIPAddresses()},
 	)
 
@@ -250,7 +250,7 @@ func (d *networkDataSource) setDataSourceData(
 			dhcpGuardingValue,
 		)
 		diags.Append(d...)
-		model.DhcpGuarding = dhcpGuardingObj
+		model.DHCPGuarding = dhcpGuardingObj
 	}
 
 	{
@@ -282,7 +282,7 @@ func (d *networkDataSource) setDataSourceData(
 			dhcpServerValue,
 		)
 		diags.Append(d...)
-		model.DhcpServer = dhcpServerObj
+		model.DHCPServer = dhcpServerObj
 	}
 
 	{
@@ -304,16 +304,16 @@ func (d *networkDataSource) setDataSourceData(
 			dhcpRelayValue,
 		)
 		diags.Append(d...)
-		model.DhcpRelay = dhcpRelayObj
+		model.DHCPRelay = dhcpRelayObj
 	}
 
 	// DS-only IPv6 fields
 	model.IPv6StaticSubnet = types.StringPointerValue(network.IPV6Subnet)
 	model.IPv6PDInterface = types.StringPointerValue(network.IPV6PDInterface)
 	if network.IPV6PDPrefixid == "" {
-		model.IPv6PDPrefixID = types.StringNull()
+		model.IPv6PDPrefixid = types.StringNull()
 	} else {
-		model.IPv6PDPrefixID = types.StringValue(network.IPV6PDPrefixid)
+		model.IPv6PDPrefixid = types.StringValue(network.IPV6PDPrefixid)
 	}
 	model.IPv6PDStart = types.StringPointerValue(network.IPV6PDStart)
 	model.IPv6PDStop = types.StringPointerValue(network.IPV6PDStop)
@@ -340,7 +340,7 @@ func (d *networkDataSource) setDataSourceData(
 			dhcpV6ServerValue,
 		)
 		diags.Append(d...)
-		model.DhcpV6Server = dhcpV6ServerObj
+		model.DHCPV6Server = dhcpV6ServerObj
 	}
 
 	model.WanDNS = networkDataSourceWANDNSFromNetwork(ctx, diags, network)

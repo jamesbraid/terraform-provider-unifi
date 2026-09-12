@@ -492,48 +492,48 @@ func Test_portProfileResource_modelToAPIPortProfile(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				model: &portProfileKitModel{
-					ID:                         types.StringNull(),
-					Site:                       types.StringNull(),
-					Name:                       types.StringValue("test"),
-					OpMode:                     types.StringValue("switch"),
-					Autoneg:                    types.BoolValue(true),
-					Dot1XCtrl:                  types.StringNull(),
-					Dot1XIdleTimeout:           timetypes.NewGoDurationNull(),
-					EgressRateLimitKbps:        types.Int64Null(),
-					EgressRateLimitKbpsEnabled: types.BoolNull(),
-					Forward:                    types.StringNull(),
-					FullDuplex:                 types.BoolNull(),
-					Isolation:                  types.BoolNull(),
-					LLDPMedEnabled:             types.BoolNull(),
-					LLDPMedNotifyEnabled:       types.BoolNull(),
-					NativeNetworkConfID:        types.StringNull(),
-					PoeMode:                    types.StringNull(),
-					PortSecurityEnabled:        types.BoolNull(),
-					PortSecurityMacAddress:     types.SetNull(types.StringType),
-					PriorityQueue1Level:        types.Int64Null(),
-					PriorityQueue2Level:        types.Int64Null(),
-					PriorityQueue3Level:        types.Int64Null(),
-					PriorityQueue4Level:        types.Int64Null(),
-					Speed:                      types.Int64Null(),
-					StormctrlBcastEnabled:      types.BoolNull(),
-					StormctrlBcastLevel:        types.Int64Null(),
-					StormctrlBcastRate:         types.Int64Null(),
-					StormctrlMcastEnabled:      types.BoolNull(),
-					StormctrlMcastLevel:        types.Int64Null(),
-					StormctrlMcastRate:         types.Int64Null(),
-					StormctrlType:              types.StringNull(),
-					StormctrlUcastEnabled:      types.BoolNull(),
-					StormctrlUcastLevel:        types.Int64Null(),
-					StormctrlUcastRate:         types.Int64Null(),
-					STPPortMode:                types.BoolNull(),
-					TaggedNetworkConfIDs:       types.SetNull(types.StringType),
-					VoiceNetworkConfID:         types.StringNull(),
-					ExcludedNetworkConfIDs:     types.SetNull(types.StringType),
-					MulticastRouterNetworkIDs:  types.SetNull(types.StringType),
-					TaggedVLANMgmt:             types.StringNull(),
-					FecMode:                    types.StringNull(),
-					SettingPreference:          types.StringNull(),
-					PortKeepaliveEnabled:       types.BoolNull(),
+					ID:                            types.StringNull(),
+					Site:                          types.StringNull(),
+					Name:                          types.StringValue("test"),
+					OpMode:                        types.StringValue("switch"),
+					Autoneg:                       types.BoolValue(true),
+					Dot1xCtrl:                     types.StringNull(),
+					Dot1xIdleTimeout:              timetypes.NewGoDurationNull(),
+					EgressRateLimitKbps:           types.Int64Null(),
+					EgressRateLimitKbpsEnabled:    types.BoolNull(),
+					Forward:                       types.StringNull(),
+					FullDuplex:                    types.BoolNull(),
+					Isolation:                     types.BoolNull(),
+					LldpmedEnabled:                types.BoolNull(),
+					LldpmedNotifyEnabled:          types.BoolNull(),
+					NativeNetworkconfID:           types.StringNull(),
+					PoeMode:                       types.StringNull(),
+					PortSecurityEnabled:           types.BoolNull(),
+					PortSecurityMACAddress:        types.SetNull(types.StringType),
+					PriorityQueue1Level:           types.Int64Null(),
+					PriorityQueue2Level:           types.Int64Null(),
+					PriorityQueue3Level:           types.Int64Null(),
+					PriorityQueue4Level:           types.Int64Null(),
+					Speed:                         types.Int64Null(),
+					StormctrlBcastEnabled:         types.BoolNull(),
+					StormctrlBcastLevel:           types.Int64Null(),
+					StormctrlBcastRate:            types.Int64Null(),
+					StormctrlMcastEnabled:         types.BoolNull(),
+					StormctrlMcastLevel:           types.Int64Null(),
+					StormctrlMcastRate:            types.Int64Null(),
+					StormctrlType:                 types.StringNull(),
+					StormctrlUcastEnabled:         types.BoolNull(),
+					StormctrlUcastLevel:           types.Int64Null(),
+					StormctrlUcastRate:            types.Int64Null(),
+					STPPortMode:                   types.BoolNull(),
+					TaggedNetworkconfIDs:          types.SetNull(types.StringType),
+					VoiceNetworkconfID:            types.StringNull(),
+					ExcludedNetworkconfIDs:        types.SetNull(types.StringType),
+					MulticastRouterNetworkconfIDs: types.SetNull(types.StringType),
+					TaggedVLANMgmt:                types.StringNull(),
+					FecMode:                       types.StringNull(),
+					SettingPreference:             types.StringNull(),
+					PortKeepaliveEnabled:          types.BoolNull(),
 				},
 			},
 			want: &unifi.PortProfile{
@@ -609,8 +609,8 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 				if model.Site.ValueString() != "default" {
 					t.Errorf("Site = %q, want %q", model.Site.ValueString(), "default")
 				}
-				if !model.PortSecurityMacAddress.IsNull() {
-					t.Error("PortSecurityMacAddress should be null for empty API field")
+				if !model.PortSecurityMACAddress.IsNull() {
+					t.Error("PortSecurityMACAddress should be null for empty API field")
 				}
 			},
 		},
@@ -630,13 +630,13 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 			},
 			want: nil,
 			checkFunc: func(t *testing.T, model *portProfileKitModel) {
-				if model.ExcludedNetworkConfIDs.IsNull() {
-					t.Fatal("ExcludedNetworkConfIDs is null, want an empty set")
+				if model.ExcludedNetworkconfIDs.IsNull() {
+					t.Fatal("ExcludedNetworkconfIDs is null, want an empty set")
 				}
-				if len(model.ExcludedNetworkConfIDs.Elements()) != 0 {
+				if len(model.ExcludedNetworkconfIDs.Elements()) != 0 {
 					t.Fatalf(
-						"ExcludedNetworkConfIDs has %d elements, want 0",
-						len(model.ExcludedNetworkConfIDs.Elements()),
+						"ExcludedNetworkconfIDs has %d elements, want 0",
+						len(model.ExcludedNetworkconfIDs.Elements()),
 					)
 				}
 			},
@@ -1078,7 +1078,7 @@ func TestSetPortProfileTaggedNetworkState(t *testing.T) {
 				t.Fatalf("setPortProfileTaggedNetworkState() diagnostics: %v", diags)
 			}
 			var got []string
-			diags = model.TaggedNetworkConfIDs.ElementsAs(context.Background(), &got, false)
+			diags = model.TaggedNetworkconfIDs.ElementsAs(context.Background(), &got, false)
 			if diags.HasError() {
 				t.Fatalf("decoding tagged_networkconf_ids: %v", diags)
 			}
@@ -1186,13 +1186,13 @@ func TestPortProfileWireMaskCarriesTheDerivedVLANFields(t *testing.T) {
 	}
 	plan := &portProfileKitModel{
 		Name:                 types.StringValue("uplink"),
-		TaggedNetworkConfIDs: tagged,
+		TaggedNetworkconfIDs: tagged,
 		// Every attribute that maps to one of the three derived wire fields is
 		// left null, which is the state after an import or a create the
 		// controller answered with empty values.
 		TaggedVLANMgmt:         types.StringNull(),
 		Forward:                types.StringNull(),
-		ExcludedNetworkConfIDs: types.SetNull(types.StringType),
+		ExcludedNetworkconfIDs: types.SetNull(types.StringType),
 	}
 
 	fields, err := portProfileKitSpec().WireFields(plan)
@@ -1222,7 +1222,7 @@ func TestPortProfileReadDefaults(t *testing.T) {
 		read      func(*portProfileKitModel) string
 		want      string
 	}{
-		{"dot1x_ctrl", "", func(m *portProfileKitModel) string { return m.Dot1XCtrl.ValueString() }, "force_authorized"},
+		{"dot1x_ctrl", "", func(m *portProfileKitModel) string { return m.Dot1xCtrl.ValueString() }, "force_authorized"},
 		{"forward", "", func(m *portProfileKitModel) string { return m.Forward.ValueString() }, "native"},
 		{"op_mode", "", func(m *portProfileKitModel) string { return m.OpMode.ValueString() }, "switch"},
 	} {
@@ -1252,7 +1252,7 @@ func TestPortProfileReadDefaults(t *testing.T) {
 		t.Fatalf("ToModel: %v", d)
 	}
 	for _, pair := range []struct{ name, got, want string }{
-		{"dot1x_ctrl", model.Dot1XCtrl.ValueString(), "auto"},
+		{"dot1x_ctrl", model.Dot1xCtrl.ValueString(), "auto"},
 		{"forward", model.Forward.ValueString(), "customize"},
 		{"op_mode", model.OpMode.ValueString(), "aggregate"},
 	} {
@@ -1281,8 +1281,8 @@ func TestPortProfileLLDPMedNotifyEnabledPreservesNull(t *testing.T) {
 		{"previously false, controller reports false", types.BoolValue(false), false, types.BoolValue(false)},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			prior := portProfileKitModel{LLDPMedNotifyEnabled: tt.prior}
-			model := portProfileKitModel{LLDPMedNotifyEnabled: tt.prior}
+			prior := portProfileKitModel{LldpmedNotifyEnabled: tt.prior}
+			model := portProfileKitModel{LldpmedNotifyEnabled: tt.prior}
 			api := &unifi.PortProfile{LldpmedNotifyEnabled: tt.reported}
 			if d := portProfileKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
 				t.Fatalf("ToModel: %v", d)
@@ -1290,8 +1290,8 @@ func TestPortProfileLLDPMedNotifyEnabledPreservesNull(t *testing.T) {
 			if d := portProfileAfterReceive(ctx, api, &model, prior, []unifi.Network(nil)); d.HasError() {
 				t.Fatalf("AfterReceive: %v", d)
 			}
-			if !model.LLDPMedNotifyEnabled.Equal(tt.want) {
-				t.Errorf("LLDPMedNotifyEnabled = %#v, want %#v", model.LLDPMedNotifyEnabled, tt.want)
+			if !model.LldpmedNotifyEnabled.Equal(tt.want) {
+				t.Errorf("LldpmedNotifyEnabled = %#v, want %#v", model.LldpmedNotifyEnabled, tt.want)
 			}
 		})
 	}
@@ -1306,11 +1306,11 @@ func TestPortProfileToModel_NativeNetworkClearedRoundTrips(t *testing.T) {
 	if d := portProfileKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
 		t.Fatalf("ToModel: %v", d)
 	}
-	if model.NativeNetworkConfID.IsNull() || model.NativeNetworkConfID.IsUnknown() ||
-		model.NativeNetworkConfID.ValueString() != "" {
+	if model.NativeNetworkconfID.IsNull() || model.NativeNetworkconfID.IsUnknown() ||
+		model.NativeNetworkconfID.ValueString() != "" {
 		t.Errorf(
 			"native_networkconf_id: want known empty string, got %#v",
-			model.NativeNetworkConfID,
+			model.NativeNetworkconfID,
 		)
 	}
 }
@@ -1322,7 +1322,7 @@ func TestPortProfileToModel_NativeNetworkAssignedKept(t *testing.T) {
 	if d := portProfileKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
 		t.Fatalf("ToModel: %v", d)
 	}
-	if got := model.NativeNetworkConfID.ValueString(); got != "net-123" {
+	if got := model.NativeNetworkconfID.ValueString(); got != "net-123" {
 		t.Errorf("native_networkconf_id = %q, want net-123", got)
 	}
 }
@@ -1336,7 +1336,7 @@ func TestPortProfileToModel_NativeNetworkAssignedKept(t *testing.T) {
 func TestPortProfileWireMaskCarriesExplicitNativeNetworkClear(t *testing.T) {
 	plan := &portProfileKitModel{
 		Name:                types.StringValue("uplink"),
-		NativeNetworkConfID: types.StringValue(""),
+		NativeNetworkconfID: types.StringValue(""),
 	}
 	fields, err := portProfileKitSpec().WireFields(plan)
 	if err != nil {
@@ -1358,7 +1358,7 @@ func TestPortProfileWholeObjectWriteOmitsAnUnsetNativeNetwork(t *testing.T) {
 	ctx := context.Background()
 	model := &portProfileKitModel{
 		Name:                types.StringValue("uplink"),
-		NativeNetworkConfID: types.StringValue(""),
+		NativeNetworkconfID: types.StringValue(""),
 	}
 	built, diags := portProfileKitSpec().ToSDK(ctx, model)
 	if diags.HasError() {

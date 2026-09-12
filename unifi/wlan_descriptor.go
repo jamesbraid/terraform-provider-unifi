@@ -18,73 +18,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// wlanKitModel is the existing resource model, reused rather than restated.
-type wlanKitModel struct {
-	ID                          types.String `tfsdk:"id"`
-	Site                        types.String `tfsdk:"site"`
-	Name                        types.String `tfsdk:"name"`
-	NetworkID                   types.String `tfsdk:"network_id"`
-	UserGroupID                 types.String `tfsdk:"user_group_id"`
-	Security                    types.String `tfsdk:"security"`
-	WPA3Support                 types.Bool   `tfsdk:"wpa3_support"`
-	WPA3Transition              types.Bool   `tfsdk:"wpa3_transition"`
-	PMFMode                     types.String `tfsdk:"pmf_mode"`
-	Passphrase                  types.String `tfsdk:"passphrase"`
-	PassphraseWO                types.String `tfsdk:"passphrase_wo"`
-	HideSSID                    types.Bool   `tfsdk:"hide_ssid"`
-	IsGuest                     types.Bool   `tfsdk:"is_guest"`
-	Enabled                     types.Bool   `tfsdk:"enabled"`
-	ApGroupIDs                  types.Set    `tfsdk:"ap_group_ids"`
-	ApGroupMode                 types.String `tfsdk:"ap_group_mode"`
-	VLANEnabled                 types.Bool   `tfsdk:"vlan_enabled"`
-	VLAN                        types.Int64  `tfsdk:"vlan"`
-	WLANBand                    types.String `tfsdk:"wlan_band"`
-	WLANBands                   types.Set    `tfsdk:"wlan_bands"`
-	MulticastEnhance            types.Bool   `tfsdk:"multicast_enhance"`
-	MacFilter                   types.Object `tfsdk:"mac_filter"`
-	PrivatePresharedKeysEnabled types.Bool   `tfsdk:"private_preshared_keys_enabled"`
-	PrivatePresharedKeys        types.List   `tfsdk:"private_preshared_keys"`
-	RadiusProfileID             types.String `tfsdk:"radius_profile_id"`
-	NasIDentifierType           types.String `tfsdk:"nas_identifier_type"`
-	Schedule                    types.List   `tfsdk:"schedule"`
-	No2GhzOui                   types.Bool   `tfsdk:"no2ghz_oui"`
-	L2Isolation                 types.Bool   `tfsdk:"l2_isolation"`
-	ProxyArp                    types.Bool   `tfsdk:"proxy_arp"`
-	BssTransition               types.Bool   `tfsdk:"bss_transition"`
-	Uapsd                       types.Bool   `tfsdk:"uapsd"`
-	FastRoamingEnabled          types.Bool   `tfsdk:"fast_roaming_enabled"`
-	MinimumDataRate2GKbps       types.Int64  `tfsdk:"minimum_data_rate_2g_kbps"`
-	MinimumDataRate5GKbps       types.Int64  `tfsdk:"minimum_data_rate_5g_kbps"`
-	MinrateSettingPreference    types.String `tfsdk:"minrate_setting_preference"`
-	RoamingAssistantNaEnabled   types.Bool   `tfsdk:"roaming_assistant_na_enabled"`
-	RoamingAssistantNaRssi      types.Int64  `tfsdk:"roaming_assistant_na_rssi"`
-	RoamingAssistant6EEnabled   types.Bool   `tfsdk:"roaming_assistant_6e_enabled"`
-	RoamingAssistant6ERssi      types.Int64  `tfsdk:"roaming_assistant_6e_rssi"`
-
-	// Security / encryption
-	WPAMode types.String `tfsdk:"wpa_mode"`
-	WPAEnc  types.String `tfsdk:"wpa_enc"`
-
-	// DTIM
-	DTIMMode types.String `tfsdk:"dtim_mode"`
-	DTIMNg   types.Int64  `tfsdk:"dtim_ng"`
-	DTIMNa   types.Int64  `tfsdk:"dtim_na"`
-	DTIM6E   types.Int64  `tfsdk:"dtim_6e"`
-
-	// Misc toggles
-	GroupRekey           types.Int64 `tfsdk:"group_rekey"`
-	IappEnabled          types.Bool  `tfsdk:"iapp_enabled"`
-	WPA3FastRoaming      types.Bool  `tfsdk:"wpa3_fast_roaming"`
-	WPA3Enhanced192      types.Bool  `tfsdk:"wpa3_enhanced_192"`
-	RADIUSMacAuthEnabled types.Bool  `tfsdk:"radius_mac_auth_enabled"`
-	EnhancedIot          types.Bool  `tfsdk:"enhanced_iot"`
-	Hotspot2ConfEnabled  types.Bool  `tfsdk:"hotspot2conf_enabled"`
-	MloEnabled           types.Bool  `tfsdk:"mlo_enabled"`
-	BroadcastFilterList  types.Set   `tfsdk:"bc_filter_list"`
-
-	Timeouts timeouts.Value `tfsdk:"timeouts"`
-}
-
 // wlanPrefetched is what Prefetch fetches. Two lookups rather than one, because
 // the surface defaults two different identifiers from site inventory and the
 // kit hands back a single value.
@@ -116,7 +49,7 @@ func (m wlanScheduleModel) AttributeTypes() map[string]attr.Type {
 // encodeWlanMacFilter writes the mac_filter block onto its three flat wires.
 //
 // The block is one Terraform object over three unrelated fields on ui.WLAN --
-// there is no MacFilter struct in the SDK to point a plain ObjectField at, which
+// there is no MACFilter struct in the SDK to point a plain ObjectField at, which
 // is what ScatteredObjectField exists for.
 func encodeWlanMacFilter(ctx context.Context, object types.Object, sdk *ui.WLAN) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -372,16 +305,16 @@ func wlanPrivatePresharedKeysState(
 	prior types.List,
 ) (types.List, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()}
+	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeysAttrTypes}
 
 	// Disabled PPSK, or an absent list, has no key state to preserve.
 	if !wlan.PrivatePresharedKeysEnabled || len(wlan.PrivatePresharedKeys) == 0 {
 		return types.ListNull(ppskType), diags
 	}
 
-	values := make([]wlanPrivatePresharedKeyModel, len(wlan.PrivatePresharedKeys))
+	values := make([]wlanPrivatePresharedKeysModel, len(wlan.PrivatePresharedKeys))
 	for i, key := range wlan.PrivatePresharedKeys {
-		values[i] = wlanPrivatePresharedKeyModel{
+		values[i] = wlanPrivatePresharedKeysModel{
 			NetworkID: types.StringValue(key.NetworkID),
 			Password:  types.StringValue(key.Password),
 		}
@@ -392,7 +325,7 @@ func wlanPrivatePresharedKeysState(
 		return remote, diags
 	}
 
-	var keys []wlanPrivatePresharedKeyModel
+	var keys []wlanPrivatePresharedKeysModel
 	diags.Append(prior.ElementsAs(ctx, &keys, false)...)
 	if diags.HasError() {
 		return remote, diags
@@ -429,6 +362,75 @@ func wlanPrivatePresharedKeysState(
 	return prior, diags
 }
 
+// The model stays hand-written: Schema injects passphrase_wo (a write-only
+// attribute the generated schema does not carry), and the framework
+// requires the model to cover it.
+type wlanKitModel struct {
+	ID                          types.String `tfsdk:"id"`
+	Site                        types.String `tfsdk:"site"`
+	Name                        types.String `tfsdk:"name"`
+	NetworkID                   types.String `tfsdk:"network_id"`
+	UserGroupID                 types.String `tfsdk:"user_group_id"`
+	Security                    types.String `tfsdk:"security"`
+	WPA3Support                 types.Bool   `tfsdk:"wpa3_support"`
+	WPA3Transition              types.Bool   `tfsdk:"wpa3_transition"`
+	PMFMode                     types.String `tfsdk:"pmf_mode"`
+	Passphrase                  types.String `tfsdk:"passphrase"`
+	PassphraseWO                types.String `tfsdk:"passphrase_wo"`
+	HideSSID                    types.Bool   `tfsdk:"hide_ssid"`
+	IsGuest                     types.Bool   `tfsdk:"is_guest"`
+	Enabled                     types.Bool   `tfsdk:"enabled"`
+	APGroupIDs                  types.Set    `tfsdk:"ap_group_ids"`
+	APGroupMode                 types.String `tfsdk:"ap_group_mode"`
+	VLANEnabled                 types.Bool   `tfsdk:"vlan_enabled"`
+	VLAN                        types.Int64  `tfsdk:"vlan"`
+	WLANBand                    types.String `tfsdk:"wlan_band"`
+	WLANBands                   types.Set    `tfsdk:"wlan_bands"`
+	MulticastEnhance            types.Bool   `tfsdk:"multicast_enhance"`
+	MACFilter                   types.Object `tfsdk:"mac_filter"`
+	PrivatePresharedKeysEnabled types.Bool   `tfsdk:"private_preshared_keys_enabled"`
+	PrivatePresharedKeys        types.List   `tfsdk:"private_preshared_keys"`
+	RADIUSProfileID             types.String `tfsdk:"radius_profile_id"`
+	NasIdentifierType           types.String `tfsdk:"nas_identifier_type"`
+	Schedule                    types.List   `tfsdk:"schedule"`
+	No2ghzOUI                   types.Bool   `tfsdk:"no2ghz_oui"`
+	L2Isolation                 types.Bool   `tfsdk:"l2_isolation"`
+	ProxyARP                    types.Bool   `tfsdk:"proxy_arp"`
+	BssTransition               types.Bool   `tfsdk:"bss_transition"`
+	Uapsd                       types.Bool   `tfsdk:"uapsd"`
+	FastRoamingEnabled          types.Bool   `tfsdk:"fast_roaming_enabled"`
+	MinimumDataRate2GKbps       types.Int64  `tfsdk:"minimum_data_rate_2g_kbps"`
+	MinimumDataRate5GKbps       types.Int64  `tfsdk:"minimum_data_rate_5g_kbps"`
+	MinrateSettingPreference    types.String `tfsdk:"minrate_setting_preference"`
+	RoamingAssistantNaEnabled   types.Bool   `tfsdk:"roaming_assistant_na_enabled"`
+	RoamingAssistantNaRssi      types.Int64  `tfsdk:"roaming_assistant_na_rssi"`
+	RoamingAssistant6EEnabled   types.Bool   `tfsdk:"roaming_assistant_6e_enabled"`
+	RoamingAssistant6ERssi      types.Int64  `tfsdk:"roaming_assistant_6e_rssi"`
+
+	// Security / encryption
+	WPAMode types.String `tfsdk:"wpa_mode"`
+	WPAEnc  types.String `tfsdk:"wpa_enc"`
+
+	// DTIM
+	DtimMode types.String `tfsdk:"dtim_mode"`
+	DtimNg   types.Int64  `tfsdk:"dtim_ng"`
+	DtimNa   types.Int64  `tfsdk:"dtim_na"`
+	Dtim6E   types.Int64  `tfsdk:"dtim_6e"`
+
+	// Misc toggles
+	GroupRekey           types.Int64 `tfsdk:"group_rekey"`
+	IappEnabled          types.Bool  `tfsdk:"iapp_enabled"`
+	WPA3FastRoaming      types.Bool  `tfsdk:"wpa3_fast_roaming"`
+	WPA3Enhanced192      types.Bool  `tfsdk:"wpa3_enhanced_192"`
+	RADIUSMACAuthEnabled types.Bool  `tfsdk:"radius_mac_auth_enabled"`
+	EnhancedIot          types.Bool  `tfsdk:"enhanced_iot"`
+	Hotspot2confEnabled  types.Bool  `tfsdk:"hotspot2conf_enabled"`
+	MloEnabled           types.Bool  `tfsdk:"mlo_enabled"`
+	BcFilterList         types.Set   `tfsdk:"bc_filter_list"`
+
+	Timeouts timeouts.Value `tfsdk:"timeouts"`
+}
+
 func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 	return resourcekit.Spec[wlanKitModel, ui.WLAN]{
 		TypeName: "wlan",
@@ -454,138 +456,7 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 		Prefetch:     nil, // bound in Configure, where the client exists
 		BeforeSend:   wlanBeforeSend,
 		AfterReceive: wlanAfterReceive,
-		Fields: []resourcekit.Field[wlanKitModel, ui.WLAN]{
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "name",
-				Model: func(m *wlanKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.WLAN) *string { return &s.Name },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "networkconf_id",
-				Model: func(m *wlanKitModel) *types.String { return &m.NetworkID },
-				SDK:   func(s *ui.WLAN) *string { return &s.NetworkID },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "usergroup_id",
-				Model: func(m *wlanKitModel) *types.String { return &m.UserGroupID },
-				SDK:   func(s *ui.WLAN) *string { return &s.UserGroupID },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "security",
-				Model: func(m *wlanKitModel) *types.String { return &m.Security },
-				SDK:   func(s *ui.WLAN) *string { return &s.Security },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "wpa3_support",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.WPA3Support },
-				SDK:   func(s *ui.WLAN) *bool { return &s.WPA3Support },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "wpa3_transition",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.WPA3Transition },
-				SDK:   func(s *ui.WLAN) *bool { return &s.WPA3Transition },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "pmf_mode",
-				Model: func(m *wlanKitModel) *types.String { return &m.PMFMode },
-				SDK:   func(s *ui.WLAN) *string { return &s.PMFMode },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "x_passphrase",
-				Model: func(m *wlanKitModel) *types.String { return &m.Passphrase },
-				SDK:   func(s *ui.WLAN) *string { return &s.Passphrase },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "hide_ssid",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.HideSSID },
-				SDK:   func(s *ui.WLAN) *bool { return &s.HideSSID },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "is_guest",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.IsGuest },
-				SDK:   func(s *ui.WLAN) *bool { return &s.IsGuest },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.Enabled },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "ap_group_mode",
-				Model: func(m *wlanKitModel) *types.String { return &m.ApGroupMode },
-				SDK:   func(s *ui.WLAN) *string { return &s.ApGroupMode },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "vlan_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.VLANEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.VLANEnabled },
-			},
-			// OmitZero: Optional-only (no Computed), and the schema
-			// validator (Between(2, 4095)) already refuses a literal 0 in
-			// config -- defensive parity with the class, not a live fix
-			// (R2-C Task 10b fix round 1's census).
-			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:     "vlan",
-				Model:    func(m *wlanKitModel) *types.Int64 { return &m.VLAN },
-				SDK:      func(s *ui.WLAN) **int64 { return &s.VLAN },
-				Elide:    resourcekit.NullZero,
-				OmitZero: true,
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "mcastenhance_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.MulticastEnhance },
-				SDK:   func(s *ui.WLAN) *bool { return &s.MulticastEnhanceEnabled },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "radiusprofile_id",
-				Model: func(m *wlanKitModel) *types.String { return &m.RadiusProfileID },
-				SDK:   func(s *ui.WLAN) *string { return &s.RADIUSProfileID },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "nas_identifier_type",
-				Model: func(m *wlanKitModel) *types.String { return &m.NasIDentifierType },
-				SDK:   func(s *ui.WLAN) *string { return &s.NasIDentifierType },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "no2ghz_oui",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.No2GhzOui },
-				SDK:   func(s *ui.WLAN) *bool { return &s.No2GhzOui },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "l2_isolation",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.L2Isolation },
-				SDK:   func(s *ui.WLAN) *bool { return &s.L2Isolation },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "proxy_arp",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.ProxyArp },
-				SDK:   func(s *ui.WLAN) *bool { return &s.ProxyArp },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "bss_transition",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.BssTransition },
-				SDK:   func(s *ui.WLAN) *bool { return &s.BssTransition },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "uapsd_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.Uapsd },
-				SDK:   func(s *ui.WLAN) *bool { return &s.UapsdEnabled },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "fast_roaming_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.FastRoamingEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.FastRoamingEnabled },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "minrate_setting_preference",
-				Model: func(m *wlanKitModel) *types.String { return &m.MinrateSettingPreference },
-				SDK:   func(s *ui.WLAN) *string { return &s.MinrateSettingPreference },
-				Elide: resourcekit.NullZero,
-			},
+		Fields: resourcekit.Override(wlanGenFields(), []resourcekit.Field[wlanKitModel, ui.WLAN]{
 			// OmitZero: NOT caught by the census (internal/resourcekit/
 			// omit_zero_check.go only sees a rejection go-unifi's
 			// FieldConstraints declares as a Pattern, and this wire name has
@@ -615,120 +486,6 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 				SDK:      func(s *ui.WLAN) **int64 { return &s.MinrateNaDataRateKbps },
 				OmitZero: true,
 			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "roaming_assistant_na_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.RoamingAssistantNaEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.RoamingAssistantNaEnabled },
-			},
-			// OmitZero: same hazard and shape as dtim_6e/na/ng (R2-C Task
-			// 10b) -- Optional+Computed, UseStateForUnknown, no schema
-			// default, so an unset value is genuinely Unknown on create.
-			// Found by this task's fix-round census, not the original live
-			// rerun: it was masked behind dtim_6e failing validation first.
-			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:     "roaming_assistant_na_rssi",
-				Model:    func(m *wlanKitModel) *types.Int64 { return &m.RoamingAssistantNaRssi },
-				SDK:      func(s *ui.WLAN) **int64 { return &s.RoamingAssistantNaRssi },
-				OmitZero: true,
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "roaming_assistant_6e_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.RoamingAssistant6EEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.RoamingAssistant6EEnabled },
-			},
-			// OmitZero: the peeled-onion field this task's live rerun found
-			// behind dtim_6e -- same shape, same fix.
-			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:     "roaming_assistant_6e_rssi",
-				Model:    func(m *wlanKitModel) *types.Int64 { return &m.RoamingAssistant6ERssi },
-				SDK:      func(s *ui.WLAN) **int64 { return &s.RoamingAssistant6ERssi },
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "group_rekey",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.GroupRekey },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.GroupRekey },
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "dtim_mode",
-				Model: func(m *wlanKitModel) *types.String { return &m.DTIMMode },
-				SDK:   func(s *ui.WLAN) *string { return &s.DTIMMode },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "wpa_enc",
-				Model: func(m *wlanKitModel) *types.String { return &m.WPAEnc },
-				SDK:   func(s *ui.WLAN) *string { return &s.WPAEnc },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[wlanKitModel, ui.WLAN]{
-				Wire:  "wpa_mode",
-				Model: func(m *wlanKitModel) *types.String { return &m.WPAMode },
-				SDK:   func(s *ui.WLAN) *string { return &s.WPAMode },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "iapp_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.IappEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.IappEnabled },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "wpa3_fast_roaming",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.WPA3FastRoaming },
-				SDK:   func(s *ui.WLAN) *bool { return &s.WPA3FastRoaming },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "wpa3_enhanced_192",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.WPA3Enhanced192 },
-				SDK:   func(s *ui.WLAN) *bool { return &s.WPA3Enhanced192 },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "radius_mac_auth_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.RADIUSMacAuthEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.RADIUSMACAuthEnabled },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "enhanced_iot",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.EnhancedIot },
-				SDK:   func(s *ui.WLAN) *bool { return &s.EnhancedIot },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "hotspot2conf_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.Hotspot2ConfEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.Hotspot2ConfEnabled },
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "mlo_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.MloEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.MloEnabled },
-			},
-			// OmitZero: dtim_ng/na/6e are Optional+Computed with no schema
-			// default, so an unset one is Unknown on create; the controller's
-			// validator (^([1-9]|...|25[0-5])$|^$) rejects the zero that
-			// ValueInt64Pointer() would otherwise send for it.
-			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "dtim_ng",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.DTIMNg },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.DTIMNg },
-				Elide: resourcekit.KeepZero, OmitZero: true,
-			},
-			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "dtim_na",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.DTIMNa },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.DTIMNa },
-				Elide: resourcekit.KeepZero, OmitZero: true,
-			},
-			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "dtim_6e",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.DTIM6E },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.DTIM6E },
-				Elide: resourcekit.KeepZero, OmitZero: true,
-			},
-			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
-				Wire:  "private_preshared_keys_enabled",
-				Model: func(m *wlanKitModel) *types.Bool { return &m.PrivatePresharedKeysEnabled },
-				SDK:   func(s *ui.WLAN) *bool { return &s.PrivatePresharedKeysEnabled },
-			},
 			// wlan_band is read-only as a field: the write side derives it from
 			// wlan_bands in BeforeSend instead. ReadDefault substitutes "both"
 			// for an empty value.
@@ -740,27 +497,12 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 					ReadDefault: "both",
 				},
 			),
-			resourcekit.StringSetField[wlanKitModel, ui.WLAN]{
-				Wire:  "ap_group_ids",
-				Model: func(m *wlanKitModel) *types.Set { return &m.ApGroupIDs },
-				SDK:   func(s *ui.WLAN) *[]string { return &s.ApGroupIDs },
-			},
-			resourcekit.StringSetField[wlanKitModel, ui.WLAN]{
-				Wire:  "wlan_bands",
-				Model: func(m *wlanKitModel) *types.Set { return &m.WLANBands },
-				SDK:   func(s *ui.WLAN) *[]string { return &s.WLANBands },
-			},
-			resourcekit.StringSetField[wlanKitModel, ui.WLAN]{
-				Wire:  "bc_filter_list",
-				Model: func(m *wlanKitModel) *types.Set { return &m.BroadcastFilterList },
-				SDK:   func(s *ui.WLAN) *[]string { return &s.BroadcastFilterList },
-			},
 			// One Terraform object over three unrelated flat wires, which is
-			// what ScatteredObjectField is for -- ui.WLAN has no MacFilter
+			// what ScatteredObjectField is for -- ui.WLAN has no MACFilter
 			// struct to point an ObjectField at.
 			resourcekit.ScatteredObjectField[wlanKitModel, ui.WLAN]{
 				Wires:     []string{"mac_filter_enabled", "mac_filter_list", "mac_filter_policy"},
-				Model:     func(m *wlanKitModel) *types.Object { return &m.MacFilter },
+				Model:     func(m *wlanKitModel) *types.Object { return &m.MACFilter },
 				AttrTypes: wlanMacFilterModel{}.AttributeTypes(),
 				Encode:    encodeWlanMacFilter,
 				Decode:    decodeWlanMacFilter,
@@ -772,11 +514,11 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 				Wire:      "private_preshared_keys",
 				Model:     func(m *wlanKitModel) *types.List { return &m.PrivatePresharedKeys },
 				SDK:       func(s *ui.WLAN) *[]ui.WLANPrivatePresharedKeys { return &s.PrivatePresharedKeys },
-				AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes(),
+				AttrTypes: wlanPrivatePresharedKeysAttrTypes,
 				Elide:     resourcekit.NullZero,
 				Encode: func(ctx context.Context, object types.Object) (ui.WLANPrivatePresharedKeys, diag.Diagnostics) {
 					var diags diag.Diagnostics
-					var element wlanPrivatePresharedKeyModel
+					var element wlanPrivatePresharedKeysModel
 					diags.Append(object.As(ctx, &element, basetypes.ObjectAsOptions{})...)
 					return ui.WLANPrivatePresharedKeys{
 						NetworkID: element.NetworkID.ValueString(),
@@ -784,13 +526,13 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 					}, diags
 				},
 				Decode: func(ctx context.Context, element ui.WLANPrivatePresharedKeys) (types.Object, diag.Diagnostics) {
-					return types.ObjectValueFrom(ctx, wlanPrivatePresharedKeyModel{}.AttributeTypes(), wlanPrivatePresharedKeyModel{
+					return types.ObjectValueFrom(ctx, wlanPrivatePresharedKeysAttrTypes, wlanPrivatePresharedKeysModel{
 						NetworkID: types.StringValue(element.NetworkID),
 						Password:  types.StringValue(element.Password),
 					})
 				},
 			},
-		},
+		}),
 		// Seeded here as well as in wlanKitBackend, because Configure binds the
 		// real Backend and a unit test calling ToModel on an unconfigured spec
 		// would otherwise dereference nil.

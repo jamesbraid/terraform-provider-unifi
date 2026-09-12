@@ -65,8 +65,8 @@ func TestClientToModel_DefaultsWhenAPIOmitsFields(t *testing.T) {
 	if !model.Groups.IsNull() {
 		t.Errorf("groups: want null, got %#v", model.Groups)
 	}
-	if !model.QOSRate.IsNull() {
-		t.Errorf("qos_rate: want null, got %#v", model.QOSRate)
+	if !model.QoSRate.IsNull() {
+		t.Errorf("qos_rate: want null, got %#v", model.QoSRate)
 	}
 }
 
@@ -995,10 +995,10 @@ func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			model := clientModel{
 				FixedIP:        testCase.fixedIP,
-				FixedApMAC:     testCase.fixedApMAC,
+				FixedAPMAC:     testCase.fixedApMAC,
 				LocalDNSRecord: testCase.dnsRecord,
 				NetworkID:      testCase.networkID,
-				QOSRate:        types.ObjectNull(qosRateModel{}.AttributeTypes()),
+				QoSRate:        types.ObjectNull(qosRateModel{}.AttributeTypes()),
 				Groups:         types.ListNull(types.StringType),
 			}
 			sdk := &unifi.Client{}
@@ -1112,10 +1112,10 @@ func TestClientBeforeSendSerializesNetworkMembersGroupCreateOnMiss(t *testing.T)
 			<-start
 			model := clientModel{
 				FixedIP:        types.StringNull(),
-				FixedApMAC:     hwtypes.NewMACAddressNull(),
+				FixedAPMAC:     hwtypes.NewMACAddressNull(),
 				LocalDNSRecord: types.StringNull(),
 				NetworkID:      types.StringNull(),
-				QOSRate:        types.ObjectNull(qosRateModel{}.AttributeTypes()),
+				QoSRate:        types.ObjectNull(qosRateModel{}.AttributeTypes()),
 				Groups:         groupsValue,
 			}
 			sdk := &unifi.Client{}
@@ -1222,10 +1222,10 @@ func TestClientBeforeSendSerializesUserGroupCreateOnMiss(t *testing.T) {
 			<-start
 			model := clientModel{
 				FixedIP:        types.StringNull(),
-				FixedApMAC:     hwtypes.NewMACAddressNull(),
+				FixedAPMAC:     hwtypes.NewMACAddressNull(),
 				LocalDNSRecord: types.StringNull(),
 				NetworkID:      types.StringNull(),
-				QOSRate:        qosValue,
+				QoSRate:        qosValue,
 				Groups:         types.ListNull(types.StringType),
 			}
 			sdk := &unifi.Client{}
@@ -1318,10 +1318,10 @@ func TestClientBeforeSendWithQosRateAndGroupsDoesNotDeadlock(t *testing.T) {
 
 	model := clientModel{
 		FixedIP:        types.StringNull(),
-		FixedApMAC:     hwtypes.NewMACAddressNull(),
+		FixedAPMAC:     hwtypes.NewMACAddressNull(),
 		LocalDNSRecord: types.StringNull(),
 		NetworkID:      types.StringNull(),
-		QOSRate:        qosValue,
+		QoSRate:        qosValue,
 		Groups:         groupsValue,
 	}
 	sdk := &unifi.Client{}

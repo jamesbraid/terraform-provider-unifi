@@ -15,22 +15,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type radiusProfileKitModel struct {
-	ID                    types.String         `tfsdk:"id"`
-	Site                  types.String         `tfsdk:"site"`
-	Name                  types.String         `tfsdk:"name"`
-	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
-	InterimUpdateEnabled  types.Bool           `tfsdk:"interim_update_enabled"`
-	InterimUpdateInterval timetypes.GoDuration `tfsdk:"interim_update_interval"`
-	UseUSGAcctServer      types.Bool           `tfsdk:"use_usg_acct_server"`
-	UseUSGAuthServer      types.Bool           `tfsdk:"use_usg_auth_server"`
-	VlanEnabled           types.Bool           `tfsdk:"vlan_enabled"`
-	VlanWlanMode          types.String         `tfsdk:"vlan_wlan_mode"`
-	AuthServer            types.List           `tfsdk:"auth_server"`
-	AcctServer            types.List           `tfsdk:"acct_server"`
-	Timeouts              timeouts.Value       `tfsdk:"timeouts"`
-}
-
 // radiusServerAttrTypes types ONE server, not the list. The Terraform name is
 // `secret` and the controller's is `x_secret`; the SDK struct tag carries that,
 // so nothing here has to.
@@ -85,54 +69,13 @@ func radiusProfileKitSpec() resourcekit.Spec[radiusProfileKitModel, ui.RADIUSPro
 		// so an entry's absence means it can never be written. The x_client_*
 		// six are additionally safe because they carry omitempty and drop out
 		// of encoding on their own.
-		Fields: []resourcekit.Field[radiusProfileKitModel, ui.RADIUSProfile]{
-			resourcekit.StringField[radiusProfileKitModel, ui.RADIUSProfile]{
-				Wire:  "name",
-				Model: func(m *radiusProfileKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.RADIUSProfile) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[radiusProfileKitModel, ui.RADIUSProfile]{
-				Wire:  "accounting_enabled",
-				Model: func(m *radiusProfileKitModel) *types.Bool { return &m.AccountingEnabled },
-				SDK:   func(s *ui.RADIUSProfile) *bool { return &s.AccountingEnabled },
-			},
-			resourcekit.BoolField[radiusProfileKitModel, ui.RADIUSProfile]{
-				Wire:  "interim_update_enabled",
-				Model: func(m *radiusProfileKitModel) *types.Bool { return &m.InterimUpdateEnabled },
-				SDK:   func(s *ui.RADIUSProfile) *bool { return &s.InterimUpdateEnabled },
-			},
+		Fields: resourcekit.Override(radiusProfileGenFields(), []resourcekit.Field[radiusProfileKitModel, ui.RADIUSProfile]{
 			resourcekit.DurationPtrField[radiusProfileKitModel, ui.RADIUSProfile]{
 				Wire:  "interim_update_interval",
 				Model: func(m *radiusProfileKitModel) *timetypes.GoDuration { return &m.InterimUpdateInterval },
 				SDK:   func(s *ui.RADIUSProfile) **int64 { return &s.InterimUpdateInterval },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[radiusProfileKitModel, ui.RADIUSProfile]{
-				Wire:  "use_usg_acct_server",
-				Model: func(m *radiusProfileKitModel) *types.Bool { return &m.UseUSGAcctServer },
-				SDK:   func(s *ui.RADIUSProfile) *bool { return &s.UseUsgAcctServer },
-			},
-			resourcekit.BoolField[radiusProfileKitModel, ui.RADIUSProfile]{
-				Wire:  "use_usg_auth_server",
-				Model: func(m *radiusProfileKitModel) *types.Bool { return &m.UseUSGAuthServer },
-				SDK:   func(s *ui.RADIUSProfile) *bool { return &s.UseUsgAuthServer },
-			},
-			resourcekit.BoolField[radiusProfileKitModel, ui.RADIUSProfile]{
-				Wire:  "vlan_enabled",
-				Model: func(m *radiusProfileKitModel) *types.Bool { return &m.VlanEnabled },
-				SDK:   func(s *ui.RADIUSProfile) *bool { return &s.VLANEnabled },
-			},
-			resourcekit.StringField[radiusProfileKitModel, ui.RADIUSProfile]{
-				Wire:  "vlan_wlan_mode",
-				Model: func(m *radiusProfileKitModel) *types.String { return &m.VlanWlanMode },
-				SDK:   func(s *ui.RADIUSProfile) *string { return &s.VLANWLANMode },
-				// NullZero, and the empty-string default is gone with it:
-				// OneOf forbids "" and the default used to supply it, so every
-				// apply that omitted the attribute planned "" and the masked
-				// update sent a value the controller refuses.
-				Elide: resourcekit.NullZero,
 			},
 			// The wire names are plural and the Terraform names are not:
 			// acct_server is the block; acct_servers is what the controller
@@ -166,7 +109,7 @@ func radiusProfileKitSpec() resourcekit.Spec[radiusProfileKitModel, ui.RADIUSPro
 				},
 				Elide: resourcekit.NullZero,
 			},
-		},
+		}),
 		// Seeded here as well as in radiusProfileKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.

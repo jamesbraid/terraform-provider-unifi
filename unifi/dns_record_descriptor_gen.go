@@ -40,13 +40,6 @@ func dnsRecordGenFields() []resourcekit.Field[dnsRecordKitModel, ui.DNSRecord] {
 			SDK:   func(s *ui.DNSRecord) *string { return &s.Key },
 			Elide: resourcekit.KeepZero,
 		},
-		resourcekit.Int64PtrField[dnsRecordKitModel, ui.DNSRecord]{
-			Wire:     "port",
-			Model:    func(m *dnsRecordKitModel) *types.Int64 { return &m.Port },
-			SDK:      func(s *ui.DNSRecord) **int64 { return &s.Port },
-			Elide:    resourcekit.NullZero,
-			OmitZero: true,
-		},
 		resourcekit.Int64Field[dnsRecordKitModel, ui.DNSRecord]{
 			Wire:  "priority",
 			Model: func(m *dnsRecordKitModel) *types.Int64 { return &m.Priority },

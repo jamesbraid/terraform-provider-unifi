@@ -51,20 +51,6 @@ func settingRadiusGenFields() []resourcekit.Field[settingRadiusModel, settings.R
 			Model: func(m *settingRadiusModel) *types.Bool { return &m.AccountingEnabled },
 			SDK:   func(s *settings.Radius) *bool { return &s.AccountingEnabled },
 		},
-		resourcekit.Int64PtrField[settingRadiusModel, settings.Radius]{
-			Wire:     "acct_port",
-			Model:    func(m *settingRadiusModel) *types.Int64 { return &m.AcctPort },
-			SDK:      func(s *settings.Radius) **int64 { return &s.AcctPort },
-			Elide:    resourcekit.KeepZero,
-			OmitZero: true,
-		},
-		resourcekit.Int64PtrField[settingRadiusModel, settings.Radius]{
-			Wire:     "auth_port",
-			Model:    func(m *settingRadiusModel) *types.Int64 { return &m.AuthPort },
-			SDK:      func(s *settings.Radius) **int64 { return &s.AuthPort },
-			Elide:    resourcekit.KeepZero,
-			OmitZero: true,
-		},
 		resourcekit.BoolField[settingRadiusModel, settings.Radius]{
 			Wire:  "enabled",
 			Model: func(m *settingRadiusModel) *types.Bool { return &m.Enabled },

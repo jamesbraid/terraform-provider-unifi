@@ -22,12 +22,6 @@ type apGroupKitModel struct {
 // over these with resourcekit.Override.
 func apGroupGenFields() []resourcekit.Field[apGroupKitModel, ui.APGroup] {
 	return []resourcekit.Field[apGroupKitModel, ui.APGroup]{
-		resourcekit.StringSetField[apGroupKitModel, ui.APGroup]{
-			Wire:  "device_macs",
-			Model: func(m *apGroupKitModel) *types.Set { return &m.DeviceMacs },
-			SDK:   func(s *ui.APGroup) *[]string { return &s.DeviceMacs },
-			Elide: resourcekit.KeepZero,
-		},
 		resourcekit.StringField[apGroupKitModel, ui.APGroup]{
 			Wire:  "name",
 			Model: func(m *apGroupKitModel) *types.String { return &m.Name },

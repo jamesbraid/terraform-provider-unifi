@@ -23,16 +23,16 @@ func derefOrEmpty(p *string) string {
 	return *p
 }
 
-func wireguardSpec(wires []string) resourcekit.Spec[vpnClientResourceModel, ui.Network] {
+func wireguardSpec(wires []string) resourcekit.Spec[vpnClientKitModel, ui.Network] {
 	field := vpnClientWireguardField()
 	field.Wires = wires
-	return resourcekit.Spec[vpnClientResourceModel, ui.Network]{
+	return resourcekit.Spec[vpnClientKitModel, ui.Network]{
 		TypeName: "unifi_vpn_client",
-		Fields:   []resourcekit.Field[vpnClientResourceModel, ui.Network]{field},
+		Fields:   []resourcekit.Field[vpnClientKitModel, ui.Network]{field},
 	}
 }
 
-func wireguardPlan(t *testing.T) *vpnClientResourceModel {
+func wireguardPlan(t *testing.T) *vpnClientKitModel {
 	t.Helper()
 	dns, diags := types.ListValueFrom(context.Background(), types.StringType,
 		[]string{"10.0.0.1", "10.0.0.2"})
@@ -52,7 +52,7 @@ func wireguardPlan(t *testing.T) *vpnClientResourceModel {
 	if d.HasError() {
 		t.Fatal(d)
 	}
-	return &vpnClientResourceModel{Wireguard: object}
+	return &vpnClientKitModel{Wireguard: object}
 }
 
 // Checks names against the real unifi.Network's tags rather than a
@@ -150,7 +150,7 @@ func TestWireguardFieldRoundTripsWhatTheControllerReturns(t *testing.T) {
 	// real Create is the plan (Resource.Create loads data from req.Plan
 	// before calling Spec.ToModel) -- not a blank struct, which would read
 	// as an import with no prior state and correctly null the echo.
-	back := &vpnClientResourceModel{Wireguard: model.Wireguard}
+	back := &vpnClientKitModel{Wireguard: model.Wireguard}
 	if diags := field.ToModel(ctx, network, back); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
@@ -325,7 +325,7 @@ func TestDecodeVPNClientWireguardKeepsRoundTrippingAConfigManagedPresharedKey(t 
 // wireguardPlanWithout builds the same plan with one member cleared, so the
 // conditional-wire cases differ from the ten-name case by exactly the thing
 // under test.
-func wireguardPlanWithoutDNS(t *testing.T) *vpnClientResourceModel {
+func wireguardPlanWithoutDNS(t *testing.T) *vpnClientKitModel {
 	t.Helper()
 	value := wireguardModel{
 		PrivateKey:          types.StringValue("privkey"),
@@ -340,7 +340,7 @@ func wireguardPlanWithoutDNS(t *testing.T) *vpnClientResourceModel {
 	if d.HasError() {
 		t.Fatal(d)
 	}
-	return &vpnClientResourceModel{Wireguard: object}
+	return &vpnClientKitModel{Wireguard: object}
 }
 
 // go-unifi sends a masked field's zero when the object carries no value, so
@@ -439,7 +439,7 @@ func TestWireguardFieldDNSNamesFollowWhatTheConfigurationSupplies(t *testing.T) 
 // peer rather than configuration, because the two are the arms of one switch
 // and only one can run. Both write the same four wires; the peer arm needs no
 // base64 fixture to parse.
-func wireguardPlanWritingEverything(t *testing.T) *vpnClientResourceModel {
+func wireguardPlanWritingEverything(t *testing.T) *vpnClientKitModel {
 	t.Helper()
 	ctx := context.Background()
 	dns, diags := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.1", "10.0.0.2"})
@@ -467,7 +467,7 @@ func wireguardPlanWritingEverything(t *testing.T) *vpnClientResourceModel {
 	if d.HasError() {
 		t.Fatal(d)
 	}
-	return &vpnClientResourceModel{Wireguard: object}
+	return &vpnClientKitModel{Wireguard: object}
 }
 
 // wireguardWireValues reads the ten wires off an SDK object as comparable
@@ -505,7 +505,7 @@ func wireguardWireValues(network *ui.Network) map[string]string {
 // since a deliberate write of the zero value looks like no write. Encode
 // runs over two differently-seeded objects; an assigned field ends up the
 // same in both, an untouched one keeps its seed.
-func writtenWires(t *testing.T, plan *vpnClientResourceModel) []string {
+func writtenWires(t *testing.T, plan *vpnClientKitModel) []string {
 	t.Helper()
 	ctx := context.Background()
 	encode := func(seed *ui.Network) map[string]string {
@@ -580,7 +580,7 @@ func TestTheDeclaredConditionalWiresAreTheOnesEncodeWritesConditionally(t *testi
 func TestEveryConditionalWireAgreesWithWhatEncodeWrites(t *testing.T) {
 	field := vpnClientWireguardField()
 
-	written := func(t *testing.T, plan *vpnClientResourceModel, wire string) bool {
+	written := func(t *testing.T, plan *vpnClientKitModel, wire string) bool {
 		t.Helper()
 		return slices.Contains(writtenWires(t, plan), wire)
 	}
@@ -621,7 +621,7 @@ func TestEveryConditionalWireAgreesWithWhatEncodeWrites(t *testing.T) {
 
 func conditionalWiresOf(
 	t *testing.T,
-	field resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network],
+	field resourcekit.ScatteredObjectField[vpnClientKitModel, ui.Network],
 ) []string {
 	t.Helper()
 	names := make([]string, 0, len(field.ConditionalWires))
@@ -693,8 +693,8 @@ func vpnClientWireguardBlockServersOmitted(t *testing.T) types.Object {
 
 // vpnClientMaskTestModel builds a full model around one wireguard block.
 // Subnet and everything else the mask doesn't care about is left zero.
-func vpnClientMaskTestModel(wireguard types.Object) vpnClientResourceModel {
-	return vpnClientResourceModel{
+func vpnClientMaskTestModel(wireguard types.Object) vpnClientKitModel {
+	return vpnClientKitModel{
 		Name:      types.StringValue("mask-scenario"),
 		Enabled:   types.BoolValue(true),
 		Wireguard: wireguard,
@@ -705,7 +705,7 @@ func vpnClientMaskTestModel(wireguard types.Object) vpnClientResourceModel {
 // narrowed to vpnClientKitSpec -- see that function's comment for the
 // mechanism this reproduces (final-review.md's Lens C probe).
 func vpnClientRunDNSMaskScenario(
-	t *testing.T, prior, plan vpnClientResourceModel,
+	t *testing.T, prior, plan vpnClientKitModel,
 ) (map[string]bool, *ui.Network) {
 	t.Helper()
 	ctx := context.Background()

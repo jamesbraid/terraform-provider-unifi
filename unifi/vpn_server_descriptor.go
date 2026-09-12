@@ -16,28 +16,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// vpnServerKitModel describes the resource data model.
-//
-// The wire format is the purpose alias (marshalUserVPN for PurposeUserVPN),
-// not the struct: it omits fields the struct's own json tags don't mark
-// omitempty, so reading the struct's tags gives a different, wrong answer.
-// The three VPN types are mutually exclusive, so a wireguard server leaving
-// every openvpn wire unassigned on every apply is the normal path, not a bug.
-type vpnServerKitModel struct {
-	ID              types.String         `tfsdk:"id"`
-	Site            types.String         `tfsdk:"site"`
-	Name            types.String         `tfsdk:"name"`
-	Enabled         types.Bool           `tfsdk:"enabled"`
-	Subnet          cidrtypes.IPv4Prefix `tfsdk:"subnet"`
-	DNS             types.Object         `tfsdk:"dns"`
-	WAN             types.Object         `tfsdk:"wan"`
-	RadiusprofileID types.String         `tfsdk:"radiusprofile_id"`
-	Wireguard       types.Object         `tfsdk:"wireguard"`
-	L2TP            types.Object         `tfsdk:"l2tp"`
-	OpenVPN         types.Object         `tfsdk:"openvpn"`
-	Timeouts        timeouts.Value       `tfsdk:"timeouts"`
-}
-
 // local_port is spelled out at both declaration sites below rather than
 // shared through a constant: the mapping checker parses Wires entries as
 // string literals, and a name it cannot read is a wire it cannot account for.
@@ -432,7 +410,7 @@ func vpnServerBeforeSendBody(ctx context.Context, effective *vpnServerKitModel, 
 		sdk.VPNType = util.Ptr("wireguard-server")
 	case !effective.L2TP.IsNull() && !effective.L2TP.IsUnknown():
 		sdk.VPNType = util.Ptr("l2tp-server")
-	case !effective.OpenVPN.IsNull() && !effective.OpenVPN.IsUnknown():
+	case !effective.Openvpn.IsNull() && !effective.Openvpn.IsUnknown():
 		sdk.VPNType = util.Ptr("openvpn-server")
 	default:
 		diags.AddError(
@@ -551,7 +529,7 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 		BeforeSend:      vpnServerBeforeSend,
 		AfterReceive:    vpnServerAfterReceive,
 		UnwritableWires: vpnServerUnwritableWires,
-		Fields: []resourcekit.Field[vpnServerKitModel, ui.Network]{
+		Fields: resourcekit.Override(vpnServerGenFields(), []resourcekit.Field[vpnServerKitModel, ui.Network]{
 			resourcekit.StringLikePtrField[vpnServerKitModel, ui.Network, types.String]{
 				Wire:  "name",
 				Model: func(m *vpnServerKitModel) *types.String { return &m.Name },
@@ -565,11 +543,6 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 				New: func(v basetypes.StringValue) cidrtypes.IPv4Prefix {
 					return cidrtypes.IPv4Prefix{StringValue: v}
 				},
-			},
-			resourcekit.BoolField[vpnServerKitModel, ui.Network]{
-				Wire:  "enabled",
-				Model: func(m *vpnServerKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.Network) *bool { return &s.Enabled },
 			},
 			resourcekit.StringLikePtrField[vpnServerKitModel, ui.Network, types.String]{
 				Wire:  "radiusprofile_id",
@@ -665,7 +638,7 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 					"x_shared_client_key", "x_shared_client_crt",
 					"x_auth_key", "x_ca_crt", "x_ca_key",
 				},
-				Model:     func(m *vpnServerKitModel) *types.Object { return &m.OpenVPN },
+				Model:     func(m *vpnServerKitModel) *types.Object { return &m.Openvpn },
 				AttrTypes: vpnServerOpenVPNModel{}.AttributeTypes(),
 				Elide:     resourcekit.NullZero,
 				Encode:    encodeVPNServerOpenVPN,
@@ -684,7 +657,7 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 					"local_port":                portSet,
 				},
 			},
-		},
+		}),
 		// Seeded here as well as in vpnServerKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.

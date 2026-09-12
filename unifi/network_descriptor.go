@@ -20,47 +20,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-type networkKitModel struct {
-	ID                          types.String         `tfsdk:"id"`
-	Site                        types.String         `tfsdk:"site"`
-	Enabled                     types.Bool           `tfsdk:"enabled"`
-	Name                        types.String         `tfsdk:"name"`
-	NatOutboundIPAddresses      types.List           `tfsdk:"nat_outbound_ip_addresses"`
-	AutoScale                   types.Bool           `tfsdk:"auto_scale"`
-	Subnet                      cidrtypes.IPv4Prefix `tfsdk:"subnet"`
-	DomainName                  types.String         `tfsdk:"domain_name"`
-	Vlan                        types.Int64          `tfsdk:"vlan"`
-	NetworkIsolation            types.Bool           `tfsdk:"network_isolation"`
-	SettingPreference           types.String         `tfsdk:"setting_preference"`
-	InternetAccess              types.Bool           `tfsdk:"internet_access"`
-	IgmpSnooping                types.Bool           `tfsdk:"igmp_snooping"`
-	MulticastDNS                types.Bool           `tfsdk:"multicast_dns"`
-	GatewayType                 types.String         `tfsdk:"gateway_type"`
-	FirewallZoneID              types.String         `tfsdk:"firewall_zone_id"`
-	IPv6InterfaceType           types.String         `tfsdk:"ipv6_interface_type"`
-	IPv6ClientAddressAssignment types.String         `tfsdk:"ipv6_client_address_assignment"`
-	IPv6StaticSubnet            types.String         `tfsdk:"ipv6_static_subnet"`
-	IPv6RA                      types.Bool           `tfsdk:"ipv6_ra"`
-	IPv6RAPriority              types.String         `tfsdk:"ipv6_ra_priority"`
-	IPv6RAPreferredLifetime     timetypes.GoDuration `tfsdk:"ipv6_ra_preferred_lifetime"`
-	IPv6RAValidLifetime         timetypes.GoDuration `tfsdk:"ipv6_ra_valid_lifetime"`
-	IPv6PDInterface             types.String         `tfsdk:"ipv6_pd_interface"`
-	IPv6PDPrefixID              types.String         `tfsdk:"ipv6_pd_prefixid"`
-	IPv6PDStart                 types.String         `tfsdk:"ipv6_pd_start"`
-	IPv6PDStop                  types.String         `tfsdk:"ipv6_pd_stop"`
-	IPv6PDAutoPrefixidEnabled   types.Bool           `tfsdk:"ipv6_pd_auto_prefixid_enabled"`
-	LteLan                      types.Bool           `tfsdk:"lte_lan"`
-	IPAliases                   types.List           `tfsdk:"ip_aliases"`
-	IPv6Aliases                 types.List           `tfsdk:"ipv6_aliases"`
-	ThirdPartyGateway           types.Bool           `tfsdk:"third_party_gateway"`
-	Purpose                     types.String         `tfsdk:"purpose"`
-	DhcpGuarding                types.Object         `tfsdk:"dhcp_guarding"`
-	DhcpServer                  types.Object         `tfsdk:"dhcp_server"`
-	DhcpV6Server                types.Object         `tfsdk:"dhcp_v6_server"`
-	DhcpRelay                   types.Object         `tfsdk:"dhcp_relay"`
-	Timeouts                    timeouts.Value       `tfsdk:"timeouts"`
-}
-
 type netModel = networkKitModel
 
 // netPtr is the shape most of unifi.Network's scalars have: a *string the model
@@ -76,14 +35,6 @@ func netPtr(
 		Wire: wire, Model: model, SDK: sdk,
 		New: func(v basetypes.StringValue) types.String { return v },
 	}
-}
-
-func netBool(
-	wire string,
-	model func(*netModel) *types.Bool,
-	sdk func(*ui.Network) *bool,
-) resourcekit.BoolField[netModel, ui.Network] {
-	return resourcekit.BoolField[netModel, ui.Network]{Wire: wire, Model: model, SDK: sdk}
 }
 
 // emptyIfUnset sends "" rather than omitting, for a field whose omitempty would
@@ -248,7 +199,7 @@ func networkKitBeforeSend(
 	sdk.MdnsEnabled = effective.MulticastDNS.ValueBool() //nolint:staticcheck // the only wire for a released attribute
 	sdk.Purpose = ui.PurposeCorporate
 	networkPurposeToNetwork(effective.Purpose, effective.ThirdPartyGateway, sdk)
-	networkVLANToNetwork(effective.Vlan, sdk)
+	networkVLANToNetwork(effective.VLAN, sdk)
 
 	if sdk.IPAliases == nil {
 		sdk.IPAliases = []string{}
@@ -260,14 +211,14 @@ func networkKitBeforeSend(
 	}
 
 	relayEnabled := false
-	if !effective.DhcpRelay.IsNull() && !effective.DhcpRelay.IsUnknown() {
+	if !effective.DHCPRelay.IsNull() && !effective.DHCPRelay.IsUnknown() {
 		var relay dhcpRelayModel
-		if d := effective.DhcpRelay.As(ctx, &relay, basetypes.ObjectAsOptions{}); !d.HasError() {
+		if d := effective.DHCPRelay.As(ctx, &relay, basetypes.ObjectAsOptions{}); !d.HasError() {
 			relayEnabled = relay.Enabled.ValueBool()
 		}
 	}
 
-	dhcpServerUnset := effective.DhcpServer.IsNull() || effective.DhcpServer.IsUnknown()
+	dhcpServerUnset := effective.DHCPServer.IsNull() || effective.DHCPServer.IsUnknown()
 	if dhcpServerUnset && !relayEnabled {
 		// A DHCP server and a DHCP relay cannot coexist: with relay on, saying
 		// dhcpd_enabled=true makes the controller reject the request.
@@ -311,7 +262,7 @@ func networkKitAfterReceive(
 	} else {
 		model.MulticastDNS = prior.MulticastDNS
 	}
-	model.Vlan = networkVLANFromNetwork(sdk)
+	model.VLAN = networkVLANFromNetwork(sdk)
 
 	// A VLAN-only network doesn't store most of this surface: the controller
 	// accepts the write but omits these fields on every read, so a plain
@@ -346,11 +297,11 @@ func networkPreserveVLANOnly(model *netModel, prior netModel, sdk *ui.Network) {
 	if !prior.IPv6PDInterface.IsUnknown() {
 		model.IPv6PDInterface = prior.IPv6PDInterface
 	}
-	if !prior.IPv6PDPrefixID.IsUnknown() {
-		model.IPv6PDPrefixID = prior.IPv6PDPrefixID
+	if !prior.IPv6PDPrefixid.IsUnknown() {
+		model.IPv6PDPrefixid = prior.IPv6PDPrefixid
 	}
-	if !prior.LteLan.IsUnknown() {
-		model.LteLan = prior.LteLan
+	if !prior.LteLAN.IsUnknown() {
+		model.LteLAN = prior.LteLAN
 	}
 	if !prior.SettingPreference.IsUnknown() {
 		model.SettingPreference = prior.SettingPreference
@@ -421,13 +372,9 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 		// Fields is one literal because an instrument parses this file rather
 		// than running it; a list built via helper calls would be invisible to
 		// it, and every field in it would read as missing.
-		Fields: []resourcekit.Field[netModel, ui.Network]{
+		Fields: resourcekit.Override(networkGenFields(), []resourcekit.Field[networkKitModel, ui.Network]{
 			netPtr("name", func(m *netModel) *types.String { return &m.Name },
 				func(s *ui.Network) **string { return &s.Name }),
-			netBool("enabled", func(m *netModel) *types.Bool { return &m.Enabled },
-				func(s *ui.Network) *bool { return &s.Enabled }),
-			netBool("auto_scale_enabled", func(m *netModel) *types.Bool { return &m.AutoScale },
-				func(s *ui.Network) *bool { return &s.AutoScaleEnabled }),
 			resourcekit.StringLikePtrField[netModel, ui.Network, cidrtypes.IPv4Prefix]{
 				Wire:  "ip_subnet",
 				Model: func(m *netModel) *cidrtypes.IPv4Prefix { return &m.Subnet },
@@ -438,17 +385,9 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 			},
 			netPtr("domain_name", func(m *netModel) *types.String { return &m.DomainName },
 				func(s *ui.Network) **string { return &s.DomainName }),
-			netBool("network_isolation_enabled",
-				func(m *netModel) *types.Bool { return &m.NetworkIsolation },
-				func(s *ui.Network) *bool { return &s.NetworkIsolationEnabled }),
 			netPtr("setting_preference",
 				func(m *netModel) *types.String { return &m.SettingPreference },
 				func(s *ui.Network) **string { return &s.SettingPreference }),
-			netBool("internet_access_enabled",
-				func(m *netModel) *types.Bool { return &m.InternetAccess },
-				func(s *ui.Network) *bool { return &s.InternetAccessEnabled }),
-			netBool("igmp_snooping", func(m *netModel) *types.Bool { return &m.IgmpSnooping },
-				func(s *ui.Network) *bool { return &s.IGMPSnooping }),
 			netPtr("firewall_zone_id", func(m *netModel) *types.String { return &m.FirewallZoneID },
 				func(s *ui.Network) **string { return &s.FirewallZoneID }),
 			netPtr("gateway_type", func(m *netModel) *types.String { return &m.GatewayType },
@@ -461,8 +400,6 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 				func(s *ui.Network) **string { return &s.IPV6ClientAddressAssignment }),
 			netPtr("ipv6_subnet", func(m *netModel) *types.String { return &m.IPv6StaticSubnet },
 				func(s *ui.Network) **string { return &s.IPV6Subnet }),
-			netBool("ipv6_ra_enabled", func(m *netModel) *types.Bool { return &m.IPv6RA },
-				func(s *ui.Network) *bool { return &s.IPV6RaEnabled }),
 			netPtr("ipv6_ra_priority", func(m *netModel) *types.String { return &m.IPv6RAPriority },
 				func(s *ui.Network) **string { return &s.IPV6RaPriority }),
 			resourcekit.DurationPtrField[netModel, ui.Network]{
@@ -481,43 +418,15 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 			},
 			netPtr("ipv6_pd_interface", func(m *netModel) *types.String { return &m.IPv6PDInterface },
 				func(s *ui.Network) **string { return &s.IPV6PDInterface }),
-			resourcekit.StringField[netModel, ui.Network]{
-				// The one ipv6_pd_* field the SDK does not carry as a pointer.
-				Wire:  "ipv6_pd_prefixid",
-				Model: func(m *netModel) *types.String { return &m.IPv6PDPrefixID },
-				SDK:   func(s *ui.Network) *string { return &s.IPV6PDPrefixid },
-				Elide: resourcekit.KeepZero,
-			},
 			netPtr("ipv6_pd_start", func(m *netModel) *types.String { return &m.IPv6PDStart },
 				func(s *ui.Network) **string { return &s.IPV6PDStart }),
 			netPtr("ipv6_pd_stop", func(m *netModel) *types.String { return &m.IPv6PDStop },
 				func(s *ui.Network) **string { return &s.IPV6PDStop }),
-			netBool("ipv6_pd_auto_prefixid_enabled",
-				func(m *netModel) *types.Bool { return &m.IPv6PDAutoPrefixidEnabled },
-				func(s *ui.Network) *bool { return &s.IPV6PDAutoPrefixidEnabled }),
-			netBool("lte_lan_enabled", func(m *netModel) *types.Bool { return &m.LteLan },
-				func(s *ui.Network) *bool { return &s.LteLanEnabled }),
-			resourcekit.StringListField[netModel, ui.Network]{
-				// KeepZero, NOT NullZero. An empty membership must read back as an
-				// empty list: nulling it means a config saying ip_aliases = []
-				// never stops planning a change.
-				Wire:  "ip_aliases",
-				Model: func(m *netModel) *types.List { return &m.IPAliases },
-				SDK:   func(s *ui.Network) *[]string { return &s.IPAliases },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringListField[netModel, ui.Network]{
-				// KeepZero for the same reason as ip_aliases above.
-				Wire:  "ipv6_aliases",
-				Model: func(m *netModel) *types.List { return &m.IPv6Aliases },
-				SDK:   func(s *ui.Network) *[]string { return &s.IPV6Aliases },
-				Elide: resourcekit.KeepZero,
-			},
 			resourcekit.ScatteredObjectField[netModel, ui.Network]{
 				Wires: []string{
 					"dhcpguard_enabled", "dhcpd_ip_1", "dhcpd_ip_2", "dhcpd_ip_3",
 				},
-				Model:     func(m *netModel) *types.Object { return &m.DhcpGuarding },
+				Model:     func(m *netModel) *types.Object { return &m.DHCPGuarding },
 				AttrTypes: dhcpGuardingModel{}.AttributeTypes(),
 				// The three slots are filled positionally; masking one the
 				// encoder didn't write sends its zero, blanking whatever the
@@ -570,7 +479,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					"dhcpd_wins_enabled", "dhcpd_wins_1", "dhcpd_wins_2",
 					"dhcpd_ntp_1", "dhcpd_ntp_2",
 				},
-				Model:     func(m *netModel) *types.Object { return &m.DhcpServer },
+				Model:     func(m *netModel) *types.Object { return &m.DHCPServer },
 				AttrTypes: dhcpServerModel{}.AttributeTypes(),
 				Encode: func(
 					ctx context.Context, object types.Object, sdk *ui.Network,
@@ -641,7 +550,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					"dhcpdv6_leasetime", "dhcpdv6_dns_1", "dhcpdv6_dns_2", "dhcpdv6_dns_3",
 					"dhcpdv6_dns_4",
 				},
-				Model:     func(m *netModel) *types.Object { return &m.DhcpV6Server },
+				Model:     func(m *netModel) *types.Object { return &m.DHCPV6Server },
 				AttrTypes: dhcpV6ServerModel{}.AttributeTypes(),
 				Encode: func(
 					ctx context.Context, object types.Object, sdk *ui.Network,
@@ -679,7 +588,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 			},
 			resourcekit.ScatteredObjectField[netModel, ui.Network]{
 				Wires: []string{"dhcp_relay_enabled", "dhcp_relay_servers"},
-				Model: func(m *netModel) *types.Object { return &m.DhcpRelay },
+				Model: func(m *netModel) *types.Object { return &m.DHCPRelay },
 				// The server list is written only when the practitioner
 				// supplied one; masking it otherwise sends [] and clears the
 				// controller's.
@@ -729,7 +638,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 			},
 			resourcekit.ObjectListField[netModel, ui.Network, ui.NetworkNATOutboundIPAddresses]{
 				Wire:       "nat_outbound_ip_addresses",
-				Model:      func(m *netModel) *types.List { return &m.NatOutboundIPAddresses },
+				Model:      func(m *netModel) *types.List { return &m.NATOutboundIPAddresses },
 				SDK:        func(s *ui.Network) *[]ui.NetworkNATOutboundIPAddresses { return &s.NATOutboundIPAddresses },
 				AttrTypes:  natOutboundIPAddresses(),
 				Unmodelled: []string{"ip_address_pool"},
@@ -768,7 +677,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 				},
 				Elide: resourcekit.KeepZero,
 			},
-		},
+		}),
 
 		Backend: resourcekit.Backend[ui.Network]{
 			// Seeded so ToModel doesn't nil-dereference: Configure replaces the

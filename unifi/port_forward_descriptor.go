@@ -13,20 +13,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type portForwardKitModel struct {
-	ID             types.String   `tfsdk:"id"`
-	Site           types.String   `tfsdk:"site"`
-	Name           types.String   `tfsdk:"name"`
-	Wan            types.Object   `tfsdk:"wan"`
-	Forward        types.Object   `tfsdk:"forward"`
-	SourceLimiting types.Object   `tfsdk:"source_limiting"`
-	DestinationIPs types.List     `tfsdk:"destination_ips"`
-	Protocol       types.String   `tfsdk:"protocol"`
-	Logging        types.Bool     `tfsdk:"logging"`
-	Enabled        types.Bool     `tfsdk:"enabled"`
-	Timeouts       timeouts.Value `tfsdk:"timeouts"`
-}
-
 // portForwardWanField binds `wan` to the three flat fields it spans.
 func encodePortForwardWan(ctx context.Context, object types.Object, sdk *ui.PortForward) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -50,7 +36,7 @@ func encodePortForwardWan(ctx context.Context, object types.Object, sdk *ui.Port
 }
 
 func decodePortForwardWan(ctx context.Context, sdk *ui.PortForward, _ types.Object) (types.Object, diag.Diagnostics) {
-	attrTypes := portForwardWanModel{}.AttributeTypes()
+	attrTypes := portForwardWanAttrTypes
 	if sdk.PfwdInterface == "" && sdk.DestinationIP == "" && sdk.DstPort == "" {
 		return types.ObjectNull(attrTypes), nil
 	}
@@ -79,7 +65,7 @@ func encodePortForwardForward(ctx context.Context, object types.Object, sdk *ui.
 }
 
 func decodePortForwardForward(ctx context.Context, sdk *ui.PortForward, _ types.Object) (types.Object, diag.Diagnostics) {
-	attrTypes := portForwardForwardModel{}.AttributeTypes()
+	attrTypes := portForwardForwardAttrTypes
 	if sdk.Fwd == "" && sdk.FwdPort == "" {
 		return types.ObjectNull(attrTypes), nil
 	}
@@ -136,7 +122,7 @@ func encodePortForwardSourceLimiting(ctx context.Context, object types.Object, s
 }
 
 func decodePortForwardSourceLimiting(ctx context.Context, sdk *ui.PortForward, _ types.Object) (types.Object, diag.Diagnostics) {
-	attrTypes := portForwardSourceLimitingModel{}.AttributeTypes()
+	attrTypes := portForwardSourceLimitingAttrTypes
 	if !portForwardSourceLimitingConfigured(sdk) {
 		return types.ObjectNull(attrTypes), nil
 	}
@@ -177,29 +163,7 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 		ID:       func(m *portForwardKitModel) *types.String { return &m.ID },
 		Site:     func(m *portForwardKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *portForwardKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[portForwardKitModel, ui.PortForward]{
-			resourcekit.StringField[portForwardKitModel, ui.PortForward]{
-				Wire:  "name",
-				Model: func(m *portForwardKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.PortForward) *string { return &s.Name },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[portForwardKitModel, ui.PortForward]{
-				Wire:  "proto",
-				Model: func(m *portForwardKitModel) *types.String { return &m.Protocol },
-				SDK:   func(s *ui.PortForward) *string { return &s.Proto },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[portForwardKitModel, ui.PortForward]{
-				Wire:  "log",
-				Model: func(m *portForwardKitModel) *types.Bool { return &m.Logging },
-				SDK:   func(s *ui.PortForward) *bool { return &s.Log },
-			},
-			resourcekit.BoolField[portForwardKitModel, ui.PortForward]{
-				Wire:  "enabled",
-				Model: func(m *portForwardKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.PortForward) *bool { return &s.Enabled },
-			},
+		Fields: resourcekit.Override(portForwardGenFields(), []resourcekit.Field[portForwardKitModel, ui.PortForward]{
 			// The three scattered objects are declared inline, with
 			// Encode/Decode as named functions above: a helper returning a
 			// Fields entry would hide every name it declares from the mapping
@@ -210,8 +174,8 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 			// confuse; wan.port is dst_port and wan.interface is pfwd_interface.
 			resourcekit.ScatteredObjectField[portForwardKitModel, ui.PortForward]{
 				Wires:     []string{"pfwd_interface", "destination_ip", "dst_port"},
-				Model:     func(m *portForwardKitModel) *types.Object { return &m.Wan },
-				AttrTypes: portForwardWanModel{}.AttributeTypes(),
+				Model:     func(m *portForwardKitModel) *types.Object { return &m.WAN },
+				AttrTypes: portForwardWanAttrTypes,
 				Elide:     resourcekit.NullZero,
 				ConditionalWires: map[string]func(types.Object) bool{
 					"pfwd_interface": portForwardMemberSet("interface"),
@@ -224,7 +188,7 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 			resourcekit.ScatteredObjectField[portForwardKitModel, ui.PortForward]{
 				Wires:     []string{"fwd", "fwd_port"},
 				Model:     func(m *portForwardKitModel) *types.Object { return &m.Forward },
-				AttrTypes: portForwardForwardModel{}.AttributeTypes(),
+				AttrTypes: portForwardForwardAttrTypes,
 				Elide:     resourcekit.NullZero,
 				ConditionalWires: map[string]func(types.Object) bool{
 					"fwd":      portForwardMemberSet("ip"),
@@ -241,7 +205,7 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 					"src_limiting_type",
 				},
 				Model:     func(m *portForwardKitModel) *types.Object { return &m.SourceLimiting },
-				AttrTypes: portForwardSourceLimitingModel{}.AttributeTypes(),
+				AttrTypes: portForwardSourceLimitingAttrTypes,
 				Elide:     resourcekit.NullZero,
 				ConditionalWires: map[string]func(types.Object) bool{
 					"src":                   portForwardMemberSet("ip"),
@@ -255,11 +219,11 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 				Wire:      "destination_ips",
 				Model:     func(m *portForwardKitModel) *types.List { return &m.DestinationIPs },
 				SDK:       func(s *ui.PortForward) *[]ui.PortForwardDestinationIPs { return &s.DestinationIPs },
-				AttrTypes: portForwardDestinationIPModel{}.AttributeTypes(),
+				AttrTypes: portForwardDestinationIpsAttrTypes,
 				Elide:     resourcekit.NullZero,
 				Encode: func(ctx context.Context, object types.Object) (ui.PortForwardDestinationIPs, diag.Diagnostics) {
 					var diags diag.Diagnostics
-					var element portForwardDestinationIPModel
+					var element portForwardDestinationIpsModel
 					diags.Append(object.As(ctx, &element, basetypes.ObjectAsOptions{})...)
 					return ui.PortForwardDestinationIPs{
 						DestinationIP: element.DestinationIP.ValueString(),
@@ -267,14 +231,14 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 					}, diags
 				},
 				Decode: func(ctx context.Context, element ui.PortForwardDestinationIPs) (types.Object, diag.Diagnostics) {
-					value := portForwardDestinationIPModel{
+					value := portForwardDestinationIpsModel{
 						DestinationIP: portForwardStringOrNullValue(element.DestinationIP),
 						Interface:     portForwardStringOrNullValue(element.Interface),
 					}
-					return types.ObjectValueFrom(ctx, portForwardDestinationIPModel{}.AttributeTypes(), value)
+					return types.ObjectValueFrom(ctx, portForwardDestinationIpsAttrTypes, value)
 				},
 			},
-		},
+		}),
 	}
 }
 

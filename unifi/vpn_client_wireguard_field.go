@@ -17,9 +17,9 @@ import (
 // wireguard-named) and could mistranscribe x_wireguard_private_key (the Go
 // field is WireguardPrivateKey) -- a wrong wire name is accepted and silently
 // no-ops rather than erroring.
-func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network] {
+func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientKitModel, ui.Network] {
 	for _, field := range vpnClientKitSpec().Fields {
-		if scattered, ok := field.(resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network]); ok {
+		if scattered, ok := field.(resourcekit.ScatteredObjectField[vpnClientKitModel, ui.Network]); ok {
 			return scattered
 		}
 	}
@@ -97,7 +97,7 @@ func wireguardEffectiveDNSServers(ctx context.Context, object types.Object) ([]s
 // ever touches the two wires this schema's SizeBetween(1,2) list can reach.
 func vpnClientClearDroppedDNS(
 	ctx context.Context,
-	prior, effective *vpnClientResourceModel,
+	prior, effective *vpnClientKitModel,
 	sdk *ui.Network,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics

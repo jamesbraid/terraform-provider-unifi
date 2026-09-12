@@ -187,7 +187,7 @@ func TestNoSurfaceMasksAZeroForAPartlyFilledBlock(t *testing.T) {
 	}
 
 	for _, field := range vpnClientKitSpec().Fields {
-		scattered, ok := field.(resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network])
+		scattered, ok := field.(resourcekit.ScatteredObjectField[vpnClientKitModel, ui.Network])
 		if !ok {
 			continue
 		}

@@ -37,10 +37,10 @@ type clientDataSourceModel struct {
 	MAC            hwtypes.MACAddress  `tfsdk:"mac"`
 	Name           types.String        `tfsdk:"name"`
 	DisplayName    types.String        `tfsdk:"display_name"`
-	QOSRate        types.Object        `tfsdk:"qos_rate"`
+	QoSRate        types.Object        `tfsdk:"qos_rate"`
 	Note           types.String        `tfsdk:"note"`
 	FixedIP        iptypes.IPv4Address `tfsdk:"fixed_ip"`
-	FixedApMAC     hwtypes.MACAddress  `tfsdk:"fixed_ap_mac"`
+	FixedAPMAC     hwtypes.MACAddress  `tfsdk:"fixed_ap_mac"`
 	NetworkID      types.String        `tfsdk:"network_id"`
 	Groups         types.List          `tfsdk:"groups"`
 	Blocked        types.Bool          `tfsdk:"blocked"`
@@ -153,10 +153,10 @@ func (d *clientDataSource) Read(
 			MaxDown: types.Int64PointerValue(group.QOSRateMaxDown),
 		}
 		var objDiags diag.Diagnostics
-		state.QOSRate, objDiags = types.ObjectValueFrom(ctx, qosRateModel{}.AttributeTypes(), qos)
+		state.QoSRate, objDiags = types.ObjectValueFrom(ctx, qosRateModel{}.AttributeTypes(), qos)
 		resp.Diagnostics.Append(objDiags...)
 	} else {
-		state.QOSRate = types.ObjectNull(qosRateModel{}.AttributeTypes())
+		state.QoSRate = types.ObjectNull(qosRateModel{}.AttributeTypes())
 	}
 
 	if client.Note != "" {
@@ -167,7 +167,7 @@ func (d *clientDataSource) Read(
 
 	state.FixedIP = util.IPv4ValueOrNull(client.FixedIP)
 
-	state.FixedApMAC = util.MACValueOrNull(client.FixedApMAC)
+	state.FixedAPMAC = util.MACValueOrNull(client.FixedApMAC)
 
 	state.NetworkID = networkIDValue(client)
 

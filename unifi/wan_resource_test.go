@@ -393,7 +393,7 @@ func Test_wanNetworkGroup(t *testing.T) {
 
 	t.Run("WAN2 is preserved and mirrored to hidden id", func(t *testing.T) {
 		m := base
-		m.NetworkGroup = types.StringValue("WAN2")
+		m.Networkgroup = types.StringValue("WAN2")
 		n := wanEncodedForWrite(t, &m)
 		if n.WANNetworkGroup == nil || *n.WANNetworkGroup != "WAN2" {
 			t.Errorf("WANNetworkGroup = %v, want WAN2", n.WANNetworkGroup)
@@ -405,7 +405,7 @@ func Test_wanNetworkGroup(t *testing.T) {
 
 	t.Run("unset defaults to WAN", func(t *testing.T) {
 		m := base
-		m.NetworkGroup = types.StringNull()
+		m.Networkgroup = types.StringNull()
 		n := wanEncodedForWrite(t, &m)
 		if n.WANNetworkGroup == nil || *n.WANNetworkGroup != "WAN" {
 			t.Errorf("WANNetworkGroup = %v, want WAN", n.WANNetworkGroup)
@@ -425,20 +425,20 @@ func Test_wanDslitePlanOutranksTheEcho(t *testing.T) {
 	spec := wanKitSpec()
 
 	t.Run("configured false overrides controller true", func(t *testing.T) {
-		state := wanKitModel{DsliteRemoteHostAuto: types.BoolValue(true)}
-		plan := wanKitModel{DsliteRemoteHostAuto: types.BoolValue(false)}
+		state := wanKitModel{WANDsliteRemoteHostAuto: types.BoolValue(true)}
+		plan := wanKitModel{WANDsliteRemoteHostAuto: types.BoolValue(false)}
 		spec.ApplyPlanToState(&plan, &state)
-		if state.DsliteRemoteHostAuto.ValueBool() {
-			t.Errorf("DsliteRemoteHostAuto = true, want false (planned value)")
+		if state.WANDsliteRemoteHostAuto.ValueBool() {
+			t.Errorf("WANDsliteRemoteHostAuto = true, want false (planned value)")
 		}
 	})
 
 	t.Run("unset keeps controller value", func(t *testing.T) {
-		state := wanKitModel{DsliteRemoteHostAuto: types.BoolValue(true)}
-		plan := wanKitModel{DsliteRemoteHostAuto: types.BoolNull()}
+		state := wanKitModel{WANDsliteRemoteHostAuto: types.BoolValue(true)}
+		plan := wanKitModel{WANDsliteRemoteHostAuto: types.BoolNull()}
 		spec.ApplyPlanToState(&plan, &state)
-		if !state.DsliteRemoteHostAuto.ValueBool() {
-			t.Errorf("DsliteRemoteHostAuto = false, want true (controller value kept)")
+		if !state.WANDsliteRemoteHostAuto.ValueBool() {
+			t.Errorf("WANDsliteRemoteHostAuto = false, want true (controller value kept)")
 		}
 	})
 }
@@ -693,12 +693,12 @@ func TestWANConfigWithStaticTypeAndNoAddressIsRefused(t *testing.T) {
 // typed null, which is what an empty configuration decodes to.
 func nullWANKitModel() *wanKitModel {
 	return &wanKitModel{
-		Vlan:                 types.ObjectNull(vlanModel{}.AttributeTypes()),
+		VLAN:                 types.ObjectNull(vlanModel{}.AttributeTypes()),
 		EgressQoS:            types.ObjectNull(egressQosModel{}.AttributeTypes()),
 		DNS:                  types.ObjectNull(dnsModel{}.AttributeTypes()),
 		DHCP:                 types.ObjectNull(dhcpWanModel{}.AttributeTypes()),
 		DHCPv6:               types.ObjectNull(dhcpv6WanModel{}.AttributeTypes()),
-		SmartQ:               types.ObjectNull(smartqModel{}.AttributeTypes()),
+		Smartq:               types.ObjectNull(smartqModel{}.AttributeTypes()),
 		UPnP:                 types.ObjectNull(upnpModel{}.AttributeTypes()),
 		LoadBalance:          types.ObjectNull(loadBalanceModel{}.AttributeTypes()),
 		IGMPProxy:            types.ObjectNull(igmpProxyModel{}.AttributeTypes()),
@@ -766,8 +766,8 @@ func Test_wanToModel(t *testing.T) {
 			t.Errorf("expected Type=dhcp, got %v", model.Type.ValueString())
 		}
 		// The group is defaulted the way the hand read did (#334).
-		if model.NetworkGroup.ValueString() != "WAN" {
-			t.Errorf("expected NetworkGroup=WAN, got %v", model.NetworkGroup.ValueString())
+		if model.Networkgroup.ValueString() != "WAN" {
+			t.Errorf("expected Networkgroup=WAN, got %v", model.Networkgroup.ValueString())
 		}
 	})
 }
@@ -784,14 +784,14 @@ func Test_wanDecodeAbsence(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("ToModel() returned errors: %v", diags)
 	}
-	if model.Vlan.IsNull() {
+	if model.VLAN.IsNull() {
 		t.Error("expected Vlan to be materialized with defaults")
 	}
 	if !model.EgressQoS.IsNull() {
 		t.Error("expected EgressQoS to stay null")
 	}
-	if !model.SmartQ.IsNull() {
-		t.Error("expected SmartQ to stay null")
+	if !model.Smartq.IsNull() {
+		t.Error("expected Smartq to stay null")
 	}
 	if !model.DNS.IsNull() {
 		t.Error("expected DNS to stay null")

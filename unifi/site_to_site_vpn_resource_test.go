@@ -56,7 +56,7 @@ func TestSiteToSiteVPNModelRoundTrip(t *testing.T) {
 	if d.HasError() {
 		t.Fatalf("building remote_subnets: %v", d)
 	}
-	model := &siteToSiteVPNKitModel{
+	model := &siteToSiteVpnKitModel{
 		Name:          types.StringValue("HQ-to-Branch"),
 		Enabled:       types.BoolValue(true),
 		Interface:     types.StringValue("wan"),
@@ -110,7 +110,7 @@ func TestSiteToSiteVPNModelRoundTrip(t *testing.T) {
 		IPSecPfs:          true,
 		RemoteVPNSubnets:  []string{"192.0.2.0/24", "198.51.100.0/24"},
 	}
-	out := &siteToSiteVPNKitModel{
+	out := &siteToSiteVpnKitModel{
 		PreSharedKey: types.StringValue("s3cret-psk"), // prior state value
 	}
 	if diags := siteToSiteVPNKitSpec().ToModel(ctx, apiNetwork, out, "default"); diags.HasError() {
@@ -179,7 +179,7 @@ func Test_siteToSiteVPNResource_siteOrDefault(t *testing.T) {
 	t.Run("non-empty site is returned as-is", func(t *testing.T) {
 		r := newSiteToSiteVPNKitResource()
 		r.DefaultSite = "fallback"
-		got := r.Site(&siteToSiteVPNKitModel{Site: types.StringValue("custom")})
+		got := r.Site(&siteToSiteVpnKitModel{Site: types.StringValue("custom")})
 		if got != "custom" {
 			t.Errorf("got %q, want %q", got, "custom")
 		}
@@ -187,7 +187,7 @@ func Test_siteToSiteVPNResource_siteOrDefault(t *testing.T) {
 	t.Run("empty site falls back to client site", func(t *testing.T) {
 		r := newSiteToSiteVPNKitResource()
 		r.DefaultSite = "default"
-		got := r.Site(&siteToSiteVPNKitModel{Site: types.StringValue("")})
+		got := r.Site(&siteToSiteVpnKitModel{Site: types.StringValue("")})
 		if got != "default" {
 			t.Errorf("got %q, want %q", got, "default")
 		}
@@ -202,7 +202,7 @@ func Test_siteToSiteVPNResource_modelToNetwork(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building subnets: %v", d)
 		}
-		model := &siteToSiteVPNKitModel{
+		model := &siteToSiteVpnKitModel{
 			Name:          types.StringValue("test-vpn"),
 			Enabled:       types.BoolValue(true),
 			Interface:     types.StringValue("wan"),
@@ -235,7 +235,7 @@ func Test_siteToSiteVPNResource_modelToNetwork(t *testing.T) {
 
 	t.Run("null optional fields produce nil pointers", func(t *testing.T) {
 		subnets, _ := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.0/24"})
-		model := &siteToSiteVPNKitModel{
+		model := &siteToSiteVpnKitModel{
 			Name:          types.StringValue("vpn"),
 			Interface:     types.StringNull(),
 			PeerIP:        iptypes.NewIPv4AddressNull(),
@@ -274,7 +274,7 @@ func Test_siteToSiteVPNResource_networkToModel(t *testing.T) {
 				"192.168.10.0/24",
 			},
 		}
-		model := &siteToSiteVPNKitModel{}
+		model := &siteToSiteVpnKitModel{}
 		diags := siteToSiteVPNKitSpec().ToModel(ctx, network, model, "site1")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
@@ -302,7 +302,7 @@ func Test_siteToSiteVPNResource_networkToModel(t *testing.T) {
 			IPSecInterface:  nil,
 			IPSecEncryption: nil,
 		}
-		model := &siteToSiteVPNKitModel{}
+		model := &siteToSiteVpnKitModel{}
 		diags := siteToSiteVPNKitSpec().ToModel(ctx, network, model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
@@ -339,13 +339,13 @@ func Test_siteToSiteVPNResource_ListResourceConfigSchema(t *testing.T) {
 // Spec.ToSDK would test an object the provider never sends.
 func siteToSiteVPNToSDKWithHooks(
 	ctx context.Context,
-	model *siteToSiteVPNKitModel,
+	model *siteToSiteVpnKitModel,
 ) (*unifi.Network, diag.Diagnostics) {
 	sdk, diags := siteToSiteVPNKitSpec().ToSDK(ctx, model)
 	if diags.HasError() {
 		return sdk, diags
 	}
-	diags.Append(siteToSiteVPNPreSharedKey(ctx, model, model, siteToSiteVPNKitModel{}, sdk, nil)...)
+	diags.Append(siteToSiteVPNPreSharedKey(ctx, model, model, siteToSiteVpnKitModel{}, sdk, nil)...)
 	return sdk, diags
 }
 
@@ -362,7 +362,7 @@ func TestEveryWireNameIsEmittedBySiteVPNEncoding(t *testing.T) {
 	if d.HasError() {
 		t.Fatalf("building subnets: %v", d)
 	}
-	populated := &siteToSiteVPNKitModel{
+	populated := &siteToSiteVpnKitModel{
 		Name:           types.StringValue("vpn"),
 		Enabled:        types.BoolValue(true),
 		Interface:      types.StringValue("wan"),
@@ -429,7 +429,7 @@ func TestEveryWireNameIsEmittedBySiteVPNEncoding(t *testing.T) {
 func TestPFSAndDynamicRoutingAreEmittedUnconditionally(t *testing.T) {
 	ctx := context.Background()
 	for _, on := range []bool{true, false} {
-		model := &siteToSiteVPNKitModel{
+		model := &siteToSiteVpnKitModel{
 			Name:           types.StringValue("vpn"),
 			PFS:            types.BoolValue(on),
 			DynamicRouting: types.BoolValue(on),
@@ -518,7 +518,7 @@ func Test_siteToSiteVPNRemoteSubnetsConfigValidator_ValidateResource(t *testing.
 				t.Fatalf("building remote_subnets: %v", diags)
 			}
 		}
-		model := siteToSiteVPNKitModel{
+		model := siteToSiteVpnKitModel{
 			ID:             types.StringNull(),
 			Site:           types.StringNull(),
 			Name:           types.StringValue("HQ-to-Branch"),

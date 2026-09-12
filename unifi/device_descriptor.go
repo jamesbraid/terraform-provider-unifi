@@ -21,73 +21,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util/retry"
 )
 
-type deviceKitModel struct {
-	ID              types.String       `tfsdk:"id"`
-	Site            types.String       `tfsdk:"site"`
-	MAC             hwtypes.MACAddress `tfsdk:"mac"`
-	Name            types.String       `tfsdk:"name"`
-	Disabled        types.Bool         `tfsdk:"disabled"`
-	PortOverride    types.Set          `tfsdk:"port_override"`
-	AllowAdoption   types.Bool         `tfsdk:"allow_adoption"`
-	ForgetOnDestroy types.Bool         `tfsdk:"forget_on_destroy"`
-
-	// Network configuration
-	ConfigNetwork types.Object `tfsdk:"config_network"`
-
-	// LED settings
-	LedOverride                types.String `tfsdk:"led_override"`
-	LedOverrideColor           types.String `tfsdk:"led_override_color"`
-	LedOverrideColorBrightness types.Int64  `tfsdk:"led_override_color_brightness"`
-
-	// Device features
-	BandsteeringMode  types.String `tfsdk:"bandsteering_mode"`
-	FlowctrlEnabled   types.Bool   `tfsdk:"flowctrl_enabled"`
-	JumboframeEnabled types.Bool   `tfsdk:"jumboframe_enabled"`
-	StpVersion        types.String `tfsdk:"stp_version"`
-	StpPriority       types.Int64  `tfsdk:"stp_priority"`
-	Locked            types.Bool   `tfsdk:"locked"`
-
-	// PoE settings
-	PoeMode types.String `tfsdk:"poe_mode"`
-
-	// VLAN
-	SwitchVLANEnabled types.Bool `tfsdk:"switch_vlan_enabled"`
-
-	// Mesh
-	MeshStaVapEnabled types.Bool `tfsdk:"mesh_sta_vap_enabled"`
-
-	// Radio settings
-	RadioTable types.List `tfsdk:"radio_table"`
-
-	// Advanced features
-	OutdoorModeOverride types.String `tfsdk:"outdoor_mode_override"`
-	Volume              types.Int64  `tfsdk:"volume"`
-	BaresipPassword     types.String `tfsdk:"x_baresip_password"`
-
-	// LCD/LCM settings
-	LcmBrightness          types.Int64          `tfsdk:"lcm_brightness"`
-	LcmBrightnessOverride  types.Bool           `tfsdk:"lcm_brightness_override"`
-	LcmIDleTimeout         timetypes.GoDuration `tfsdk:"lcm_idle_timeout"`
-	LcmIDleTimeoutOverride types.Bool           `tfsdk:"lcm_idle_timeout_override"`
-	LcmNightModeBegins     types.String         `tfsdk:"lcm_night_mode_begins"`
-	LcmNightModeEnds       types.String         `tfsdk:"lcm_night_mode_ends"`
-
-	// Outlet settings
-	OutletOverrides types.List `tfsdk:"outlet_overrides"`
-	OutletEnabled   types.Bool `tfsdk:"outlet_enabled"`
-
-	// Management
-	MgmtNetworkID types.String `tfsdk:"mgmt_network_id"`
-
-	// Computed attributes
-	Adopted types.Bool   `tfsdk:"adopted"`
-	Model   types.String `tfsdk:"model"`
-	Type    types.String `tfsdk:"type"`
-	State   types.Int64  `tfsdk:"state"`
-
-	Timeouts timeouts.Value `tfsdk:"timeouts"`
-}
-
 // configNetworkToObject and configNetworkFromObject are ObjectField's Decode
 // and Encode for config_network.
 func configNetworkToObject(ctx context.Context, cn *ui.DeviceConfigNetwork) (types.Object, diag.Diagnostics) {
@@ -421,7 +354,7 @@ func devicePortOverrideEncode(
 		Name:              model.Name.ValueString(),
 		PortProfileID:     model.PortProfileID.ValueString(),
 		PoeMode:           model.PoeMode.ValueString(),
-		Dot1XCtrl:         model.Dot1XCtrl.ValueString(),
+		Dot1XCtrl:         model.Dot1xCtrl.ValueString(),
 		FecMode:           model.FecMode.ValueString(),
 		Forward:           model.Forward.ValueString(),
 		NATiveNetworkID:   model.NativeNetworkID.ValueString(),
@@ -475,8 +408,8 @@ func devicePortOverrideEncode(
 	if !model.ExcludedNetworkIDs.IsNull() {
 		diags.Append(model.ExcludedNetworkIDs.ElementsAs(ctx, &po.ExcludedNetworkIDs, true)...)
 	}
-	if !model.MulticastRouterNetworkIDs.IsNull() {
-		diags.Append(model.MulticastRouterNetworkIDs.ElementsAs(
+	if !model.MulticastRouterNetworkconfIDs.IsNull() {
+		diags.Append(model.MulticastRouterNetworkconfIDs.ElementsAs(
 			ctx, &po.MulticastRouterNetworkIDs, true)...)
 	}
 	if !model.PortSecurityMACAddress.IsNull() {
@@ -536,7 +469,7 @@ func devicePortOverrideDeclaredFields(model portOverrideModel) []string {
 	declare("name", model.Name)
 	declare("portconf_id", model.PortProfileID)
 	declare("poe_mode", model.PoeMode)
-	declare("dot1x_ctrl", model.Dot1XCtrl)
+	declare("dot1x_ctrl", model.Dot1xCtrl)
 	declare("fec_mode", model.FecMode)
 	declare("forward", model.Forward)
 	declare("native_networkconf_id", model.NativeNetworkID)
@@ -588,7 +521,7 @@ func devicePortOverrideDeclaredFields(model portOverrideModel) []string {
 	declare("dot1x_idle_timeout", model.Dot1XIDleTimeout)
 	declare("aggregate_members", model.AggregateMembers)
 	declare("excluded_networkconf_ids", model.ExcludedNetworkIDs)
-	declare("multicast_router_networkconf_ids", model.MulticastRouterNetworkIDs)
+	declare("multicast_router_networkconf_ids", model.MulticastRouterNetworkconfIDs)
 	declare("port_security_mac_address", model.PortSecurityMACAddress)
 
 	return fields
@@ -881,94 +814,12 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 		// Fields is one literal because an instrument parses this file rather
 		// than running it; assembling it via helper calls would make every
 		// field in it read as missing.
-		Fields: []resourcekit.Field[deviceKitModel, ui.Device]{
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "adopted",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.Adopted },
-				SDK:   func(s *ui.Device) *bool { return &s.Adopted },
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "bandsteering_mode",
-				Model: func(m *deviceKitModel) *types.String { return &m.BandsteeringMode },
-				SDK:   func(s *ui.Device) *string { return &s.BandsteeringMode },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "disabled",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.Disabled },
-				SDK:   func(s *ui.Device) *bool { return &s.Disabled },
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "flowctrl_enabled",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.FlowctrlEnabled },
-				SDK:   func(s *ui.Device) *bool { return &s.FlowctrlEnabled },
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "jumboframe_enabled",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.JumboframeEnabled },
-				SDK:   func(s *ui.Device) *bool { return &s.JumboframeEnabled },
-			},
-			// OmitZero: Optional+Computed with no schema default and no
-			// UseStateForUnknown -- an unset plan value is Unknown on
-			// create, and ValueInt64Pointer() would force-emit the zero
-			// the controller's pattern (1-100) rejects. Same class as
-			// dtim_6e (R2-C Task 10b).
-			resourcekit.Int64PtrField[deviceKitModel, ui.Device]{
-				Wire:  "lcm_brightness",
-				Model: func(m *deviceKitModel) *types.Int64 { return &m.LcmBrightness },
-				SDK:   func(s *ui.Device) **int64 { return &s.LcmBrightness },
-				Elide: resourcekit.KeepZero, OmitZero: true,
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "lcm_brightness_override",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.LcmBrightnessOverride },
-				SDK:   func(s *ui.Device) *bool { return &s.LcmBrightnessOverride },
-			},
+		Fields: resourcekit.Override(deviceGenFields(), []resourcekit.Field[deviceKitModel, ui.Device]{
 			resourcekit.DurationPtrField[deviceKitModel, ui.Device]{
 				Wire:  "lcm_idle_timeout",
-				Model: func(m *deviceKitModel) *timetypes.GoDuration { return &m.LcmIDleTimeout },
+				Model: func(m *deviceKitModel) *timetypes.GoDuration { return &m.LcmIdleTimeout },
 				SDK:   func(s *ui.Device) **int64 { return &s.LcmIDleTimeout },
 				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "lcm_idle_timeout_override",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.LcmIDleTimeoutOverride },
-				SDK:   func(s *ui.Device) *bool { return &s.LcmIDleTimeoutOverride },
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "lcm_night_mode_begins",
-				Model: func(m *deviceKitModel) *types.String { return &m.LcmNightModeBegins },
-				SDK:   func(s *ui.Device) *string { return &s.LcmNightModeBegins },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "lcm_night_mode_ends",
-				Model: func(m *deviceKitModel) *types.String { return &m.LcmNightModeEnds },
-				SDK:   func(s *ui.Device) *string { return &s.LcmNightModeEnds },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "led_override",
-				Model: func(m *deviceKitModel) *types.String { return &m.LedOverride },
-				SDK:   func(s *ui.Device) *string { return &s.LedOverride },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "led_override_color",
-				Model: func(m *deviceKitModel) *types.String { return &m.LedOverrideColor },
-				SDK:   func(s *ui.Device) *string { return &s.LedOverrideColor },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.Int64PtrField[deviceKitModel, ui.Device]{
-				Wire:  "led_override_color_brightness",
-				Model: func(m *deviceKitModel) *types.Int64 { return &m.LedOverrideColorBrightness },
-				SDK:   func(s *ui.Device) **int64 { return &s.LedOverrideColorBrightness },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "locked",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.Locked },
-				SDK:   func(s *ui.Device) *bool { return &s.Locked },
 			},
 			// New must be set here: ToModel calls it on every read and list, and
 			// a nil New panics. ZeroReadProblems guards this by running every
@@ -982,85 +833,16 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 				},
 				Elide: resourcekit.NullZero,
 			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "mesh_sta_vap_enabled",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.MeshStaVapEnabled },
-				SDK:   func(s *ui.Device) *bool { return &s.MeshStaVapEnabled },
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "mgmt_network_id",
-				Model: func(m *deviceKitModel) *types.String { return &m.MgmtNetworkID },
-				SDK:   func(s *ui.Device) *string { return &s.MgmtNetworkID },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "model",
-				Model: func(m *deviceKitModel) *types.String { return &m.Model },
-				SDK:   func(s *ui.Device) *string { return &s.Model },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "name",
-				Model: func(m *deviceKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.Device) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "outdoor_mode_override",
-				Model: func(m *deviceKitModel) *types.String { return &m.OutdoorModeOverride },
-				SDK:   func(s *ui.Device) *string { return &s.OutdoorModeOverride },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "outlet_enabled",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.OutletEnabled },
-				SDK:   func(s *ui.Device) *bool { return &s.OutletEnabled },
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "poe_mode",
-				Model: func(m *deviceKitModel) *types.String { return &m.PoeMode },
-				SDK:   func(s *ui.Device) *string { return &s.PoeMode },
-				Elide: resourcekit.NullZero,
-			},
 			resourcekit.Int64Field[deviceKitModel, ui.Device]{
 				Wire:  "state",
 				Model: func(m *deviceKitModel) *types.Int64 { return &m.State },
 				SDK:   func(s *ui.Device) *int64 { return (*int64)(&s.State) },
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.Int64PtrField[deviceKitModel, ui.Device]{
-				Wire:  "stp_priority",
-				Model: func(m *deviceKitModel) *types.Int64 { return &m.StpPriority },
-				SDK:   func(s *ui.Device) **int64 { return &s.StpPriority },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "stp_version",
-				Model: func(m *deviceKitModel) *types.String { return &m.StpVersion },
-				SDK:   func(s *ui.Device) *string { return &s.StpVersion },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[deviceKitModel, ui.Device]{
-				Wire:  "switch_vlan_enabled",
-				Model: func(m *deviceKitModel) *types.Bool { return &m.SwitchVLANEnabled },
-				SDK:   func(s *ui.Device) *bool { return &s.SwitchVLANEnabled },
-			},
 			resourcekit.StringField[deviceKitModel, ui.Device]{
 				Wire:  "type",
 				Model: func(m *deviceKitModel) *types.String { return &m.Type },
 				SDK:   func(s *ui.Device) *string { return &s.Type },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64PtrField[deviceKitModel, ui.Device]{
-				Wire:  "volume",
-				Model: func(m *deviceKitModel) *types.Int64 { return &m.Volume },
-				SDK:   func(s *ui.Device) **int64 { return &s.Volume },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[deviceKitModel, ui.Device]{
-				Wire:  "x_baresip_password",
-				Model: func(m *deviceKitModel) *types.String { return &m.BaresipPassword },
-				SDK:   func(s *ui.Device) *string { return &s.BaresipPassword },
 				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.ObjectListField[deviceKitModel, ui.Device, ui.DeviceRadioTable]{
@@ -1164,7 +946,7 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 				Decode:    configNetworkToObject,
 				Elide:     resourcekit.KeepZero,
 			},
-		},
+		}),
 
 		Prefetch:     deviceKitPrefetch(),
 		AfterReceive: deviceKitAfterReceive(),

@@ -146,30 +146,12 @@ func TestNewWLANListResource(t *testing.T) {
 }
 
 func Test_wlanPrivatePresharedKeyModel_AttributeTypes(t *testing.T) {
-	tests := []struct {
-		name string
-		m    wlanPrivatePresharedKeyModel
-		want map[string]attr.Type
-	}{
-		{
-			name: "returns correct attribute types",
-			m:    wlanPrivatePresharedKeyModel{},
-			want: map[string]attr.Type{
-				"network_id": types.StringType,
-				"password":   types.StringType,
-			},
-		},
+	want := map[string]attr.Type{
+		"network_id": types.StringType,
+		"password":   types.StringType,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.m.AttributeTypes(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"wlanPrivatePresharedKeyModel.AttributeTypes() = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-		})
+	if !reflect.DeepEqual(wlanPrivatePresharedKeysAttrTypes, want) {
+		t.Errorf("wlanPrivatePresharedKeysAttrTypes = %v, want %v", wlanPrivatePresharedKeysAttrTypes, want)
 	}
 }
 
@@ -268,18 +250,18 @@ func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 	plan := wlanKitModel{
 		Name:     types.StringValue("test"),
 		Security: types.StringValue("wpapsk"),
-		MacFilter: types.ObjectNull(map[string]attr.Type{
+		MACFilter: types.ObjectNull(map[string]attr.Type{
 			"enabled": types.BoolType,
 			"list":    types.SetType{ElemType: types.StringType},
 			"policy":  types.StringType,
 		}),
 		PrivatePresharedKeys: types.ListNull(
-			types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()},
+			types.ObjectType{AttrTypes: wlanPrivatePresharedKeysAttrTypes},
 		),
-		ApGroupIDs:          types.SetNull(types.StringType),
-		WLANBands:           types.SetNull(types.StringType),
-		Schedule:            types.ListNull(types.ObjectType{}),
-		BroadcastFilterList: types.SetNull(types.StringType),
+		APGroupIDs:   types.SetNull(types.StringType),
+		WLANBands:    types.SetNull(types.StringType),
+		Schedule:     types.ListNull(types.ObjectType{}),
+		BcFilterList: types.SetNull(types.StringType),
 	}
 
 	got, diags := spec.ToSDK(ctx, &plan)
@@ -315,22 +297,22 @@ func TestWLANDtimFieldsOmitAnUnknownRatherThanAZero(t *testing.T) {
 	plan := wlanKitModel{
 		Name:     types.StringValue("test"),
 		Security: types.StringValue("wpapsk"),
-		MacFilter: types.ObjectNull(map[string]attr.Type{
+		MACFilter: types.ObjectNull(map[string]attr.Type{
 			"enabled": types.BoolType,
 			"list":    types.SetType{ElemType: types.StringType},
 			"policy":  types.StringType,
 		}),
 		PrivatePresharedKeys: types.ListNull(
-			types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()},
+			types.ObjectType{AttrTypes: wlanPrivatePresharedKeysAttrTypes},
 		),
-		ApGroupIDs:          types.SetNull(types.StringType),
-		WLANBands:           types.SetNull(types.StringType),
-		Schedule:            types.ListNull(types.ObjectType{}),
-		BroadcastFilterList: types.SetNull(types.StringType),
+		APGroupIDs:   types.SetNull(types.StringType),
+		WLANBands:    types.SetNull(types.StringType),
+		Schedule:     types.ListNull(types.ObjectType{}),
+		BcFilterList: types.SetNull(types.StringType),
 
-		DTIMNg: types.Int64Unknown(),
-		DTIMNa: types.Int64Null(),
-		DTIM6E: types.Int64Value(3),
+		DtimNg: types.Int64Unknown(),
+		DtimNa: types.Int64Null(),
+		Dtim6E: types.Int64Value(3),
 	}
 
 	got, diags := spec.ToSDK(ctx, &plan)
@@ -338,17 +320,17 @@ func TestWLANDtimFieldsOmitAnUnknownRatherThanAZero(t *testing.T) {
 		t.Fatalf("ToSDK() diagnostics: %v", diags)
 	}
 	if got.DTIMNg != nil {
-		t.Errorf("DTIMNg = %d, want nil: an Unknown value must not reach the wire as a "+
+		t.Errorf("DtimNg = %d, want nil: an Unknown value must not reach the wire as a "+
 			"pointer to zero", *got.DTIMNg)
 	}
 	if got.DTIMNa != nil {
-		t.Errorf("DTIMNa = %d, want nil for a null plan value", *got.DTIMNa)
+		t.Errorf("DtimNa = %d, want nil for a null plan value", *got.DTIMNa)
 	}
 	// The control: a real value is unaffected by OmitZero and still reaches
 	// the wire, or the assertions above would hold for a ToSDK that never
 	// writes anything.
 	if got.DTIM6E == nil || *got.DTIM6E != 3 {
-		t.Fatalf("DTIM6E = %v, want a pointer to 3", got.DTIM6E)
+		t.Fatalf("Dtim6E = %v, want a pointer to 3", got.DTIM6E)
 	}
 
 	mask, err := spec.WireFields(&plan)
@@ -383,18 +365,18 @@ func TestWLANMinrateFieldsOmitAnUnknownRatherThanAZero(t *testing.T) {
 	plan := wlanKitModel{
 		Name:     types.StringValue("test"),
 		Security: types.StringValue("wpapsk"),
-		MacFilter: types.ObjectNull(map[string]attr.Type{
+		MACFilter: types.ObjectNull(map[string]attr.Type{
 			"enabled": types.BoolType,
 			"list":    types.SetType{ElemType: types.StringType},
 			"policy":  types.StringType,
 		}),
 		PrivatePresharedKeys: types.ListNull(
-			types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()},
+			types.ObjectType{AttrTypes: wlanPrivatePresharedKeysAttrTypes},
 		),
-		ApGroupIDs:          types.SetNull(types.StringType),
-		WLANBands:           types.SetNull(types.StringType),
-		Schedule:            types.ListNull(types.ObjectType{}),
-		BroadcastFilterList: types.SetNull(types.StringType),
+		APGroupIDs:   types.SetNull(types.StringType),
+		WLANBands:    types.SetNull(types.StringType),
+		Schedule:     types.ListNull(types.ObjectType{}),
+		BcFilterList: types.SetNull(types.StringType),
 
 		MinimumDataRate2GKbps: types.Int64Unknown(),
 		MinimumDataRate5GKbps: types.Int64Value(6000),
@@ -592,8 +574,8 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	ctx := context.Background()
 	spec := wlanKitSpec()
 
-	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()}
-	ppskList, d := types.ListValueFrom(ctx, ppskType, []wlanPrivatePresharedKeyModel{
+	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeysAttrTypes}
+	ppskList, d := types.ListValueFrom(ctx, ppskType, []wlanPrivatePresharedKeysModel{
 		{NetworkID: types.StringValue("net-a"), Password: types.StringValue("secretpass1")},
 		{NetworkID: types.StringValue(""), Password: types.StringValue("secretpass2")},
 	})
@@ -639,7 +621,7 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	if model.PrivatePresharedKeys.IsNull() {
 		t.Fatalf("model.PrivatePresharedKeys is null, want 2 entries")
 	}
-	var got []wlanPrivatePresharedKeyModel
+	var got []wlanPrivatePresharedKeysModel
 	if diags := model.PrivatePresharedKeys.ElementsAs(ctx, &got, false); diags.HasError() {
 		t.Fatalf("decoding model PPSK: %v", diags)
 	}
@@ -679,8 +661,8 @@ func TestWLANPrivatePresharedKeys_emptyIsNull(t *testing.T) {
 // from ToModel because ToModel has no argument for what state used to hold.
 func TestWLANPrivatePresharedKeys_preservesStateForPartialResponse(t *testing.T) {
 	ctx := context.Background()
-	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()}
-	prior, diags := types.ListValueFrom(ctx, ppskType, []wlanPrivatePresharedKeyModel{
+	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeysAttrTypes}
+	prior, diags := types.ListValueFrom(ctx, ppskType, []wlanPrivatePresharedKeysModel{
 		{NetworkID: types.StringValue("net-a"), Password: types.StringValue("secretpass1")},
 		{NetworkID: types.StringValue("net-b"), Password: types.StringValue("secretpass2")},
 	})
@@ -712,8 +694,8 @@ func TestWLANPrivatePresharedKeys_preservesStateForPartialResponse(t *testing.T)
 
 func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 	ctx := context.Background()
-	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()}
-	list := func(keys ...wlanPrivatePresharedKeyModel) types.List {
+	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeysAttrTypes}
+	list := func(keys ...wlanPrivatePresharedKeysModel) types.List {
 		value, diags := types.ListValueFrom(ctx, ppskType, keys)
 		if diags.HasError() {
 			t.Fatalf("building PPSK list: %v", diags)
@@ -721,17 +703,17 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 		return value
 	}
 	prior := list(
-		wlanPrivatePresharedKeyModel{
+		wlanPrivatePresharedKeysModel{
 			NetworkID: types.StringValue("net-a"),
 			Password:  types.StringValue("secretpass1"),
 		},
 	)
 	duplicateBindings := list(
-		wlanPrivatePresharedKeyModel{
+		wlanPrivatePresharedKeysModel{
 			NetworkID: types.StringValue("net-a"),
 			Password:  types.StringValue("secretpass1"),
 		},
-		wlanPrivatePresharedKeyModel{
+		wlanPrivatePresharedKeysModel{
 			NetworkID: types.StringValue("net-a"),
 			Password:  types.StringValue("secretpass2"),
 		},
@@ -789,11 +771,11 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 			},
 			prior: prior,
 			want: list(
-				wlanPrivatePresharedKeyModel{
+				wlanPrivatePresharedKeysModel{
 					NetworkID: types.StringValue("net-a"),
 					Password:  types.StringValue("secretpass1"),
 				},
-				wlanPrivatePresharedKeyModel{
+				wlanPrivatePresharedKeysModel{
 					NetworkID: types.StringValue("net-b"),
 					Password:  types.StringValue("secretpass2"),
 				},
@@ -808,7 +790,7 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 				},
 			},
 			prior: prior,
-			want: list(wlanPrivatePresharedKeyModel{
+			want: list(wlanPrivatePresharedKeysModel{
 				NetworkID: types.StringValue("net-b"),
 				Password:  types.StringValue("secretpass1"),
 			}),
@@ -822,7 +804,7 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 				},
 			},
 			prior: prior,
-			want: list(wlanPrivatePresharedKeyModel{
+			want: list(wlanPrivatePresharedKeysModel{
 				NetworkID: types.StringValue("net-b"),
 				Password:  types.StringValue(""),
 			}),
@@ -836,7 +818,7 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 				},
 			},
 			prior: prior,
-			want: list(wlanPrivatePresharedKeyModel{
+			want: list(wlanPrivatePresharedKeysModel{
 				NetworkID: types.StringValue("net-a"),
 				Password:  types.StringValue("changedpass1"),
 			}),
@@ -875,11 +857,11 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 			},
 			prior: duplicateBindings,
 			want: list(
-				wlanPrivatePresharedKeyModel{
+				wlanPrivatePresharedKeysModel{
 					NetworkID: types.StringValue("net-a"),
 					Password:  types.StringValue(""),
 				},
-				wlanPrivatePresharedKeyModel{
+				wlanPrivatePresharedKeysModel{
 					NetworkID: types.StringValue("net-a"),
 					Password:  types.StringValue("changedpass1"),
 				},
@@ -928,7 +910,7 @@ func TestApplyEnhancedIotOverrides(t *testing.T) {
 			WPA3Support:    types.BoolValue(true),
 			WPA3Transition: types.BoolValue(true),
 			PMFMode:        types.StringValue("optional"),
-			DTIMNg:         types.Int64Value(3),
+			DtimNg:         types.Int64Value(3),
 		}
 		if !applyEnhancedIotOverrides(m) {
 			t.Fatal("expected overrides to be applied")
@@ -945,8 +927,8 @@ func TestApplyEnhancedIotOverrides(t *testing.T) {
 		if m.PMFMode.ValueString() != "disabled" {
 			t.Errorf("pmf_mode = %q, want disabled", m.PMFMode.ValueString())
 		}
-		if m.DTIMNg.ValueInt64() != 1 {
-			t.Errorf("dtim_ng = %d, want 1", m.DTIMNg.ValueInt64())
+		if m.DtimNg.ValueInt64() != 1 {
+			t.Errorf("dtim_ng = %d, want 1", m.DtimNg.ValueInt64())
 		}
 	})
 

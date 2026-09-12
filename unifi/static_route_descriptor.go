@@ -13,21 +13,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type staticRouteKitModel struct {
-	ID            types.String      `tfsdk:"id"`
-	Site          types.String      `tfsdk:"site"`
-	Name          types.String      `tfsdk:"name"`
-	Network       types.String      `tfsdk:"network"`
-	Type          types.String      `tfsdk:"type"`
-	Distance      types.Int64       `tfsdk:"distance"`
-	NextHop       iptypes.IPAddress `tfsdk:"next_hop"`
-	Interface     types.String      `tfsdk:"interface"`
-	Enabled       types.Bool        `tfsdk:"enabled"`
-	GatewayDevice types.String      `tfsdk:"gateway_device"`
-	GatewayType   types.String      `tfsdk:"gateway_type"`
-	Timeouts      timeouts.Value    `tfsdk:"timeouts"`
-}
-
 // isRouteType builds the write predicate for a route-type-specific field.
 // Nothing else suppresses them: the ConfigValidators check that network and
 // next_hop share an IP version, not which field belongs to which route type,
@@ -44,31 +29,7 @@ func staticRouteKitSpec() resourcekit.Spec[staticRouteKitModel, ui.Routing] {
 		ID:       func(m *staticRouteKitModel) *types.String { return &m.ID },
 		Site:     func(m *staticRouteKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *staticRouteKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[staticRouteKitModel, ui.Routing]{
-			resourcekit.StringField[staticRouteKitModel, ui.Routing]{
-				Wire:  "name",
-				Model: func(m *staticRouteKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.Routing) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[staticRouteKitModel, ui.Routing]{
-				Wire:  "static-route_network",
-				Model: func(m *staticRouteKitModel) *types.String { return &m.Network },
-				SDK:   func(s *ui.Routing) *string { return &s.StaticRouteNetwork },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[staticRouteKitModel, ui.Routing]{
-				Wire:  "static-route_type",
-				Model: func(m *staticRouteKitModel) *types.String { return &m.Type },
-				SDK:   func(s *ui.Routing) *string { return &s.StaticRouteType },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64PtrField[staticRouteKitModel, ui.Routing]{
-				Wire:  "static-route_distance",
-				Model: func(m *staticRouteKitModel) *types.Int64 { return &m.Distance },
-				SDK:   func(s *ui.Routing) **int64 { return &s.StaticRouteDistance },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(staticRouteGenFields(), []resourcekit.Field[staticRouteKitModel, ui.Routing]{
 			// Custom-typed and conditional: the only field that is both.
 			resourcekit.StringLikeField[staticRouteKitModel, ui.Routing, iptypes.IPAddress]{
 				Wire:  "static-route_nexthop",
@@ -87,17 +48,6 @@ func staticRouteKitSpec() resourcekit.Spec[staticRouteKitModel, ui.Routing] {
 				Elide:     resourcekit.NullZero,
 				WriteWhen: isRouteType("interface-route"),
 			},
-			resourcekit.BoolField[staticRouteKitModel, ui.Routing]{
-				Wire:  "enabled",
-				Model: func(m *staticRouteKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.Routing) *bool { return &s.Enabled },
-			},
-			resourcekit.StringField[staticRouteKitModel, ui.Routing]{
-				Wire:  "gateway_device",
-				Model: func(m *staticRouteKitModel) *types.String { return &m.GatewayDevice },
-				SDK:   func(s *ui.Routing) *string { return &s.GatewayDevice },
-				Elide: resourcekit.NullZero,
-			},
 			// No Elide, because the default replaces it: an empty read
 			// reports "default" (ReadDefault below), so there's no zero left
 			// for an elision to judge.
@@ -107,7 +57,7 @@ func staticRouteKitSpec() resourcekit.Spec[staticRouteKitModel, ui.Routing] {
 				SDK:         func(s *ui.Routing) *string { return &s.GatewayType },
 				ReadDefault: "default",
 			},
-		},
+		}),
 		// Seeded here as well as in staticRouteKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.

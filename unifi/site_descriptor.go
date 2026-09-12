@@ -12,11 +12,8 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-// siteKitModel has no site attribute: sites are the things a site scopes, so
-// the schema carries none. The unexported field below fills the kit's site
-// slot -- Spec.Site is required by every whole resource -- and the resolved
-// value parks there without ever reaching a schema attribute or the wire (the
-// framework's reflection skips unexported fields).
+// The model stays hand-written: the schema has no site attribute, and the
+// untagged dummy member below is what Spec.Site points at.
 type siteKitModel struct {
 	ID          types.String   `tfsdk:"id"`
 	Name        types.String   `tfsdk:"name"`
@@ -39,13 +36,7 @@ func siteKitSpec() resourcekit.Spec[siteKitModel, ui.Site] {
 		// "name=<site-name>" or any handle that isn't a 24-hex id lands here,
 		// and the post-import read resolves it through Backend.ReadByName.
 		Name: func(m *siteKitModel) *types.String { return &m.Name },
-		Fields: []resourcekit.Field[siteKitModel, ui.Site]{
-			resourcekit.StringField[siteKitModel, ui.Site]{
-				Wire:  "desc",
-				Model: func(m *siteKitModel) *types.String { return &m.Description },
-				SDK:   func(s *ui.Site) *string { return &s.Description },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(siteGenFields(), []resourcekit.Field[siteKitModel, ui.Site]{
 			// The controller derives the name (the URL slug) at creation and
 			// it never changes, so the resource only reads it. The write side
 			// still needs it -- update-site is addressed by name -- which is
@@ -57,7 +48,7 @@ func siteKitSpec() resourcekit.Spec[siteKitModel, ui.Site] {
 					SDK:   func(s *ui.Site) *string { return &s.Name },
 					Elide: resourcekit.KeepZero,
 				}),
-		},
+		}),
 		// BeforeSend puts the state's name on the object because
 		// UpdateSiteFields addresses the update-site command by it; the mask
 		// itself stays ["desc"], the one field that command writes.

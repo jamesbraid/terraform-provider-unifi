@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -61,27 +60,6 @@ type wlanScheduleModel struct {
 	StartMinute types.Int64          `tfsdk:"start_minute"`
 	Duration    timetypes.GoDuration `tfsdk:"duration"`
 	Name        types.String         `tfsdk:"name"`
-}
-
-// wlanMacFilterModel represents the MAC filter configuration for WLAN.
-type wlanMacFilterModel struct {
-	Enabled types.Bool   `tfsdk:"enabled"`
-	List    types.Set    `tfsdk:"list"`
-	Policy  types.String `tfsdk:"policy"`
-}
-
-// wlanPrivatePresharedKeyModel represents a single private pre-shared key (PPSK)
-// entry: a per-key password optionally bound to its own VLAN/network.
-type wlanPrivatePresharedKeyModel struct {
-	NetworkID types.String `tfsdk:"network_id"`
-	Password  types.String `tfsdk:"password"`
-}
-
-func (m wlanPrivatePresharedKeyModel) AttributeTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"network_id": types.StringType,
-		"password":   types.StringType,
-	}
 }
 
 func (r *wlanFrameworkResource) Metadata(
@@ -229,6 +207,6 @@ func applyEnhancedIotOverrides(plan *wlanKitModel) bool {
 	plan.WPA3Support = types.BoolValue(false)
 	plan.WPA3Transition = types.BoolValue(false)
 	plan.PMFMode = types.StringValue("disabled")
-	plan.DTIMNg = types.Int64Value(1)
+	plan.DtimNg = types.Int64Value(1)
 	return true
 }
