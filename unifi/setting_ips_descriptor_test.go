@@ -30,11 +30,11 @@ func TestIpsAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	sdk := &settings.Ips{}
 
 	honeypotType := types.ObjectType{AttrTypes: ipsHoneypotAttrTypes}
-	whitelistType := types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}
-	alertType := types.ObjectType{AttrTypes: ipsAlertAttrTypes}
-	trackingType := types.ObjectType{AttrTypes: ipsTrackingAttrTypes}
+	whitelistType := types.ObjectType{AttrTypes: ipsSuppressionWhitelistAttrTypes}
+	alertType := types.ObjectType{AttrTypes: ipsSuppressionAlertsAttrTypes}
+	trackingType := types.ObjectType{AttrTypes: ipsSuppressionAlertsTrackingAttrTypes}
 
-	honeypot, diags := types.ListValueFrom(ctx, honeypotType, []settingIpsHoneypotModel{{
+	honeypot, diags := types.ListValueFrom(ctx, honeypotType, []ipsHoneypotModel{{
 		IPAddress: types.StringValue("10.1.10.254"),
 		NetworkID: types.StringValue("net-a"),
 		Version:   types.StringValue("v4"),
@@ -42,7 +42,7 @@ func TestIpsAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("building honeypot: %v", diags)
 	}
-	whitelist, diags := types.ListValueFrom(ctx, whitelistType, []settingIpsWhitelistModel{{
+	whitelist, diags := types.ListValueFrom(ctx, whitelistType, []ipsSuppressionWhitelistModel{{
 		Direction: types.StringValue("both"),
 		Mode:      types.StringValue("ip"),
 		Value:     types.StringValue("10.0.0.5"),
@@ -50,11 +50,11 @@ func TestIpsAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("building whitelist: %v", diags)
 	}
-	tracking, diags := types.ListValueFrom(ctx, trackingType, []settingIpsTrackingModel{})
+	tracking, diags := types.ListValueFrom(ctx, trackingType, []ipsSuppressionAlertsTrackingModel{})
 	if diags.HasError() {
 		t.Fatalf("building tracking: %v", diags)
 	}
-	alerts, diags := types.ListValueFrom(ctx, alertType, []settingIpsAlertModel{{
+	alerts, diags := types.ListValueFrom(ctx, alertType, []ipsSuppressionAlertsModel{{
 		Category:  types.StringValue("malware"),
 		Gid:       types.Int64Value(1),
 		ID:        types.Int64Value(2001),
@@ -85,7 +85,7 @@ func TestIpsAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 		EnabledNetworks:                     networks,
 		Honeypot:                            honeypot,
 		HoneypotEnabled:                     types.BoolValue(true),
-		IPSMode:                             types.StringValue("ips"),
+		IPsMode:                             types.StringValue("ips"),
 		MemoryOptimized:                     types.BoolValue(true),
 		RestrictTorrents:                    types.BoolValue(true),
 		SuppressionWhitelist:                whitelist,
@@ -134,8 +134,8 @@ func TestIpsAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	if !model.HoneypotEnabled.IsNull() {
 		t.Errorf("honeypot_enabled = %v, want null (unconfigured in prior)", model.HoneypotEnabled)
 	}
-	if !model.IPSMode.IsNull() {
-		t.Errorf("ips_mode = %v, want null (unconfigured in prior)", model.IPSMode)
+	if !model.IPsMode.IsNull() {
+		t.Errorf("ips_mode = %v, want null (unconfigured in prior)", model.IPsMode)
 	}
 	if model.MemoryOptimized.IsNull() {
 		t.Error("memory_optimized = null, want the decoded value kept (configured in prior)")
@@ -198,8 +198,8 @@ func TestIpsSuppressionKitSpecConformance(t *testing.T) {
 // TestIpsSuppressionAttributesMapToNamedSDKMembers resolves the ambiguity
 // schema_model_agreement_test.go's declaredAmbiguous map records for
 // "unifi_setting.ips.suppression_alerts.tracking" and
-// "unifi_setting.ips.suppression_whitelist": both settingIpsTrackingModel
-// and settingIpsWhitelistModel share the same member shape
+// "unifi_setting.ips.suppression_whitelist": both ipsSuppressionAlertsTrackingModel
+// and ipsSuppressionWhitelistModel share the same member shape
 // (direction/mode/value), so which one a given schema path resolves to
 // cannot be told apart by shape alone. This pins the actual wire each
 // terraform attribute reaches: suppression_whitelist must land on
@@ -212,11 +212,11 @@ func TestIpsSuppressionAttributesMapToNamedSDKMembers(t *testing.T) {
 	ctx := context.Background()
 	spec := ipsSuppressionKitSpec()
 
-	whitelistType := types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}
-	trackingType := types.ObjectType{AttrTypes: ipsTrackingAttrTypes}
-	alertType := types.ObjectType{AttrTypes: ipsAlertAttrTypes}
+	whitelistType := types.ObjectType{AttrTypes: ipsSuppressionWhitelistAttrTypes}
+	trackingType := types.ObjectType{AttrTypes: ipsSuppressionAlertsTrackingAttrTypes}
+	alertType := types.ObjectType{AttrTypes: ipsSuppressionAlertsAttrTypes}
 
-	whitelist, diags := types.ListValueFrom(ctx, whitelistType, []settingIpsWhitelistModel{{
+	whitelist, diags := types.ListValueFrom(ctx, whitelistType, []ipsSuppressionWhitelistModel{{
 		Direction: types.StringValue("src"),
 		Mode:      types.StringValue("subnet"),
 		Value:     types.StringValue("10.0.0.0/24"),
@@ -224,7 +224,7 @@ func TestIpsSuppressionAttributesMapToNamedSDKMembers(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("building suppression_whitelist: %v", diags)
 	}
-	tracking, diags := types.ListValueFrom(ctx, trackingType, []settingIpsTrackingModel{{
+	tracking, diags := types.ListValueFrom(ctx, trackingType, []ipsSuppressionAlertsTrackingModel{{
 		Direction: types.StringValue("dest"),
 		Mode:      types.StringValue("network"),
 		Value:     types.StringValue("net-id-1"),
@@ -232,7 +232,7 @@ func TestIpsSuppressionAttributesMapToNamedSDKMembers(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("building the alert's own tracking: %v", diags)
 	}
-	alerts, diags := types.ListValueFrom(ctx, alertType, []settingIpsAlertModel{{
+	alerts, diags := types.ListValueFrom(ctx, alertType, []ipsSuppressionAlertsModel{{
 		Category:  types.StringValue("malware"),
 		Gid:       types.Int64Value(1),
 		ID:        types.Int64Value(2001),
@@ -277,14 +277,14 @@ func TestIpsSuppressionAttributesMapToNamedSDKMembers(t *testing.T) {
 	if diags := spec.ToModel(ctx, sdk, &out, ""); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
-	var outWhitelist []settingIpsWhitelistModel
+	var outWhitelist []ipsSuppressionWhitelistModel
 	if diags := out.SuppressionWhitelist.ElementsAs(ctx, &outWhitelist, false); diags.HasError() {
 		t.Fatalf("decoding suppression_whitelist: %v", diags)
 	}
 	if len(outWhitelist) != 1 || outWhitelist[0].Value.ValueString() != "10.0.0.0/24" {
 		t.Errorf("suppression_whitelist read back as %+v, want the one whitelist entry", outWhitelist)
 	}
-	var outAlerts []settingIpsAlertModel
+	var outAlerts []ipsSuppressionAlertsModel
 	if diags := out.SuppressionAlerts.ElementsAs(ctx, &outAlerts, false); diags.HasError() {
 		t.Fatalf("decoding suppression_alerts: %v", diags)
 	}
@@ -332,7 +332,7 @@ func TestIpsHoneypotListReplacesNotAppends(t *testing.T) {
 	spec.Backend = ipsKitBackend(api)
 	honeypotType := types.ObjectType{AttrTypes: ipsHoneypotAttrTypes}
 
-	twoHoneypots, diags := types.ListValueFrom(ctx, honeypotType, []settingIpsHoneypotModel{
+	twoHoneypots, diags := types.ListValueFrom(ctx, honeypotType, []ipsHoneypotModel{
 		{IPAddress: types.StringValue("10.0.0.1"), NetworkID: types.StringValue("net-a"), Version: types.StringValue("v4")},
 		{IPAddress: types.StringValue("10.0.0.2"), NetworkID: types.StringValue("net-b"), Version: types.StringValue("v4")},
 	})
@@ -355,7 +355,7 @@ func TestIpsHoneypotListReplacesNotAppends(t *testing.T) {
 		t.Fatalf("the prior write sent %d honeypot(s), want 2 -- the control for what follows", len(priorSent))
 	}
 
-	oneHoneypot, diags := types.ListValueFrom(ctx, honeypotType, []settingIpsHoneypotModel{
+	oneHoneypot, diags := types.ListValueFrom(ctx, honeypotType, []ipsHoneypotModel{
 		{IPAddress: types.StringValue("10.1.10.254"), NetworkID: types.StringValue("net-configured"), Version: types.StringValue("v4")},
 	})
 	if diags.HasError() {
@@ -468,7 +468,7 @@ func TestIpsSuppressionIsWrittenOnlyWhenConfigured(t *testing.T) {
 		// Both suppression lists left null: unconfigured. A non-suppression
 		// attribute is set to prove the predicate is scoped to suppression
 		// alone, not "is the section object configured at all".
-		IPSMode: types.StringValue("disabled"),
+		IPsMode: types.StringValue("disabled"),
 	}
 	prior := *plan
 	diags := document.Write(context.Background(), "default", plan, &prior, "Creating")
@@ -507,8 +507,8 @@ func TestIpsSuppressionNotFoundIsTheControllerTooOldDiagnostic(t *testing.T) {
 
 	document := ipsSuppressionKitDocument(api)
 	whitelist, diags := types.ListValueFrom(context.Background(),
-		types.ObjectType{AttrTypes: ipsWhitelistAttrTypes},
-		[]settingIpsWhitelistModel{{
+		types.ObjectType{AttrTypes: ipsSuppressionWhitelistAttrTypes},
+		[]ipsSuppressionWhitelistModel{{
 			Direction: types.StringValue("both"),
 			Mode:      types.StringValue("ip"),
 			Value:     types.StringValue("10.0.0.5"),

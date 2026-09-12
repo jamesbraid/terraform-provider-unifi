@@ -27,48 +27,12 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
-)
-
-// settingDohCustomServerModel is one element of doh's custom_servers list.
-type settingDohCustomServerModel struct {
-	Enabled    types.Bool   `tfsdk:"enabled"`
-	SDNSStamp  types.String `tfsdk:"sdns_stamp"`
-	ServerName types.String `tfsdk:"server_name"`
-}
-
-// settingDohModel is doh's own section model, decoded out of
-// settingResourceModel.Doh.
-type settingDohModel struct {
-	CustomServers types.List   `tfsdk:"custom_servers"`
-	ServerNames   types.List   `tfsdk:"server_names"`
-	State         types.String `tfsdk:"state"`
-}
-
-// dohCustomServerAttrTypes and dohAttrTypes type doh's custom_servers
-// elements and doh's own object in state; both must match the generated
-// schema exactly.
-var (
-	dohCustomServerAttrTypes = map[string]attr.Type{
-		"enabled":     types.BoolType,
-		"sdns_stamp":  types.StringType,
-		"server_name": types.StringType,
-	}
-	dohAttrTypes = map[string]attr.Type{
-		"custom_servers": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: dohCustomServerAttrTypes},
-		},
-		"server_names": types.ListType{ElemType: types.StringType},
-		"state":        types.StringType,
-	}
 )
 
 // dohKitSpec maps every attribute of the generated doh schema
@@ -87,29 +51,17 @@ func dohKitSpec() resourcekit.Spec[settingDohModel, settings.Doh] {
 		TypeName: "setting_doh",
 		Subject:  "DoH Setting",
 		New:      func() *settings.Doh { return &settings.Doh{} },
-		Fields: []resourcekit.Field[settingDohModel, settings.Doh]{
+		Fields: resourcekit.Override(settingDohGenFields(), []resourcekit.Field[settingDohModel, settings.Doh]{
 			resourcekit.ObjectListField[settingDohModel, settings.Doh, settings.SettingDohCustomServers]{
 				Wire:      "custom_servers",
 				Model:     func(m *settingDohModel) *types.List { return &m.CustomServers },
 				SDK:       func(s *settings.Doh) *[]settings.SettingDohCustomServers { return &s.CustomServers },
-				AttrTypes: dohCustomServerAttrTypes,
+				AttrTypes: dohCustomServersAttrTypes,
 				Encode:    dohCustomServerEncode,
 				Decode:    dohCustomServerDecode,
 				Elide:     resourcekit.KeepZero,
 			},
-			resourcekit.StringListField[settingDohModel, settings.Doh]{
-				Wire:  "server_names",
-				Model: func(m *settingDohModel) *types.List { return &m.ServerNames },
-				SDK:   func(s *settings.Doh) *[]string { return &s.ServerNames },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingDohModel, settings.Doh]{
-				Wire:  "state",
-				Model: func(m *settingDohModel) *types.String { return &m.State },
-				SDK:   func(s *settings.Doh) *string { return &s.State },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		}),
 	}
 }
 
@@ -121,7 +73,7 @@ func dohKitSpec() resourcekit.Spec[settingDohModel, settings.Doh] {
 func dohCustomServerEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingDohCustomServers, diag.Diagnostics) {
-	var model settingDohCustomServerModel
+	var model dohCustomServersModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	enabled := true
 	if !model.Enabled.IsNull() && !model.Enabled.IsUnknown() {
@@ -129,7 +81,7 @@ func dohCustomServerEncode(
 	}
 	return settings.SettingDohCustomServers{
 		Enabled:    enabled,
-		SdnsStamp:  model.SDNSStamp.ValueString(),
+		SdnsStamp:  model.SdnsStamp.ValueString(),
 		ServerName: model.ServerName.ValueString(),
 	}, diags
 }
@@ -137,9 +89,9 @@ func dohCustomServerEncode(
 func dohCustomServerDecode(
 	ctx context.Context, element settings.SettingDohCustomServers,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, dohCustomServerAttrTypes, settingDohCustomServerModel{
+	return types.ObjectValueFrom(ctx, dohCustomServersAttrTypes, dohCustomServersModel{
 		Enabled:    types.BoolValue(element.Enabled),
-		SDNSStamp:  types.StringValue(element.SdnsStamp),
+		SdnsStamp:  types.StringValue(element.SdnsStamp),
 		ServerName: types.StringValue(element.ServerName),
 	})
 }
@@ -162,19 +114,9 @@ func dohAfterReceive(
 		model.ServerNames = types.ListNull(types.StringType)
 	}
 	if prior.CustomServers.IsNull() || prior.CustomServers.IsUnknown() {
-		model.CustomServers = types.ListNull(types.ObjectType{AttrTypes: dohCustomServerAttrTypes})
+		model.CustomServers = types.ListNull(types.ObjectType{AttrTypes: dohCustomServersAttrTypes})
 	}
 	return nil
-}
-
-// dohNestedSchema is the doh SingleNestedAttribute's own Attributes, wrapped
-// as a schema.Schema so resourcekit's conformance checks -- built for a
-// whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func dohNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	doh := built.Attributes["doh"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // doh is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: doh.Attributes}
 }
 
 // dohKitBackend binds dohKitSpec to a client: Read is GetSetting[*Doh],

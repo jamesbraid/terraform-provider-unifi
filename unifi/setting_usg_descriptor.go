@@ -50,117 +50,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
-)
-
-// dnsVerificationModel is usg's own dns_verification nested object.
-type dnsVerificationModel struct {
-	Domain             types.String `tfsdk:"domain"`
-	PrimaryDNSServer   types.String `tfsdk:"primary_dns_server"`
-	SecondaryDNSServer types.String `tfsdk:"secondary_dns_server"`
-	SettingPreference  types.String `tfsdk:"setting_preference"`
-}
-
-// settingUSGModel is usg's own section model, decoded out of
-// settingResourceModel.USG. Its four geo_ip_filtering_* members are mapped
-// by usgGeoKitSpec, not usgKitSpec -- see this file's own top comment.
-type settingUSGModel struct {
-	BroadcastPing                  types.Bool           `tfsdk:"broadcast_ping"`
-	DNSVerification                types.Object         `tfsdk:"dns_verification"`
-	FtpModule                      types.Bool           `tfsdk:"ftp_module"`
-	GeoIPFilteringBlock            types.String         `tfsdk:"geo_ip_filtering_block"`
-	GeoIPFilteringCountries        types.String         `tfsdk:"geo_ip_filtering_countries"`
-	GeoIPFilteringEnabled          types.Bool           `tfsdk:"geo_ip_filtering_enabled"`
-	GeoIPFilteringTrafficDirection types.String         `tfsdk:"geo_ip_filtering_traffic_direction"`
-	GreModule                      types.Bool           `tfsdk:"gre_module"`
-	H323Module                     types.Bool           `tfsdk:"h323_module"`
-	ICMPTimeout                    timetypes.GoDuration `tfsdk:"icmp_timeout"`
-	MssClamp                       types.String         `tfsdk:"mss_clamp"`
-	OffloadAccounting              types.Bool           `tfsdk:"offload_accounting"`
-	OffloadL2Blocking              types.Bool           `tfsdk:"offload_l2_blocking"`
-	OffloadSch                     types.Bool           `tfsdk:"offload_sch"`
-	OtherTimeout                   timetypes.GoDuration `tfsdk:"other_timeout"`
-	PptpModule                     types.Bool           `tfsdk:"pptp_module"`
-	ReceiveRedirects               types.Bool           `tfsdk:"receive_redirects"`
-	SendRedirects                  types.Bool           `tfsdk:"send_redirects"`
-	SipModule                      types.Bool           `tfsdk:"sip_module"`
-	SynCookies                     types.Bool           `tfsdk:"syn_cookies"`
-	TCPCloseTimeout                timetypes.GoDuration `tfsdk:"tcp_close_timeout"`
-	TCPCloseWaitTimeout            timetypes.GoDuration `tfsdk:"tcp_close_wait_timeout"`
-	TCPEstablishedTimeout          timetypes.GoDuration `tfsdk:"tcp_established_timeout"`
-	TCPFinWaitTimeout              timetypes.GoDuration `tfsdk:"tcp_fin_wait_timeout"`
-	TCPLastAckTimeout              timetypes.GoDuration `tfsdk:"tcp_last_ack_timeout"`
-	TCPSynRecvTimeout              timetypes.GoDuration `tfsdk:"tcp_syn_recv_timeout"`
-	TCPSynSentTimeout              timetypes.GoDuration `tfsdk:"tcp_syn_sent_timeout"`
-	TCPTimeWaitTimeout             timetypes.GoDuration `tfsdk:"tcp_time_wait_timeout"`
-	TFTPModule                     types.Bool           `tfsdk:"tftp_module"`
-	TimeoutSettingPreference       types.String         `tfsdk:"timeout_setting_preference"`
-	UDPOtherTimeout                timetypes.GoDuration `tfsdk:"udp_other_timeout"`
-	UDPStreamTimeout               timetypes.GoDuration `tfsdk:"udp_stream_timeout"`
-	UnbindWANMonitors              types.Bool           `tfsdk:"unbind_wan_monitors"`
-	UPnPEnabled                    types.Bool           `tfsdk:"upnp_enabled"`
-	UPnPNATPmpEnabled              types.Bool           `tfsdk:"upnp_nat_pmp_enabled"`
-	UPnPSecureMode                 types.Bool           `tfsdk:"upnp_secure_mode"`
-	UPnPWANInterface               types.String         `tfsdk:"upnp_wan_interface"`
-}
-
-// dnsVerificationAttrTypes and usgAttrTypes type usg's dns_verification
-// nested object and usg's own object in state; both must match the
-// generated schema exactly.
-var (
-	dnsVerificationAttrTypes = map[string]attr.Type{
-		"domain":               types.StringType,
-		"primary_dns_server":   types.StringType,
-		"secondary_dns_server": types.StringType,
-		"setting_preference":   types.StringType,
-	}
-	usgAttrTypes = map[string]attr.Type{
-		"broadcast_ping":                     types.BoolType,
-		"dns_verification":                   types.ObjectType{AttrTypes: dnsVerificationAttrTypes},
-		"ftp_module":                         types.BoolType,
-		"geo_ip_filtering_block":             types.StringType,
-		"geo_ip_filtering_countries":         types.StringType,
-		"geo_ip_filtering_enabled":           types.BoolType,
-		"geo_ip_filtering_traffic_direction": types.StringType,
-		"gre_module":                         types.BoolType,
-		"h323_module":                        types.BoolType,
-		"icmp_timeout":                       timetypes.GoDurationType{},
-		"mss_clamp":                          types.StringType,
-		"offload_accounting":                 types.BoolType,
-		"offload_l2_blocking":                types.BoolType,
-		"offload_sch":                        types.BoolType,
-		"other_timeout":                      timetypes.GoDurationType{},
-		"pptp_module":                        types.BoolType,
-		"receive_redirects":                  types.BoolType,
-		"send_redirects":                     types.BoolType,
-		"sip_module":                         types.BoolType,
-		"syn_cookies":                        types.BoolType,
-		"tcp_close_timeout":                  timetypes.GoDurationType{},
-		"tcp_close_wait_timeout":             timetypes.GoDurationType{},
-		"tcp_established_timeout":            timetypes.GoDurationType{},
-		"tcp_fin_wait_timeout":               timetypes.GoDurationType{},
-		"tcp_last_ack_timeout":               timetypes.GoDurationType{},
-		"tcp_syn_recv_timeout":               timetypes.GoDurationType{},
-		"tcp_syn_sent_timeout":               timetypes.GoDurationType{},
-		"tcp_time_wait_timeout":              timetypes.GoDurationType{},
-		"tftp_module":                        types.BoolType,
-		"timeout_setting_preference":         types.StringType,
-		"udp_other_timeout":                  timetypes.GoDurationType{},
-		"udp_stream_timeout":                 timetypes.GoDurationType{},
-		"unbind_wan_monitors":                types.BoolType,
-		"upnp_enabled":                       types.BoolType,
-		"upnp_nat_pmp_enabled":               types.BoolType,
-		"upnp_secure_mode":                   types.BoolType,
-		"upnp_wan_interface":                 types.StringType,
-	}
 )
 
 // usgKitSpec maps every non-geo attribute of the generated usg schema
@@ -181,8 +77,8 @@ var (
 // any validator. geo_ip_filtering_block/countries/enabled/traffic_direction
 // aren't Fields here at all -- see usgGeoKitSpec and this file's own top
 // comment.
-func usgKitSpec() resourcekit.Spec[settingUSGModel, settings.Usg] {
-	return resourcekit.Spec[settingUSGModel, settings.Usg]{
+func usgKitSpec() resourcekit.Spec[settingUsgModel, settings.Usg] {
+	return resourcekit.Spec[settingUsgModel, settings.Usg]{
 		TypeName: "setting_usg",
 		Subject:  "USG Setting",
 		New:      func() *settings.Usg { return &settings.Usg{} },
@@ -190,211 +86,108 @@ func usgKitSpec() resourcekit.Spec[settingUSGModel, settings.Usg] {
 		// same surface; usgGeoKitSpec (no TypeName of its own) is the Spec
 		// that actually carries and verifies them.
 		MappedElsewhere: []string{"action", "countries", "enabled", "traffic_direction"},
-		Fields: []resourcekit.Field[settingUSGModel, settings.Usg]{
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "broadcast_ping",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.BroadcastPing },
-				SDK:   func(s *settings.Usg) *bool { return &s.BroadcastPing },
-			},
-			resourcekit.ObjectField[settingUSGModel, settings.Usg, settings.SettingUsgDNSVerification]{
+		Fields: resourcekit.Override(settingUsgGenFields(), []resourcekit.Field[settingUsgModel, settings.Usg]{
+			resourcekit.ObjectField[settingUsgModel, settings.Usg, settings.SettingUsgDNSVerification]{
 				Wire:      "dns_verification",
-				Model:     func(m *settingUSGModel) *types.Object { return &m.DNSVerification },
+				Model:     func(m *settingUsgModel) *types.Object { return &m.DNSVerification },
 				SDK:       func(s *settings.Usg) **settings.SettingUsgDNSVerification { return &s.DNSVerification },
-				AttrTypes: dnsVerificationAttrTypes,
+				AttrTypes: usgDnsVerificationAttrTypes,
 				Encode:    dnsVerificationEncode,
 				Decode:    dnsVerificationDecode,
 				Elide:     resourcekit.KeepZero,
 			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "ftp_module",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.FtpModule },
-				SDK:   func(s *settings.Usg) *bool { return &s.FtpModule },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "gre_module",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.GreModule },
-				SDK:   func(s *settings.Usg) *bool { return &s.GreModule },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "h323_module",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.H323Module },
-				SDK:   func(s *settings.Usg) *bool { return &s.H323Module },
-			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "icmp_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.ICMPTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.ICMPTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.ICMPTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.StringField[settingUSGModel, settings.Usg]{
-				Wire:  "mss_clamp",
-				Model: func(m *settingUSGModel) *types.String { return &m.MssClamp },
-				SDK:   func(s *settings.Usg) *string { return &s.MssClamp },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "offload_accounting",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.OffloadAccounting },
-				SDK:   func(s *settings.Usg) *bool { return &s.OffloadAccounting },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "offload_l2_blocking",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.OffloadL2Blocking },
-				SDK:   func(s *settings.Usg) *bool { return &s.OffloadL2Blocking },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "offload_sch",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.OffloadSch },
-				SDK:   func(s *settings.Usg) *bool { return &s.OffloadSch },
-			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "other_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.OtherTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.OtherTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.OtherTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "pptp_module",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.PptpModule },
-				SDK:   func(s *settings.Usg) *bool { return &s.PptpModule },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "receive_redirects",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.ReceiveRedirects },
-				SDK:   func(s *settings.Usg) *bool { return &s.ReceiveRedirects },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "send_redirects",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.SendRedirects },
-				SDK:   func(s *settings.Usg) *bool { return &s.SendRedirects },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "sip_module",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.SipModule },
-				SDK:   func(s *settings.Usg) *bool { return &s.SipModule },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "syn_cookies",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.SynCookies },
-				SDK:   func(s *settings.Usg) *bool { return &s.SynCookies },
-			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_close_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPCloseTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPCloseTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPCloseTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_close_wait_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPCloseWaitTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPCloseWaitTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPCloseWaitTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_established_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPEstablishedTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPEstablishedTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPEstablishedTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_fin_wait_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPFinWaitTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPFinWaitTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPFinWaitTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_last_ack_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPLastAckTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPLastAckTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPLastAckTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_syn_recv_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPSynRecvTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPSynRecvTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPSynRecvTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_syn_sent_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPSynSentTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPSynSentTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPSynSentTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "tcp_time_wait_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.TCPTimeWaitTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.TCPTimeWaitTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.TCPTimeWaitTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "tftp_module",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.TFTPModule },
-				SDK:   func(s *settings.Usg) *bool { return &s.TFTPModule },
-			},
-			resourcekit.StringField[settingUSGModel, settings.Usg]{
-				Wire:  "timeout_setting_preference",
-				Model: func(m *settingUSGModel) *types.String { return &m.TimeoutSettingPreference },
-				SDK:   func(s *settings.Usg) *string { return &s.TimeoutSettingPreference },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "udp_other_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.UDPOtherTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.UDPOtherTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.UDPOtherTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.DurationField[settingUSGModel, settings.Usg]{
+			resourcekit.DurationField[settingUsgModel, settings.Usg]{
 				Wire:  "udp_stream_timeout",
-				Model: func(m *settingUSGModel) *timetypes.GoDuration { return &m.UDPStreamTimeout },
+				Model: func(m *settingUsgModel) *timetypes.GoDuration { return &m.UDPStreamTimeout },
 				SDK:   func(s *settings.Usg) *int64 { return &s.UDPStreamTimeout },
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "unbind_wan_monitors",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.UnbindWANMonitors },
-				SDK:   func(s *settings.Usg) *bool { return &s.UnbindWANMonitors },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "upnp_enabled",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.UPnPEnabled },
-				SDK:   func(s *settings.Usg) *bool { return &s.UPnPEnabled },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "upnp_nat_pmp_enabled",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.UPnPNATPmpEnabled },
-				SDK:   func(s *settings.Usg) *bool { return &s.UPnPNATPmpEnabled },
-			},
-			resourcekit.BoolField[settingUSGModel, settings.Usg]{
-				Wire:  "upnp_secure_mode",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.UPnPSecureMode },
-				SDK:   func(s *settings.Usg) *bool { return &s.UPnPSecureMode },
-			},
-			resourcekit.StringField[settingUSGModel, settings.Usg]{
-				Wire:  "upnp_wan_interface",
-				Model: func(m *settingUSGModel) *types.String { return &m.UPnPWANInterface },
-				SDK:   func(s *settings.Usg) *string { return &s.UPnPWANInterface },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		}),
 	}
 }
 
 func dnsVerificationEncode(
 	ctx context.Context, object types.Object,
 ) (*settings.SettingUsgDNSVerification, diag.Diagnostics) {
-	var model dnsVerificationModel
+	var model usgDnsVerificationModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return &settings.SettingUsgDNSVerification{
 		Domain:             model.Domain.ValueString(),
@@ -407,7 +200,7 @@ func dnsVerificationEncode(
 func dnsVerificationDecode(
 	ctx context.Context, sdk *settings.SettingUsgDNSVerification,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, dnsVerificationAttrTypes, dnsVerificationModel{
+	return types.ObjectValueFrom(ctx, usgDnsVerificationAttrTypes, usgDnsVerificationModel{
 		Domain:             types.StringValue(sdk.Domain),
 		PrimaryDNSServer:   types.StringValue(sdk.PrimaryDNSServer),
 		SecondaryDNSServer: types.StringValue(sdk.SecondaryDNSServer),
@@ -428,7 +221,7 @@ func dnsVerificationDecode(
 // nulled, on Write, or leave Read's own prior wrongly non-null for a field
 // the plan never named.
 func usgAfterReceive(
-	_ context.Context, _ *settings.Usg, model *settingUSGModel, prior settingUSGModel,
+	_ context.Context, _ *settings.Usg, model *settingUsgModel, prior settingUsgModel,
 ) diag.Diagnostics {
 	boolOrNull := func(priorValue, modelValue types.Bool) types.Bool {
 		if priorValue.IsNull() || priorValue.IsUnknown() {
@@ -490,20 +283,10 @@ func usgAfterReceive(
 	model.UDPStreamTimeout = durationOrNull(prior.UDPStreamTimeout, model.UDPStreamTimeout)
 
 	if prior.DNSVerification.IsNull() || prior.DNSVerification.IsUnknown() {
-		model.DNSVerification = types.ObjectNull(dnsVerificationAttrTypes)
+		model.DNSVerification = types.ObjectNull(usgDnsVerificationAttrTypes)
 	}
 
 	return nil
-}
-
-// usgNestedSchema is the usg SingleNestedAttribute's own Attributes, wrapped
-// as a schema.Schema so resourcekit's conformance checks -- built for a
-// whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func usgNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	usg := built.Attributes["usg"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // usg is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: usg.Attributes}
 }
 
 // usgGeoNestedSchema is the subset of usg's own nested schema that
@@ -565,31 +348,31 @@ func usgKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Usg] {
 // `^([A-Z]{2})?(,[A-Z]{2}){0,149}$` are optional), so it wants KeepZero,
 // same as usgKitSpec's own no-validator strings; enabled is a plain bool,
 // which carries no Elide at all.
-func usgGeoKitSpec() resourcekit.Spec[settingUSGModel, settings.SettingUsgGeoIPFiltering] {
-	return resourcekit.Spec[settingUSGModel, settings.SettingUsgGeoIPFiltering]{
+func usgGeoKitSpec() resourcekit.Spec[settingUsgModel, settings.SettingUsgGeoIPFiltering] {
+	return resourcekit.Spec[settingUsgModel, settings.SettingUsgGeoIPFiltering]{
 		Subject: "USG Geo Setting",
 		New:     func() *settings.SettingUsgGeoIPFiltering { return &settings.SettingUsgGeoIPFiltering{} },
-		Fields: []resourcekit.Field[settingUSGModel, settings.SettingUsgGeoIPFiltering]{
-			resourcekit.StringField[settingUSGModel, settings.SettingUsgGeoIPFiltering]{
+		Fields: []resourcekit.Field[settingUsgModel, settings.SettingUsgGeoIPFiltering]{
+			resourcekit.StringField[settingUsgModel, settings.SettingUsgGeoIPFiltering]{
 				Wire:  "action",
-				Model: func(m *settingUSGModel) *types.String { return &m.GeoIPFilteringBlock },
+				Model: func(m *settingUsgModel) *types.String { return &m.GeoIPFilteringBlock },
 				SDK:   func(s *settings.SettingUsgGeoIPFiltering) *string { return &s.Action },
 				Elide: resourcekit.NullZero,
 			},
-			resourcekit.StringField[settingUSGModel, settings.SettingUsgGeoIPFiltering]{
+			resourcekit.StringField[settingUsgModel, settings.SettingUsgGeoIPFiltering]{
 				Wire:  "countries",
-				Model: func(m *settingUSGModel) *types.String { return &m.GeoIPFilteringCountries },
+				Model: func(m *settingUsgModel) *types.String { return &m.GeoIPFilteringCountries },
 				SDK:   func(s *settings.SettingUsgGeoIPFiltering) *string { return &s.Countries },
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.BoolField[settingUSGModel, settings.SettingUsgGeoIPFiltering]{
+			resourcekit.BoolField[settingUsgModel, settings.SettingUsgGeoIPFiltering]{
 				Wire:  "enabled",
-				Model: func(m *settingUSGModel) *types.Bool { return &m.GeoIPFilteringEnabled },
+				Model: func(m *settingUsgModel) *types.Bool { return &m.GeoIPFilteringEnabled },
 				SDK:   func(s *settings.SettingUsgGeoIPFiltering) *bool { return &s.Enabled },
 			},
-			resourcekit.StringField[settingUSGModel, settings.SettingUsgGeoIPFiltering]{
+			resourcekit.StringField[settingUsgModel, settings.SettingUsgGeoIPFiltering]{
 				Wire:  "traffic_direction",
-				Model: func(m *settingUSGModel) *types.String { return &m.GeoIPFilteringTrafficDirection },
+				Model: func(m *settingUsgModel) *types.String { return &m.GeoIPFilteringTrafficDirection },
 				SDK:   func(s *settings.SettingUsgGeoIPFiltering) *string { return &s.TrafficDirection },
 				Elide: resourcekit.NullZero,
 			},
@@ -676,10 +459,10 @@ func usgGeoNotSupportedDiagnostic(error) diag.Diagnostics {
 // OnReadNotFound is nil, since a read-time absence -- a controller that
 // predates the split, or a site that never touched geo filtering -- is
 // benign, the same tolerance readUSGSection gave a not-found usg_geo.
-func usgGeoKitDocument(client *ui.ApiClient) resourcekit.Document[settingUSGModel] {
+func usgGeoKitDocument(client *ui.ApiClient) resourcekit.Document[settingUsgModel] {
 	spec := usgGeoKitSpec()
 	spec.Backend = usgGeoKitBackend(client)
-	return resourcekit.SpecDocument[settingUSGModel, settings.SettingUsgGeoIPFiltering]{
+	return resourcekit.SpecDocument[settingUsgModel, settings.SettingUsgGeoIPFiltering]{
 		Spec:            spec,
 		OnWriteNotFound: usgGeoNotSupportedDiagnostic,
 	}
@@ -690,13 +473,13 @@ func usgGeoKitDocument(client *ui.ApiClient) resourcekit.Document[settingUSGMode
 func usgKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := usgKitSpec()
 	spec.Backend = usgKitBackend(client)
-	return resourcekit.SpecSection[settingResourceModel, settingUSGModel, settings.Usg]{
+	return resourcekit.SpecSection[settingResourceModel, settingUsgModel, settings.Usg]{
 		SectionName:  "usg",
 		Get:          func(m *settingResourceModel) *types.Object { return &m.USG },
 		Set:          func(m *settingResourceModel, o types.Object) { m.USG = o },
 		AttrTypes:    usgAttrTypes,
 		Spec:         spec,
 		AfterReceive: usgAfterReceive,
-		Extra:        []resourcekit.Document[settingUSGModel]{usgGeoKitDocument(client)},
+		Extra:        []resourcekit.Document[settingUsgModel]{usgGeoKitDocument(client)},
 	}
 }

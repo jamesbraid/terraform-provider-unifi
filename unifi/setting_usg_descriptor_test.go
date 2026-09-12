@@ -33,7 +33,7 @@ func TestUsgAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	ctx := context.Background()
 	sdk := &settings.Usg{}
 
-	dnsVerification, diags := types.ObjectValueFrom(ctx, dnsVerificationAttrTypes, dnsVerificationModel{
+	dnsVerification, diags := types.ObjectValueFrom(ctx, usgDnsVerificationAttrTypes, usgDnsVerificationModel{
 		Domain:             types.StringValue("example.com"),
 		PrimaryDNSServer:   types.StringValue("1.1.1.1"),
 		SecondaryDNSServer: types.StringValue("1.0.0.1"),
@@ -48,7 +48,7 @@ func TestUsgAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	// usgGeoKitSpec's own document Read would have decoded straight off the
 	// wire, before usgAfterReceive applies the plan-conditioned nulls --
 	// every field carries a concrete, non-null value.
-	model := &settingUSGModel{
+	model := &settingUsgModel{
 		BroadcastPing:                  types.BoolValue(true),
 		DNSVerification:                dnsVerification,
 		FtpModule:                      types.BoolValue(true),
@@ -89,11 +89,11 @@ func TestUsgAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	}
 
 	// prior alternates configured/unconfigured field by field, in
-	// settingUSGModel's own declaration order, so every field's own branch
+	// settingUsgModel's own declaration order, so every field's own branch
 	// of usgAfterReceive is exercised: BroadcastPing configured,
 	// DNSVerification not, FtpModule configured, GeoIPFilteringBlock not,
 	// and so on through UPnPWANInterface.
-	prior := settingUSGModel{
+	prior := settingUsgModel{
 		BroadcastPing: types.BoolValue(true),
 		// DNSVerification left null: unconfigured.
 		FtpModule: types.BoolValue(true),
@@ -283,7 +283,7 @@ func TestUsgGeoRenamesBlockToActionOnTheWire(t *testing.T) {
 	ctx := context.Background()
 	spec := usgGeoKitSpec()
 
-	model := &settingUSGModel{GeoIPFilteringBlock: types.StringValue("block")}
+	model := &settingUsgModel{GeoIPFilteringBlock: types.StringValue("block")}
 	sdk, diags := spec.ToSDK(ctx, model)
 	if diags.HasError() {
 		t.Fatalf("ToSDK: %v", diags)
@@ -292,7 +292,7 @@ func TestUsgGeoRenamesBlockToActionOnTheWire(t *testing.T) {
 		t.Errorf("ToSDK: Action = %q, want block", sdk.Action)
 	}
 
-	var out settingUSGModel
+	var out settingUsgModel
 	if diags := spec.ToModel(ctx, &settings.SettingUsgGeoIPFiltering{Action: "allow"}, &out, ""); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
@@ -324,7 +324,7 @@ func TestUsgGeoIsWrittenOnlyWhenConfigured(t *testing.T) {
 	}
 
 	document := usgGeoKitDocument(api)
-	plan := &settingUSGModel{
+	plan := &settingUsgModel{
 		// Every geo_ip_filtering_* attribute left null: unconfigured. A
 		// non-geo attribute is set to prove the predicate is scoped to geo
 		// alone, not "is the section object configured at all".
@@ -369,7 +369,7 @@ func TestUsgGeoNotFoundIsTheControllerTooOldDiagnostic(t *testing.T) {
 	}
 
 	document := usgGeoKitDocument(api)
-	plan := &settingUSGModel{GeoIPFilteringEnabled: types.BoolValue(true)}
+	plan := &settingUsgModel{GeoIPFilteringEnabled: types.BoolValue(true)}
 	prior := *plan
 	diags := document.Write(context.Background(), "default", plan, &prior, "Creating")
 	if !diags.HasError() {
@@ -429,7 +429,7 @@ func TestUsgGeoBackendPreservesUnmanagedSubFieldsOnAPartialWrite(t *testing.T) {
 
 	document := usgGeoKitDocument(api)
 	// Only countries is managed here.
-	plan := &settingUSGModel{GeoIPFilteringCountries: types.StringValue("NZ,AU")}
+	plan := &settingUsgModel{GeoIPFilteringCountries: types.StringValue("NZ,AU")}
 	prior := *plan
 	if diags := document.Write(context.Background(), "default", plan, &prior, "Creating"); diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
@@ -520,7 +520,7 @@ func TestUsgGeoDocumentReadNotFoundLeavesModelUntouched(t *testing.T) {
 	}
 
 	document := usgGeoKitDocument(api)
-	model := &settingUSGModel{
+	model := &settingUsgModel{
 		GeoIPFilteringBlock:   types.StringValue("untouched"),
 		GeoIPFilteringEnabled: types.BoolValue(true),
 	}

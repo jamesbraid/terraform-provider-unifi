@@ -45,18 +45,18 @@ type settingResource struct {
 // settingRadiusModel moved to setting_radius_descriptor.go, alongside the
 // Spec that now owns it.
 
-// dnsVerificationModel and settingUSGModel moved to setting_usg_descriptor.go,
+// usgDnsVerificationModel and settingUsgModel moved to setting_usg_descriptor.go,
 // alongside the Specs that now own them.
 
 // settingAutoSpeedtestModel, settingCountryModel, settingDpiModel,
 // settingNetworkOptimizationModel, settingLcmModel, settingNtpModel,
-// settingSyslogModel, settingDohCustomServerModel and settingDohModel moved
+// settingSyslogModel, dohCustomServersModel and settingDohModel moved
 // to their own *_descriptor.go files, alongside the Specs that now own
 // them: descriptor_mapping_test.go's loadDescriptors reads a descriptor's
 // model tags from the same file.
 
-// settingIpsHoneypotModel, settingIpsWhitelistModel, settingIpsTrackingModel,
-// settingIpsAlertModel and settingIpsModel moved to setting_ips_descriptor.go,
+// ipsHoneypotModel, ipsSuppressionWhitelistModel, ipsSuppressionAlertsTrackingModel,
+// ipsSuppressionAlertsModel and settingIpsModel moved to setting_ips_descriptor.go,
 // alongside the Specs that now own them.
 
 type settingResourceModel struct {
@@ -104,7 +104,7 @@ type settingResourceModel struct {
 // autoSpeedtestAttrTypes, countryAttrTypes, dpiAttrTypes,
 // networkOptimizationAttrTypes, mgmtSshKeysAttrTypes/mgmtAttrTypes,
 // lcmAttrTypes, ntpAttrTypes, syslogAttrTypes,
-// dohCustomServerAttrTypes/dohAttrTypes, the ips*AttrTypes and
+// dohCustomServersAttrTypes/dohAttrTypes, the ips*AttrTypes and
 // igmpSnoopingAttrTypes all moved to their own *_descriptor.go files,
 // alongside the models and Specs that now own them.
 

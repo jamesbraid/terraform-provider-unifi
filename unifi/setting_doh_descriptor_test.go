@@ -31,13 +31,13 @@ func TestDohAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	model := &settingDohModel{
 		State:         types.StringValue("auto"),
 		ServerNames:   types.ListValueMust(types.StringType, nil),
-		CustomServers: types.ListValueMust(types.ObjectType{AttrTypes: dohCustomServerAttrTypes}, nil),
+		CustomServers: types.ListValueMust(types.ObjectType{AttrTypes: dohCustomServersAttrTypes}, nil),
 	}
 	prior := settingDohModel{
 		State: types.StringValue("custom"), // configured, so it survives
 		// ServerNames and CustomServers left null: unconfigured.
 		ServerNames:   types.ListNull(types.StringType),
-		CustomServers: types.ListNull(types.ObjectType{AttrTypes: dohCustomServerAttrTypes}),
+		CustomServers: types.ListNull(types.ObjectType{AttrTypes: dohCustomServersAttrTypes}),
 	}
 
 	diags := dohAfterReceive(context.Background(), sdk, model, prior)
@@ -89,7 +89,7 @@ func TestDohConfiguredEmptyCustomServersReadsBackAsEmptyList(t *testing.T) {
 	// prior is configured (non-null, empty) -- the practitioner DID write
 	// custom_servers = [] in their config.
 	prior := settingDohModel{
-		CustomServers: types.ListValueMust(types.ObjectType{AttrTypes: dohCustomServerAttrTypes}, nil),
+		CustomServers: types.ListValueMust(types.ObjectType{AttrTypes: dohCustomServersAttrTypes}, nil),
 	}
 	if diags := dohAfterReceive(ctx, sdk, &model, prior); diags.HasError() {
 		t.Fatalf("dohAfterReceive: %v", diags)
@@ -113,9 +113,9 @@ func TestDohConfiguredEmptyCustomServersReadsBackAsEmptyList(t *testing.T) {
 // Encode runs -- this is the defensive fallback pinned regardless.
 func TestDohCustomServerEnabledDefaultsTrueWhenUnset(t *testing.T) {
 	ctx := context.Background()
-	object, diags := types.ObjectValueFrom(ctx, dohCustomServerAttrTypes, settingDohCustomServerModel{
+	object, diags := types.ObjectValueFrom(ctx, dohCustomServersAttrTypes, dohCustomServersModel{
 		Enabled:    types.BoolNull(),
-		SDNSStamp:  types.StringValue("sdns://stamp"),
+		SdnsStamp:  types.StringValue("sdns://stamp"),
 		ServerName: types.StringValue("my-resolver"),
 	})
 	if diags.HasError() {
@@ -131,9 +131,9 @@ func TestDohCustomServerEnabledDefaultsTrueWhenUnset(t *testing.T) {
 	}
 
 	// An explicit false must survive, not be overridden by the default.
-	object, diags = types.ObjectValueFrom(ctx, dohCustomServerAttrTypes, settingDohCustomServerModel{
+	object, diags = types.ObjectValueFrom(ctx, dohCustomServersAttrTypes, dohCustomServersModel{
 		Enabled:    types.BoolValue(false),
-		SDNSStamp:  types.StringValue("sdns://stamp"),
+		SdnsStamp:  types.StringValue("sdns://stamp"),
 		ServerName: types.StringValue("my-resolver"),
 	})
 	if diags.HasError() {
@@ -163,11 +163,11 @@ func TestDohSettingRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	spec := dohKitSpec()
 
-	customServersType := types.ObjectType{AttrTypes: dohCustomServerAttrTypes}
-	customServers, diags := types.ListValueFrom(ctx, customServersType, []settingDohCustomServerModel{
+	customServersType := types.ObjectType{AttrTypes: dohCustomServersAttrTypes}
+	customServers, diags := types.ListValueFrom(ctx, customServersType, []dohCustomServersModel{
 		{
 			Enabled:    types.BoolValue(true),
-			SDNSStamp:  types.StringValue("sdns://AQcAAAAAAAAABzguOC44Ljg"),
+			SdnsStamp:  types.StringValue("sdns://AQcAAAAAAAAABzguOC44Ljg"),
 			ServerName: types.StringValue("google"),
 		},
 	})
@@ -218,7 +218,7 @@ func TestDohSettingRoundTrip(t *testing.T) {
 	if len(gotServerNames) != 1 || gotServerNames[0] != "cloudflare" {
 		t.Errorf("ToModel: ServerNames = %v, want [cloudflare]", gotServerNames)
 	}
-	var gotCustomServers []settingDohCustomServerModel
+	var gotCustomServers []dohCustomServersModel
 	if diags := out.CustomServers.ElementsAs(ctx, &gotCustomServers, false); diags.HasError() {
 		t.Fatalf("reading CustomServers: %v", diags)
 	}
@@ -226,9 +226,9 @@ func TestDohSettingRoundTrip(t *testing.T) {
 		t.Fatalf("ToModel: CustomServers has %d element(s), want 1", len(gotCustomServers))
 	}
 	if !gotCustomServers[0].Enabled.ValueBool() ||
-		gotCustomServers[0].SDNSStamp.ValueString() != "sdns://AQcAAAAAAAAABzguOC44Ljg" ||
+		gotCustomServers[0].SdnsStamp.ValueString() != "sdns://AQcAAAAAAAAABzguOC44Ljg" ||
 		gotCustomServers[0].ServerName.ValueString() != "google" {
-		t.Errorf("ToModel: CustomServers[0] = %+v, want Enabled=true SDNSStamp=sdns://... ServerName=google",
+		t.Errorf("ToModel: CustomServers[0] = %+v, want Enabled=true SdnsStamp=sdns://... ServerName=google",
 			gotCustomServers[0])
 	}
 }

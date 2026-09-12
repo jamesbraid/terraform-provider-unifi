@@ -57,17 +57,17 @@ func TestSettingValidateConfigMdnsRequiresCustomModeForServiceLists(t *testing.T
 		t.Fatalf("build the schema: %v", schemaResp.Diagnostics)
 	}
 
-	customServicesElemType := types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}
-	predefinedServicesElemType := types.ObjectType{AttrTypes: mdnsPredefinedServiceAttrTypes}
+	customServicesElemType := types.ObjectType{AttrTypes: mdnsCustomServicesAttrTypes}
+	predefinedServicesElemType := types.ObjectType{AttrTypes: mdnsPredefinedServicesAttrTypes}
 
 	oneCustomService := types.ListValueMust(customServicesElemType, []attr.Value{
-		types.ObjectValueMust(mdnsCustomServiceAttrTypes, map[string]attr.Value{
+		types.ObjectValueMust(mdnsCustomServicesAttrTypes, map[string]attr.Value{
 			"address": types.StringValue("_myservice._tcp.local"),
 			"name":    types.StringValue("my service"),
 		}),
 	})
 	onePredefinedService := types.ListValueMust(predefinedServicesElemType, []attr.Value{
-		types.ObjectValueMust(mdnsPredefinedServiceAttrTypes, map[string]attr.Value{
+		types.ObjectValueMust(mdnsPredefinedServicesAttrTypes, map[string]attr.Value{
 			"code": types.StringValue("printers"),
 		}),
 	})
