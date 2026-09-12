@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -926,4 +927,46 @@ func claimedStructuralNames(t *testing.T, surface string) map[string]bool {
 		}
 	}
 	return out
+}
+
+// TestLoadDescriptorsIsComplete guards loadDescriptors against silently
+// shrinking. Its callers only fail on entries they can see, and its own
+// guard fires on an empty result, not a short one -- so when the emitter
+// moved a Spec into a *_descriptor_gen.go the reader did not yet parse, the
+// Spec dropped out of every assertion and the suite stayed green. This
+// census is independent of loadDescriptors' AST parse: it greps the
+// descriptor source for TypeName literals -- the marker that a file serves a
+// descriptor -- so a file the parser skips is still counted here and names
+// itself in the failure.
+func TestLoadDescriptorsIsComplete(t *testing.T) {
+	paths, err := filepath.Glob("*_descriptor.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	genPaths, err := filepath.Glob("*_descriptor_gen.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	typeName := regexp.MustCompile(`TypeName:\s*"([a-z0-9_]+)"`)
+	declared := map[string]string{} // TypeName -> file that declares it
+	for _, path := range append(paths, genPaths...) {
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("reading %s: %v", path, err)
+		}
+		for _, m := range typeName.FindAllStringSubmatch(string(src), -1) {
+			declared[m[1]] = path
+		}
+	}
+	if len(declared) == 0 {
+		t.Fatal("no TypeName literals found in any descriptor file; the census below would pass vacuously")
+	}
+
+	loaded := loadDescriptors(t)
+	for name, path := range declared {
+		if _, ok := loaded[name]; !ok {
+			t.Errorf("%s declares descriptor %q but loadDescriptors did not return it -- "+
+				"the reader skipped it and every assertion keyed on it is silently absent", path, name)
+		}
+	}
 }
