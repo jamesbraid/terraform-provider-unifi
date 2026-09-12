@@ -621,7 +621,7 @@ func TestNewPortForwardListResource(t *testing.T) {
 	}
 }
 
-func Test_portForwardWanModel_AttributeTypes(t *testing.T) {
+func Test_portForwardWanAttrTypes(t *testing.T) {
 	want := map[string]attr.Type{
 		"interface":  types.StringType,
 		"ip_address": types.StringType,
@@ -632,7 +632,7 @@ func Test_portForwardWanModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_portForwardForwardModel_AttributeTypes(t *testing.T) {
+func Test_portForwardForwardAttrTypes(t *testing.T) {
 	want := map[string]attr.Type{
 		"ip":   types.StringType,
 		"port": types.StringType,
@@ -642,7 +642,7 @@ func Test_portForwardForwardModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_portForwardSourceLimitingModel_AttributeTypes(t *testing.T) {
+func Test_portForwardSourceLimitingAttrTypes(t *testing.T) {
 	want := map[string]attr.Type{
 		"ip":                types.StringType,
 		"firewall_group_id": types.StringType,
@@ -654,7 +654,7 @@ func Test_portForwardSourceLimitingModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_portForwardDestinationIPModel_AttributeTypes(t *testing.T) {
+func Test_portForwardDestinationIpsAttrTypes(t *testing.T) {
 	want := map[string]attr.Type{
 		"destination_ip": types.StringType,
 		"interface":      types.StringType,

@@ -145,7 +145,7 @@ func TestNewWLANListResource(t *testing.T) {
 	}
 }
 
-func Test_wlanPrivatePresharedKeyModel_AttributeTypes(t *testing.T) {
+func Test_wlanPrivatePresharedKeysAttrTypes(t *testing.T) {
 	want := map[string]attr.Type{
 		"network_id": types.StringType,
 		"password":   types.StringType,
