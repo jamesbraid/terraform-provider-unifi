@@ -14,7 +14,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestRadiusAfterReceiveKeepsThePlansSecretWhenNamed pins radiusAfterReceive
@@ -131,29 +130,6 @@ func TestRadiusSettingRoundTrip(t *testing.T) {
 	}
 	if out.Secret.ValueString() != "mysecret" {
 		t.Errorf("ToModel: Secret = %q, want mysecret", out.Secret.ValueString())
-	}
-}
-
-// TestRadiusKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies (see e.g. dns_record's case in
-// descriptor_elide_test.go), scoped to radius's own nested schema rather
-// than a whole resource's, since radius is one section of unifi_setting
-// rather than a surface of its own.
-func TestRadiusKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := radiusKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := radiusNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

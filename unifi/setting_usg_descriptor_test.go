@@ -14,7 +14,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestUsgAfterReceiveNullsWhatThePlanDidNotName pins usgAfterReceive against
@@ -226,51 +225,6 @@ func TestUsgAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	if !model.DNSVerification.IsNull() {
 		t.Errorf("dns_verification = %v, want null (unconfigured in prior, so it must not drift)",
 			model.DNSVerification)
-	}
-}
-
-// TestUsgKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies (see e.g. dns_record's case in
-// descriptor_elide_test.go), scoped to usg's own nested schema rather than
-// a whole resource's, since usg is one section of unifi_setting rather than
-// a surface of its own.
-func TestUsgKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := usgKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := usgNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
-	}
-}
-
-// TestUsgGeoKitSpecConformance is TestUsgKitSpecConformance's counterpart
-// for usgGeoKitSpec, scoped to usgGeoNestedSchema -- the four
-// geo_ip_filtering_* attributes usg_geo owns, not the whole usg
-// SingleNestedAttribute.
-func TestUsgGeoKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := usgGeoKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := usgGeoNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

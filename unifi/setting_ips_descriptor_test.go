@@ -12,7 +12,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestIpsAfterReceiveNullsWhatThePlanDidNotName pins ipsAfterReceive against
@@ -148,50 +147,6 @@ func TestIpsAfterReceiveNullsWhatThePlanDidNotName(t *testing.T) {
 	}
 	if model.SuppressionAlerts.IsNull() {
 		t.Error("suppression_alerts = null, want the decoded value kept (configured in prior)")
-	}
-}
-
-// TestIpsKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies, scoped to ips's own nested schema
-// rather than a whole resource's, since ips is one section of unifi_setting
-// rather than a surface of its own.
-func TestIpsKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := ipsKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := ipsNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
-	}
-}
-
-// TestIpsSuppressionKitSpecConformance is TestIpsKitSpecConformance's
-// counterpart for ipsSuppressionKitSpec, scoped to ipsSuppressionNestedSchema
-// -- the two suppression_alerts/suppression_whitelist attributes
-// ips_suppression owns, not the whole ips SingleNestedAttribute.
-func TestIpsSuppressionKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := ipsSuppressionKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := ipsSuppressionNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

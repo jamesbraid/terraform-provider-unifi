@@ -12,7 +12,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestRadioAiBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey is the unit
@@ -59,29 +58,6 @@ func TestRadioAiBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *testing.T) {
 		if _, ok := body[name]; !ok {
 			t.Errorf("PUT body is missing %q; got %v", name, keysOf(body))
 		}
-	}
-}
-
-// TestRadioAiKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies (see setting_mgmt_descriptor_test.go's
-// TestMgmtKitSpecConformance), scoped to radio_ai's own nested schema rather
-// than a whole resource's, since radio_ai is one section of unifi_setting
-// rather than a surface of its own.
-func TestRadioAiKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := radioAiKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := radioAiNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

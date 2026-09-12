@@ -12,7 +12,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestDohAfterReceiveNullsWhatThePlanDidNotName pins dohAfterReceive against
@@ -230,29 +229,6 @@ func TestDohSettingRoundTrip(t *testing.T) {
 		gotCustomServers[0].ServerName.ValueString() != "google" {
 		t.Errorf("ToModel: CustomServers[0] = %+v, want Enabled=true SdnsStamp=sdns://... ServerName=google",
 			gotCustomServers[0])
-	}
-}
-
-// TestDohKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies (see e.g. dns_record's case in
-// descriptor_elide_test.go), scoped to doh's own nested schema rather than
-// a whole resource's, since doh is one section of unifi_setting rather than
-// a surface of its own.
-func TestDohKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := dohKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := dohNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

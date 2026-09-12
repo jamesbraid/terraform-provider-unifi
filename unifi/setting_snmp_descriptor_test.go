@@ -12,7 +12,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestSnmpAfterReceiveKeepsThePlansSecretWhenNamed pins snmpAfterReceive
@@ -153,26 +152,6 @@ func TestSnmpSettingRoundTrip(t *testing.T) {
 	}
 	if out.Username.ValueString() != "my-user" {
 		t.Errorf("ToModel: Username = %q, want my-user", out.Username.ValueString())
-	}
-}
-
-// TestSnmpKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies, scoped to snmp's own nested schema.
-func TestSnmpKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := snmpKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := snmpNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

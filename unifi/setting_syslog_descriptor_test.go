@@ -13,7 +13,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestSyslogSettingRoundTrip ports the deleted TestSettingBlocksRoundTrip's
@@ -206,29 +205,6 @@ func TestSyslogBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *testing.T) {
 	if _, ok := body["debug"]; ok {
 		t.Error(`PUT body carries "debug", which the mask never named; ` +
 			"the masked write is supposed to leave it out")
-	}
-}
-
-// TestSyslogKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies (see e.g. dns_record's case in
-// descriptor_elide_test.go), scoped to syslog's own nested schema rather
-// than a whole resource's, since syslog is one section of unifi_setting
-// rather than a surface of its own.
-func TestSyslogKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := syslogKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := syslogNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

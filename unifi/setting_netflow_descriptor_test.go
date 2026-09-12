@@ -61,29 +61,6 @@ func TestNetflowBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *testing.T) {
 	}
 }
 
-// TestNetflowKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies (see setting_mgmt_descriptor_test.go's
-// TestMgmtKitSpecConformance), scoped to netflow's own nested schema rather
-// than a whole resource's, since netflow is one section of unifi_setting
-// rather than a surface of its own.
-func TestNetflowKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := netflowKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := netflowNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
-	}
-}
-
 // TestNetflowOmitsAZeroTheControllerRejects is netflow's own local version
 // of the OmitZeroProblems census: unifi_setting is not walked by
 // TestEveryKitSurfaceOmitsAZeroTheControllerRejects

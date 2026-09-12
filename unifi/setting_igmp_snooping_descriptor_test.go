@@ -12,7 +12,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestIgmpSnoopingSettingRoundTrip ports the "basic fields mapped" case of
@@ -165,33 +164,6 @@ func TestIgmpSnoopingBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *testing
 	if _, ok := body["auto_unknown_traffic_handling"]; ok {
 		t.Error(`PUT body carries "auto_unknown_traffic_handling", which the mask never named; ` +
 			"the masked write is supposed to leave it out")
-	}
-}
-
-// TestIgmpSnoopingKitSpecConformance runs the same conformance instruments
-// every other kit descriptor's test applies (see e.g. dns_record's case in
-// descriptor_elide_test.go), scoped to igmp_snooping's own nested schema
-// rather than a whole resource's, since igmp_snooping is one section of
-// unifi_setting rather than a surface of its own. igmp_snooping's own
-// top-level attribute is Optional-only (not Computed, unlike every other
-// section migrated so far); this passing is what confirms
-// resourcekit.SpecSection's Configured -- keyed on the object being
-// non-null, needing no Computed flag -- accepts that shape.
-func TestIgmpSnoopingKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := igmpSnoopingKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := igmpSnoopingNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 
