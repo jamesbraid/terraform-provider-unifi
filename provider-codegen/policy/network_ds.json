@@ -32,7 +32,7 @@
     },
     {
       "mapping": {
-        "from_api": "networkDataSourceDHCPGuardingServersFromNetwork",
+        "from_api": "networkDHCPGuardingServersFromNetwork",
         "kind": "dedicated"
       },
       "reason": "one released list collected from three observed slots, keeping only the non-empty ones",
@@ -47,7 +47,7 @@
     },
     {
       "mapping": {
-        "from_api": "networkDataSourceDHCPServerDNSFromNetwork",
+        "from_api": "networkDHCPServerDNSFromNetwork",
         "kind": "dedicated"
       },
       "reason": "one released list collected from four observed slots, keeping only the non-empty ones",
@@ -63,7 +63,7 @@
     },
     {
       "mapping": {
-        "from_api": "networkDataSourceDHCPV6ServerDNSFromNetwork",
+        "from_api": "networkDHCPV6ServerDNSFromNetwork",
         "kind": "dedicated"
       },
       "reason": "one released list collected from four observed slots, keeping only the non-empty ones",
@@ -79,7 +79,7 @@
     },
     {
       "mapping": {
-        "from_api": "networkDataSourceWINSFromNetwork",
+        "from_api": "networkWINSFromNetwork",
         "kind": "dedicated"
       },
       "reason": "one released object over an enable flag and two address slots, the addresses collected non-empty",
@@ -94,7 +94,7 @@
     },
     {
       "mapping": {
-        "from_api": "networkDataSourceNTPServersFromNetwork",
+        "from_api": "networkNTPServersFromNetwork",
         "kind": "dedicated"
       },
       "reason": "one released list distributed positionally into two observed slots, collected non-empty",

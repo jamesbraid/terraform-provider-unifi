@@ -242,7 +242,7 @@ func (d *networkDataSource) setDataSourceData(
 	{
 		dhcpGuardingValue := dhcpGuardingModel{
 			Enabled: types.BoolValue(network.DHCPguardEnabled),
-			Servers: networkDataSourceDHCPGuardingServersFromNetwork(ctx, diags, network),
+			Servers: networkDHCPGuardingServersFromNetwork(ctx, diags, network),
 		}
 		dhcpGuardingObj, d := types.ObjectValueFrom(
 			ctx,
@@ -255,8 +255,8 @@ func (d *networkDataSource) setDataSourceData(
 
 	{
 		dhcpBootObj := networkDataSourceBootFromNetwork(ctx, diags, network)
-		dnsServersList := networkDataSourceDHCPServerDNSFromNetwork(ctx, diags, network)
-		winsObj := networkDataSourceWINSFromNetwork(ctx, diags, network)
+		dnsServersList := networkDHCPServerDNSFromNetwork(ctx, diags, network)
+		winsObj := networkWINSFromNetwork(ctx, diags, network)
 
 		dhcpServerValue := dhcpServerModel{
 			Boot:              dhcpBootObj,
@@ -274,7 +274,7 @@ func (d *networkDataSource) setDataSourceData(
 			TftpServer:        strPtrOrNull(network.DHCPDTFTPServer),
 			UnifiController:   strPtrOrNull(network.DHCPDUnifiController),
 			DnsServers:        dnsServersList,
-			NtpServers:        networkDataSourceNTPServersFromNetwork(ctx, diags, network),
+			NtpServers:        networkNTPServersFromNetwork(ctx, diags, network),
 		}
 		dhcpServerObj, d := types.ObjectValueFrom(
 			ctx,
@@ -329,7 +329,7 @@ func (d *networkDataSource) setDataSourceData(
 		dhcpV6ServerValue := dhcpV6ServerModel{
 			Enabled:    types.BoolValue(network.DHCPDV6Enabled),
 			DNSAuto:    types.BoolValue(network.DHCPDV6DNSAuto),
-			DNSServers: networkDataSourceDHCPV6ServerDNSFromNetwork(ctx, diags, network),
+			DNSServers: networkDHCPV6ServerDNSFromNetwork(ctx, diags, network),
 			Lease:      types.Int64PointerValue(network.DHCPDV6LeaseTime),
 			Start:      types.StringPointerValue(network.DHCPDV6Start),
 			Stop:       types.StringPointerValue(network.DHCPDV6Stop),
@@ -409,73 +409,6 @@ func stringListOrNull(
 func networkDataSourcePurposeFromNetwork(network *unifi.Network) (types.String, types.Bool) {
 	return types.StringValue(network.Purpose),
 		types.BoolValue(network.Purpose == unifi.PurposeVLANOnly)
-}
-
-// networkDataSourceDHCPGuardingServersFromNetwork collects dhcp_guarding.servers
-// from the three observed slots, keeping only the non-empty ones.
-func networkDataSourceDHCPGuardingServersFromNetwork(
-	ctx context.Context,
-	diags *diag.Diagnostics,
-	network *unifi.Network,
-) types.List {
-	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
-		network.DHCPDIP1, network.DHCPDIP2, network.DHCPDIP3,
-	))
-}
-
-// networkDataSourceDHCPServerDNSFromNetwork collects dhcp_server.dns_servers
-// from the four observed slots, keeping only the non-empty ones.
-func networkDataSourceDHCPServerDNSFromNetwork(
-	ctx context.Context,
-	diags *diag.Diagnostics,
-	network *unifi.Network,
-) types.List {
-	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
-		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
-	))
-}
-
-// networkDataSourceDHCPV6ServerDNSFromNetwork collects dhcp_v6_server.dns_servers
-// from the four observed slots, keeping only the non-empty ones.
-func networkDataSourceDHCPV6ServerDNSFromNetwork(
-	ctx context.Context,
-	diags *diag.Diagnostics,
-	network *unifi.Network,
-) types.List {
-	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
-		network.DHCPDV6DNS1, network.DHCPDV6DNS2,
-		network.DHCPDV6DNS3, network.DHCPDV6DNS4,
-	))
-}
-
-// networkDataSourceWINSFromNetwork reads dhcp_server.wins from an enable flag
-// and two address slots, the addresses collected non-empty.
-func networkDataSourceWINSFromNetwork(
-	ctx context.Context,
-	diags *diag.Diagnostics,
-	network *unifi.Network,
-) types.Object {
-	value := winsModel{
-		Enabled: types.BoolValue(network.DHCPDWinsEnabled),
-		Addresses: stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
-			network.DHCPDWins1, network.DHCPDWins2,
-		)),
-	}
-	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
-	diags.Append(d...)
-	return object
-}
-
-// networkDataSourceNTPServersFromNetwork reads dhcp_server.ntp_servers from
-// the two observed slots, collected non-empty.
-func networkDataSourceNTPServersFromNetwork(
-	ctx context.Context,
-	diags *diag.Diagnostics,
-	network *unifi.Network,
-) types.List {
-	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
-		network.DHCPDNtp1, network.DHCPDNtp2,
-	))
 }
 
 // networkDataSourceBootFromNetwork reads dhcp_server.boot, which groups three
