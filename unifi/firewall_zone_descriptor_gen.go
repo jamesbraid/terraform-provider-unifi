@@ -24,11 +24,6 @@ type firewallZoneKitModel struct {
 // over these with resourcekit.Override.
 func firewallZoneGenFields() []resourcekit.Field[firewallZoneKitModel, ui.FirewallZone] {
 	return []resourcekit.Field[firewallZoneKitModel, ui.FirewallZone]{
-		resourcekit.BoolPtrField[firewallZoneKitModel, ui.FirewallZone]{
-			Wire:  "default_zone",
-			Model: func(m *firewallZoneKitModel) *types.Bool { return &m.DefaultZone },
-			SDK:   func(s *ui.FirewallZone) **bool { return &s.DefaultZone },
-		},
 		resourcekit.StringField[firewallZoneKitModel, ui.FirewallZone]{
 			Wire:  "name",
 			Model: func(m *firewallZoneKitModel) *types.String { return &m.Name },
@@ -39,12 +34,6 @@ func firewallZoneGenFields() []resourcekit.Field[firewallZoneKitModel, ui.Firewa
 			Wire:  "network_ids",
 			Model: func(m *firewallZoneKitModel) *types.List { return &m.NetworkIDs },
 			SDK:   func(s *ui.FirewallZone) *[]string { return &s.NetworkIDs },
-			Elide: resourcekit.KeepZero,
-		},
-		resourcekit.StringField[firewallZoneKitModel, ui.FirewallZone]{
-			Wire:  "zone_key",
-			Model: func(m *firewallZoneKitModel) *types.String { return &m.ZoneKey },
-			SDK:   func(s *ui.FirewallZone) *string { return &s.ZoneKey },
 			Elide: resourcekit.KeepZero,
 		},
 	}

@@ -25,7 +25,7 @@ import (
 // change a test rather than be absorbed by one rewritten alongside the code.
 type (
 	vpnClientCRUD      = *vpnClientResource
-	vpnClientCRUDModel = vpnClientResourceModel
+	vpnClientCRUDModel = vpnClientKitModel
 )
 
 func newVPNClientCRUD() vpnClientCRUD { return newVPNClientKitResource() }

@@ -622,109 +622,45 @@ func TestNewPortForwardListResource(t *testing.T) {
 }
 
 func Test_portForwardWanModel_AttributeTypes(t *testing.T) {
-	tests := []struct {
-		name string
-		m    portForwardWanModel
-		want map[string]attr.Type
-	}{
-		{
-			name: "returns correct attribute types",
-			m:    portForwardWanModel{},
-			want: map[string]attr.Type{
-				"interface":  types.StringType,
-				"ip_address": types.StringType,
-				"port":       types.StringType,
-			},
-		},
+	want := map[string]attr.Type{
+		"interface":  types.StringType,
+		"ip_address": types.StringType,
+		"port":       types.StringType,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.m.AttributeTypes(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("portForwardWanModel.AttributeTypes() = %v, want %v", got, tt.want)
-			}
-		})
+	if !reflect.DeepEqual(portForwardWanAttrTypes, want) {
+		t.Errorf("portForwardWanAttrTypes = %v, want %v", portForwardWanAttrTypes, want)
 	}
 }
 
 func Test_portForwardForwardModel_AttributeTypes(t *testing.T) {
-	tests := []struct {
-		name string
-		m    portForwardForwardModel
-		want map[string]attr.Type
-	}{
-		{
-			name: "returns correct attribute types",
-			m:    portForwardForwardModel{},
-			want: map[string]attr.Type{
-				"ip":   types.StringType,
-				"port": types.StringType,
-			},
-		},
+	want := map[string]attr.Type{
+		"ip":   types.StringType,
+		"port": types.StringType,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.m.AttributeTypes(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("portForwardForwardModel.AttributeTypes() = %v, want %v", got, tt.want)
-			}
-		})
+	if !reflect.DeepEqual(portForwardForwardAttrTypes, want) {
+		t.Errorf("portForwardForwardAttrTypes = %v, want %v", portForwardForwardAttrTypes, want)
 	}
 }
 
 func Test_portForwardSourceLimitingModel_AttributeTypes(t *testing.T) {
-	tests := []struct {
-		name string
-		m    portForwardSourceLimitingModel
-		want map[string]attr.Type
-	}{
-		{
-			name: "returns correct attribute types",
-			m:    portForwardSourceLimitingModel{},
-			want: map[string]attr.Type{
-				"ip":                types.StringType,
-				"firewall_group_id": types.StringType,
-				"enabled":           types.BoolType,
-				"type":              types.StringType,
-			},
-		},
+	want := map[string]attr.Type{
+		"ip":                types.StringType,
+		"firewall_group_id": types.StringType,
+		"enabled":           types.BoolType,
+		"type":              types.StringType,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.m.AttributeTypes(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"portForwardSourceLimitingModel.AttributeTypes() = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-		})
+	if !reflect.DeepEqual(portForwardSourceLimitingAttrTypes, want) {
+		t.Errorf("portForwardSourceLimitingAttrTypes = %v, want %v", portForwardSourceLimitingAttrTypes, want)
 	}
 }
 
 func Test_portForwardDestinationIPModel_AttributeTypes(t *testing.T) {
-	tests := []struct {
-		name string
-		m    portForwardDestinationIPModel
-		want map[string]attr.Type
-	}{
-		{
-			name: "returns correct attribute types",
-			m:    portForwardDestinationIPModel{},
-			want: map[string]attr.Type{
-				"destination_ip": types.StringType,
-				"interface":      types.StringType,
-			},
-		},
+	want := map[string]attr.Type{
+		"destination_ip": types.StringType,
+		"interface":      types.StringType,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.m.AttributeTypes(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"portForwardDestinationIPModel.AttributeTypes() = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-		})
+	if !reflect.DeepEqual(portForwardDestinationIpsAttrTypes, want) {
+		t.Errorf("portForwardDestinationIpsAttrTypes = %v, want %v", portForwardDestinationIpsAttrTypes, want)
 	}
 }
 

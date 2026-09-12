@@ -15,44 +15,7 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-type clientKitModel struct {
-	ID             types.String       `tfsdk:"id"`
-	Site           types.String       `tfsdk:"site"`
-	MAC            hwtypes.MACAddress `tfsdk:"mac"`
-	Name           types.String       `tfsdk:"name"`
-	DisplayName    types.String       `tfsdk:"display_name"`
-	QOSRate        types.Object       `tfsdk:"qos_rate"`
-	Note           types.String       `tfsdk:"note"`
-	FixedIP        types.String       `tfsdk:"fixed_ip"`
-	FixedApMAC     hwtypes.MACAddress `tfsdk:"fixed_ap_mac"`
-	NetworkID      types.String       `tfsdk:"network_id"`
-	Groups         types.List         `tfsdk:"groups"`
-	Blocked        types.Bool         `tfsdk:"blocked"`
-	LocalDNSRecord types.String       `tfsdk:"local_dns_record"`
-
-	AllowExisting       types.Bool `tfsdk:"allow_existing"`
-	SkipForgetOnDestroy types.Bool `tfsdk:"skip_forget_on_destroy"`
-
-	Hostname types.String `tfsdk:"hostname"`
-	LastIP   types.String `tfsdk:"last_ip"`
-
-	Timeouts timeouts.Value `tfsdk:"timeouts"`
-}
-
 type clientModel = clientKitModel
-
-// clientStr builds a plain string Field. Every client string field elides
-// KeepZero -- an empty wire value is a real value here, not "unset" -- so
-// that is not a parameter.
-func clientStr(
-	wire string,
-	model func(*clientModel) *types.String,
-	sdk func(*ui.Client) *string,
-) resourcekit.StringField[clientModel, ui.Client] {
-	return resourcekit.StringField[clientModel, ui.Client]{
-		Wire: wire, Model: model, SDK: sdk, Elide: resourcekit.KeepZero,
-	}
-}
 
 func clientKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Client] {
 	return resourcekit.Backend[ui.Client]{
@@ -173,16 +136,16 @@ func clientKitBeforeSend(
 		// comparing it to "" already covers those states; a separate IsNull()
 		// check would be redundant.
 		sdk.UseFixedIP = effective.FixedIP.ValueString() != ""
-		sdk.FixedApEnabled = effective.FixedApMAC.ValueString() != ""
+		sdk.FixedApEnabled = effective.FixedAPMAC.ValueString() != ""
 		sdk.LocalDNSRecordEnabled = effective.LocalDNSRecord.ValueString() != ""
 		// virtual_network_override_enabled is in AlwaysWire, so this must never
 		// be nil: a nil *bool serializes as JSON null, which the controller
 		// rejects (api.err.InvalidValue) rather than treating as clearing the flag.
 		sdk.VirtualNetworkOverrideEnabled = util.Ptr(effective.NetworkID.ValueString() != "")
 
-		if !effective.QOSRate.IsNull() && !effective.QOSRate.IsUnknown() {
+		if !effective.QoSRate.IsNull() && !effective.QoSRate.IsUnknown() {
 			var qos qosRateModel
-			diags.Append(effective.QOSRate.As(ctx, &qos, basetypes.ObjectAsOptions{})...)
+			diags.Append(effective.QoSRate.As(ctx, &qos, basetypes.ObjectAsOptions{})...)
 			if diags.HasError() {
 				return diags
 			}
@@ -321,7 +284,7 @@ func clientKitAfterReceive(
 	// so the no-prefetch path sets these explicitly rather than leaving them.
 	groups, ok := prefetched.(*clientGroups)
 	if !ok {
-		model.QOSRate = types.ObjectNull(qosRateModel{}.AttributeTypes())
+		model.QoSRate = types.ObjectNull(qosRateModel{}.AttributeTypes())
 		model.Groups = types.ListNull(types.StringType)
 		return diags
 	}
@@ -335,9 +298,9 @@ func clientKitAfterReceive(
 				MaxDown: types.Int64PointerValue(group.QOSRateMaxDown),
 			})
 		diags.Append(d...)
-		model.QOSRate = object
+		model.QoSRate = object
 	} else {
-		model.QOSRate = types.ObjectNull(qosRateModel{}.AttributeTypes())
+		model.QoSRate = types.ObjectNull(qosRateModel{}.AttributeTypes())
 	}
 
 	if len(sdk.NetworkMembersGroupIDs) == 0 {
@@ -494,7 +457,7 @@ func clientKitSpec() resourcekit.Spec[clientModel, ui.Client] {
 		Timeouts: func(m *clientModel) *timeouts.Value { return &m.Timeouts },
 		// Fields is one literal because an instrument parses this file rather
 		// than running it; a list built via a helper would be invisible to it.
-		Fields: []resourcekit.Field[clientModel, ui.Client]{
+		Fields: resourcekit.Override(clientGenFields(), []resourcekit.Field[clientKitModel, ui.Client]{
 			resourcekit.StringLikeField[clientModel, ui.Client, hwtypes.MACAddress]{
 				Wire:  "mac",
 				Model: func(m *clientModel) *hwtypes.MACAddress { return &m.MAC },
@@ -503,55 +466,16 @@ func clientKitSpec() resourcekit.Spec[clientModel, ui.Client] {
 					return hwtypes.MACAddress{StringValue: v}
 				},
 			},
-			clientStr("name", func(m *clientModel) *types.String { return &m.Name },
-				func(s *ui.Client) *string { return &s.Name }),
-			clientStr("display_name", func(m *clientModel) *types.String { return &m.DisplayName },
-				func(s *ui.Client) *string { return &s.DisplayName }),
-			clientStr("note", func(m *clientModel) *types.String { return &m.Note },
-				func(s *ui.Client) *string { return &s.Note }),
-			// A plain string, not iptypes.IPv4Address: that type's validator
-			// rejects "", which is the documented way to clear a previously
-			// assigned fixed IP. clientKitAfterReceive, not this Field, decides
-			// what an empty wire value means.
-			clientStr("fixed_ip", func(m *clientModel) *types.String { return &m.FixedIP },
-				func(s *ui.Client) *string { return &s.FixedIP }),
 			resourcekit.StringLikeField[clientModel, ui.Client, hwtypes.MACAddress]{
 				Wire:  "fixed_ap_mac",
-				Model: func(m *clientModel) *hwtypes.MACAddress { return &m.FixedApMAC },
+				Model: func(m *clientModel) *hwtypes.MACAddress { return &m.FixedAPMAC },
 				SDK:   func(s *ui.Client) *string { return &s.FixedApMAC },
 				New: func(v basetypes.StringValue) hwtypes.MACAddress {
 					return hwtypes.MACAddress{StringValue: v}
 				},
 				Elide: resourcekit.NullZero,
 			},
-			// network_id maps to virtual_network_override_id, not the SDK's
-			// separate NetworkID field -- mapping to NetworkID would compile and
-			// pass the elide/wire-name checks, but write the wrong field. Only
-			// the mapping.json comparison catches it.
-			clientStr("virtual_network_override_id",
-				func(m *clientModel) *types.String { return &m.NetworkID },
-				func(s *ui.Client) *string { return &s.VirtualNetworkOverrideID }),
-			clientStr("local_dns_record",
-				func(m *clientModel) *types.String { return &m.LocalDNSRecord },
-				func(s *ui.Client) *string { return &s.LocalDNSRecord }),
-			resourcekit.BoolPtrField[clientModel, ui.Client]{
-				Wire:  "blocked",
-				Model: func(m *clientModel) *types.Bool { return &m.Blocked },
-				SDK:   func(s *ui.Client) **bool { return &s.Blocked },
-			},
-			resourcekit.StringField[clientModel, ui.Client]{
-				Wire:  "hostname",
-				Model: func(m *clientModel) *types.String { return &m.Hostname },
-				SDK:   func(s *ui.Client) *string { return &s.Hostname },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[clientModel, ui.Client]{
-				Wire:  "last_ip",
-				Model: func(m *clientModel) *types.String { return &m.LastIP },
-				SDK:   func(s *ui.Client) *string { return &s.LastIP },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		}),
 
 		Backend: resourcekit.Backend[ui.Client]{
 			// Seeded so ToModel does not nil-dereference in a test binary that

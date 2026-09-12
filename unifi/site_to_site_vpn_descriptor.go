@@ -16,7 +16,10 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type siteToSiteVPNKitModel struct {
+// The model stays hand-written: Schema injects pre_shared_key_wo (a
+// write-only attribute the generated schema does not carry), and the
+// framework requires the model to cover it.
+type siteToSiteVpnKitModel struct {
 	ID             types.String         `tfsdk:"id"`
 	Site           types.String         `tfsdk:"site"`
 	Name           types.String         `tfsdk:"name"`
@@ -43,7 +46,7 @@ type siteToSiteVPNKitModel struct {
 	Timeouts       timeouts.Value       `tfsdk:"timeouts"`
 }
 
-type s2sModel = siteToSiteVPNKitModel
+type s2sModel = siteToSiteVpnKitModel
 
 func s2sPtr(
 	wire string,
@@ -53,22 +56,6 @@ func s2sPtr(
 	return resourcekit.StringLikePtrField[s2sModel, ui.Network, types.String]{
 		Wire: wire, Model: model, SDK: sdk,
 		New: func(v basetypes.StringValue) types.String { return v },
-	}
-}
-
-func s2sInt(
-	wire string,
-	model func(*s2sModel) *types.Int64,
-	sdk func(*ui.Network) **int64,
-) resourcekit.Int64PtrField[s2sModel, ui.Network] {
-	// OmitZero: the controller rejects 0 for the DH-group and route-distance
-	// fields.
-	return resourcekit.Int64PtrField[s2sModel, ui.Network]{
-		Wire: wire, Model: model, SDK: sdk,
-		// KeepZero on the read and OmitZero on the write is not a
-		// contradiction: we never send a zero, but one the controller reports
-		// is recorded faithfully.
-		Elide: resourcekit.KeepZero, OmitZero: true,
 	}
 }
 
@@ -91,14 +78,9 @@ func siteToSiteVPNKitSpec() resourcekit.Spec[s2sModel, ui.Network] {
 		// in the plan can put it in the mask.
 		AlwaysWire: []string{"x_ipsec_pre_shared_key"},
 
-		Fields: []resourcekit.Field[s2sModel, ui.Network]{
+		Fields: resourcekit.Override(siteToSiteVpnGenFields(), []resourcekit.Field[siteToSiteVpnKitModel, ui.Network]{
 			s2sPtr("name", func(m *s2sModel) *types.String { return &m.Name },
 				func(s *ui.Network) **string { return &s.Name }),
-			resourcekit.BoolField[s2sModel, ui.Network]{
-				Wire:  "enabled",
-				Model: func(m *s2sModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.Network) *bool { return &s.Enabled },
-			},
 			s2sPtr("ipsec_interface", func(m *s2sModel) *types.String { return &m.Interface },
 				func(s *ui.Network) **string { return &s.IPSecInterface }),
 			resourcekit.StringLikePtrField[s2sModel, ui.Network, iptypes.IPv4Address]{
@@ -119,12 +101,6 @@ func siteToSiteVPNKitSpec() resourcekit.Spec[s2sModel, ui.Network] {
 			},
 			s2sPtr("ipsec_key_exchange", func(m *s2sModel) *types.String { return &m.KeyExchange },
 				func(s *ui.Network) **string { return &s.IPSecKeyExchange }),
-			resourcekit.StringListField[s2sModel, ui.Network]{
-				Wire:  "remote_vpn_subnets",
-				Model: func(m *s2sModel) *types.List { return &m.RemoteSubnets },
-				SDK:   func(s *ui.Network) *[]string { return &s.RemoteVPNSubnets },
-				Elide: resourcekit.KeepZero,
-			},
 			s2sPtr("ipsec_profile", func(m *s2sModel) *types.String { return &m.Profile },
 				func(s *ui.Network) **string { return &s.IPSecProfile }),
 			// NOT IPSecIkeEncryption. Both exist; only this one is emitted for
@@ -133,8 +109,6 @@ func siteToSiteVPNKitSpec() resourcekit.Spec[s2sModel, ui.Network] {
 				func(s *ui.Network) **string { return &s.IPSecEncryption }),
 			s2sPtr("ipsec_hash", func(m *s2sModel) *types.String { return &m.IKEHash },
 				func(s *ui.Network) **string { return &s.IPSecHash }),
-			s2sInt("ipsec_dh_group", func(m *s2sModel) *types.Int64 { return &m.IKEDhGroup },
-				func(s *ui.Network) **int64 { return &s.IPSecDhGroup }),
 			resourcekit.DurationPtrField[s2sModel, ui.Network]{
 				Wire:  "ipsec_ike_lifetime",
 				Model: func(m *s2sModel) *timetypes.GoDuration { return &m.IKELifetime },
@@ -151,8 +125,6 @@ func siteToSiteVPNKitSpec() resourcekit.Spec[s2sModel, ui.Network] {
 			),
 			s2sPtr("ipsec_esp_hash", func(m *s2sModel) *types.String { return &m.ESPHash },
 				func(s *ui.Network) **string { return &s.IPSecEspHash }),
-			s2sInt("ipsec_esp_dh_group", func(m *s2sModel) *types.Int64 { return &m.ESPDhGroup },
-				func(s *ui.Network) **int64 { return &s.IPSecEspDhGroup }),
 			resourcekit.DurationPtrField[s2sModel, ui.Network]{
 				Wire:  "ipsec_esp_lifetime",
 				Model: func(m *s2sModel) *timetypes.GoDuration { return &m.ESPLifetime },
@@ -162,22 +134,7 @@ func siteToSiteVPNKitSpec() resourcekit.Spec[s2sModel, ui.Network] {
 				// util.DurationPtrValue produced.
 				Elide: resourcekit.KeepZero,
 			},
-			// ipsec_pfs and ipsec_dynamic_routing are emitted unconditionally by
-			// the encoder (go-unifi v1.105.0); no suppression predicate needed
-			// here. See TestPFSAndDynamicRoutingAreEmittedUnconditionally.
-			resourcekit.BoolField[s2sModel, ui.Network]{
-				Wire:  "ipsec_pfs",
-				Model: func(m *s2sModel) *types.Bool { return &m.PFS },
-				SDK:   func(s *ui.Network) *bool { return &s.IPSecPfs },
-			},
-			resourcekit.BoolField[s2sModel, ui.Network]{
-				Wire:  "ipsec_dynamic_routing",
-				Model: func(m *s2sModel) *types.Bool { return &m.DynamicRouting },
-				SDK:   func(s *ui.Network) *bool { return &s.IPSecDynamicRouting },
-			},
-			s2sInt("route_distance", func(m *s2sModel) *types.Int64 { return &m.RouteDistance },
-				func(s *ui.Network) **int64 { return &s.RouteDistance }),
-		},
+		}),
 		// Seeded here as well as in siteToSiteVPNKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.

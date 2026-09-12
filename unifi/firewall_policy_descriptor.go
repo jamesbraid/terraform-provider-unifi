@@ -23,28 +23,6 @@ const firewallPolicyScheduleAlways = "ALWAYS"
 // still rejects APP/APP_CATEGORY, since there's no catalog attribute to
 // populate them from.
 
-type firewallPolicyKitModel struct {
-	ID                  types.String   `tfsdk:"id"`
-	Site                types.String   `tfsdk:"site"`
-	Name                types.String   `tfsdk:"name"`
-	Action              types.String   `tfsdk:"action"`
-	Enabled             types.Bool     `tfsdk:"enabled"`
-	Protocol            types.String   `tfsdk:"protocol"`
-	Description         types.String   `tfsdk:"description"`
-	Logging             types.Bool     `tfsdk:"logging"`
-	Index               types.Int64    `tfsdk:"index"`
-	CreateAllowRespond  types.Bool     `tfsdk:"create_allow_respond"`
-	IPVersion           types.String   `tfsdk:"ip_version"`
-	ConnectionStateType types.String   `tfsdk:"connection_state_type"`
-	ConnectionStates    types.List     `tfsdk:"connection_states"`
-	ICMPTypename        types.String   `tfsdk:"icmp_typename"`
-	ICMPV6Typename      types.String   `tfsdk:"icmp_v6_typename"`
-	Schedule            types.Object   `tfsdk:"schedule"`
-	Source              types.Object   `tfsdk:"source"`
-	Destination         types.Object   `tfsdk:"destination"`
-	Timeouts            timeouts.Value `tfsdk:"timeouts"`
-}
-
 // firewallPolicyEndpointValues is the shape FirewallPolicySource and
 // FirewallPolicyDestination both have, converted separately since Go can't
 // reach a struct field generically.
@@ -249,88 +227,7 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 		// mechanism built for exactly a hook-supplied value.
 		AlwaysWire: []string{"schedule"},
 
-		Fields: []resourcekit.Field[firewallPolicyKitModel, ui.FirewallPolicy]{
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "name",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "action",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.Action },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Action },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "enabled",
-				Model: func(m *firewallPolicyKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.FirewallPolicy) *bool { return &s.Enabled },
-			},
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "protocol",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.Protocol },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Protocol },
-				// The suppression came off (go-unifi v1.110.0's protocol
-				// vocabulary matches the controller's measured acceptance
-				// exactly -- see r3-sdk-bump task 3), so a derived
-				// RegexMatches now rejects "". The default is "all", not "",
-				// so the zero value isn't the default either: NullZero.
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "description",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.Description },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Description },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "logging",
-				Model: func(m *firewallPolicyKitModel) *types.Bool { return &m.Logging },
-				SDK:   func(s *ui.FirewallPolicy) *bool { return &s.Logging },
-			},
-			resourcekit.BoolField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "create_allow_respond",
-				Model: func(m *firewallPolicyKitModel) *types.Bool { return &m.CreateAllowRespond },
-				SDK:   func(s *ui.FirewallPolicy) *bool { return &s.CreateAllowRespond },
-			},
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "ip_version",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.IPVersion },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Version },
-				Elide: resourcekit.NullZero,
-			},
-			// The controller requires these back on every PUT: an omitted
-			// connection_state_type or icmp_typename fails the write with
-			// HTTP 400. They are Computed-only, so nothing a practitioner
-			// writes reaches them.
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "connection_state_type",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.ConnectionStateType },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.ConnectionStateType },
-				// Same reasoning as protocol above: the suppression came off
-				// and the derived OneOf(ALL, RESPOND_ONLY, CUSTOM) rejects "",
-				// with no default equal to the zero value: NullZero.
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringListField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "connection_states",
-				Model: func(m *firewallPolicyKitModel) *types.List { return &m.ConnectionStates },
-				SDK:   func(s *ui.FirewallPolicy) *[]string { return &s.ConnectionStates },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "icmp_typename",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.ICMPTypename },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.ICMPTypename },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
-				Wire:  "icmp_v6_typename",
-				Model: func(m *firewallPolicyKitModel) *types.String { return &m.ICMPV6Typename },
-				SDK:   func(s *ui.FirewallPolicy) *string { return &s.ICMPV6Typename },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(firewallPolicyGenFields(), []resourcekit.Field[firewallPolicyKitModel, ui.FirewallPolicy]{
 			// Read-only, so it never joins the mask: index is
 			// controller-assigned, and UniFi ignores a client-supplied value.
 			resourcekit.ReadOnly[firewallPolicyKitModel, ui.FirewallPolicy](
@@ -471,7 +368,7 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				},
 				Elide: resourcekit.KeepZero,
 			},
-		},
+		}),
 	}
 }
 

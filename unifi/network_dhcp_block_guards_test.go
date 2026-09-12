@@ -138,7 +138,7 @@ func TestDHCPGuardingWireMaskExcludesItsFieldsWhenNull(t *testing.T) {
 
 	nullPlan := &netModel{
 		Name:         types.StringValue("probe"),
-		DhcpGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
+		DHCPGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
 	}
 	fields, err := networkKitSpec().WireFields(nullPlan)
 	if err != nil {
@@ -164,7 +164,7 @@ func TestDHCPGuardingWireMaskExcludesItsFieldsWhenNull(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("building the dhcp_guarding object: %v", diags)
 	}
-	populatedPlan := &netModel{Name: types.StringValue("probe"), DhcpGuarding: guarding}
+	populatedPlan := &netModel{Name: types.StringValue("probe"), DHCPGuarding: guarding}
 	fields, err = networkKitSpec().WireFields(populatedPlan)
 	if err != nil {
 		t.Fatalf("WireFields (populated dhcp_guarding): %v", err)

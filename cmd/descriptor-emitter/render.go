@@ -147,20 +147,27 @@ func render(
 	} else {
 		imports[goUnifiPackage] = "ui"
 	}
-	model := deriveModel(ctx, s, built, doc, imports)
+	var model []modelMember
+	if !s.handModel {
+		model = deriveModel(ctx, s, built, doc, imports)
+	}
 	modelName := lowerCamelNaive(s.name) + "KitModel"
 	if s.section != "" {
 		modelName = lowerCamelNaive(s.name) + "Model"
 	}
 
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "type %s struct {\n", modelName)
-	for _, m := range model {
-		fmt.Fprintf(&b, "\t%s %s `tfsdk:%q`\n", m.Name, m.Type, m.Tag)
+	if !s.handModel {
+		fmt.Fprintf(&b, "type %s struct {\n", modelName)
+		for _, m := range model {
+			fmt.Fprintf(&b, "\t%s %s `tfsdk:%q`\n", m.Name, m.Type, m.Tag)
+		}
+		fmt.Fprintf(&b, "}\n\n")
 	}
-	fmt.Fprintf(&b, "}\n\n")
 
-	renderNested(ctx, &b, s, built, imports)
+	if !s.handNested {
+		renderNested(ctx, &b, s, built, imports)
+	}
 
 	fmt.Fprintf(&b, "// %s is every %s attribute whose mapping the pipeline's\n", lowerCamelNaive(s.name)+"GenFields", surfaceLabel(s))
 	fmt.Fprintf(&b, "// artifacts fully determine. The hand descriptor lays its judgment fields\n")

@@ -16,39 +16,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// wanKitModel describes the resource data model.
-type wanKitModel struct {
-	ID           types.String `tfsdk:"id"`
-	Site         types.String `tfsdk:"site"`
-	Name         types.String `tfsdk:"name"`
-	NetworkGroup types.String `tfsdk:"networkgroup"`
-
-	Type   types.String `tfsdk:"type"`
-	TypeV6 types.String `tfsdk:"type_v6"`
-
-	Vlan                 types.Object `tfsdk:"vlan"`
-	EgressQoS            types.Object `tfsdk:"egress_qos"`
-	DNS                  types.Object `tfsdk:"dns"`
-	DHCP                 types.Object `tfsdk:"dhcp"`
-	DHCPv6               types.Object `tfsdk:"dhcpv6"`
-	SmartQ               types.Object `tfsdk:"smartq"`
-	UPnP                 types.Object `tfsdk:"upnp"`
-	LoadBalance          types.Object `tfsdk:"load_balance"`
-	IGMPProxy            types.Object `tfsdk:"igmp_proxy"`
-	ProviderCapabilities types.Object `tfsdk:"provider_capabilities"`
-
-	ReportWANEvent        types.Bool     `tfsdk:"report_wan_event"`
-	Enabled               types.Bool     `tfsdk:"enabled"`
-	IPAliases             types.List     `tfsdk:"ip_aliases"`
-	SettingPreference     types.String   `tfsdk:"setting_preference"`
-	IPv6SettingPreference types.String   `tfsdk:"ipv6_setting_preference"`
-	SingleNetworkLAN      types.String   `tfsdk:"single_network_lan"`
-	MACOverrideEnabled    types.Bool     `tfsdk:"mac_override_enabled"`
-	DsliteRemoteHost      types.String   `tfsdk:"wan_dslite_remote_host"`
-	DsliteRemoteHostAuto  types.Bool     `tfsdk:"wan_dslite_remote_host_auto"`
-	Timeouts              timeouts.Value `tfsdk:"timeouts"`
-}
-
 func wanPtr(
 	wire string,
 	model func(*wanKitModel) *types.String,
@@ -175,7 +142,7 @@ func wanKitBeforeSend(
 	_ any,
 ) diag.Diagnostics {
 	group := "WAN"
-	if v := effective.NetworkGroup; !v.IsNull() && !v.IsUnknown() && v.ValueString() != "" {
+	if v := effective.Networkgroup; !v.IsNull() && !v.IsUnknown() && v.ValueString() != "" {
 		group = v.ValueString()
 	}
 	sdk.WANNetworkGroup = util.Ptr(group)
@@ -193,8 +160,8 @@ func wanKitAfterReceive(
 	_ wanKitModel,
 	_ any,
 ) diag.Diagnostics {
-	if model.NetworkGroup.IsNull() {
-		model.NetworkGroup = types.StringValue("WAN")
+	if model.Networkgroup.IsNull() {
+		model.Networkgroup = types.StringValue("WAN")
 	}
 	return nil
 }
@@ -219,19 +186,15 @@ func wanKitSpec() resourcekit.Spec[wanKitModel, ui.Network] {
 		// hand wanWireFields masked all three on every write.
 		AlwaysWire: []string{"purpose", "wan_networkgroup", "attr_hidden_id"},
 
-		Fields: []resourcekit.Field[wanKitModel, ui.Network]{
+		Fields: resourcekit.Override(wanGenFields(), []resourcekit.Field[wanKitModel, ui.Network]{
 			wanPtr("name", func(m *wanKitModel) *types.String { return &m.Name },
 				func(s *ui.Network) **string { return &s.Name }),
-			wanBool("enabled", func(m *wanKitModel) *types.Bool { return &m.Enabled },
-				func(s *ui.Network) *bool { return &s.Enabled }),
 			wanPtr("wan_type", func(m *wanKitModel) *types.String { return &m.Type },
 				func(s *ui.Network) **string { return &s.WANType }),
 			wanPtr("wan_type_v6", func(m *wanKitModel) *types.String { return &m.TypeV6 },
 				func(s *ui.Network) **string { return &s.WANTypeV6 }),
-			wanPtr("wan_networkgroup", func(m *wanKitModel) *types.String { return &m.NetworkGroup },
+			wanPtr("wan_networkgroup", func(m *wanKitModel) *types.String { return &m.Networkgroup },
 				func(s *ui.Network) **string { return &s.WANNetworkGroup }),
-			wanBool("report_wan_event", func(m *wanKitModel) *types.Bool { return &m.ReportWANEvent },
-				func(s *ui.Network) *bool { return &s.ReportWANEvent }),
 			wanPtr("setting_preference",
 				func(m *wanKitModel) *types.String { return &m.SettingPreference },
 				func(s *ui.Network) **string { return &s.SettingPreference }),
@@ -251,22 +214,11 @@ func wanKitSpec() resourcekit.Spec[wanKitModel, ui.Network] {
 				func(m *wanKitModel) *types.Bool { return &m.MACOverrideEnabled },
 				func(s *ui.Network) *bool { return &s.MACOverrideEnabled })),
 			wanPtr("wan_dslite_remote_host",
-				func(m *wanKitModel) *types.String { return &m.DsliteRemoteHost },
+				func(m *wanKitModel) *types.String { return &m.WANDsliteRemoteHost },
 				func(s *ui.Network) **string { return &s.WANDsliteRemoteHost }),
-			wanBool("wan_dslite_remote_host_auto",
-				func(m *wanKitModel) *types.Bool { return &m.DsliteRemoteHostAuto },
-				func(s *ui.Network) *bool { return &s.WANDsliteRemoteHostAuto }),
-			resourcekit.StringListField[wanKitModel, ui.Network]{
-				// NullZero: the hand networkToModel read an empty list back as
-				// null, and the attribute is Optional without Computed.
-				Wire:  "wan_ip_aliases",
-				Model: func(m *wanKitModel) *types.List { return &m.IPAliases },
-				SDK:   func(s *ui.Network) *[]string { return &s.WANIPAliases },
-				Elide: resourcekit.NullZero,
-			},
 			resourcekit.ScatteredObjectField[wanKitModel, ui.Network]{
 				Wires:     []string{"wan_vlan_enabled", "wan_vlan"},
-				Model:     func(m *wanKitModel) *types.Object { return &m.Vlan },
+				Model:     func(m *wanKitModel) *types.Object { return &m.VLAN },
 				AttrTypes: vlanModel{}.AttributeTypes(),
 				ConditionalWires: map[string]func(types.Object) bool{
 					"wan_vlan_enabled": wanMemberSet("enabled"),
@@ -339,7 +291,7 @@ func wanKitSpec() resourcekit.Spec[wanKitModel, ui.Network] {
 			},
 			resourcekit.ScatteredObjectField[wanKitModel, ui.Network]{
 				Wires:     []string{"wan_smartq_enabled", "wan_smartq_up_rate", "wan_smartq_down_rate"},
-				Model:     func(m *wanKitModel) *types.Object { return &m.SmartQ },
+				Model:     func(m *wanKitModel) *types.Object { return &m.Smartq },
 				AttrTypes: smartqModel{}.AttributeTypes(),
 				ConditionalWires: map[string]func(types.Object) bool{
 					"wan_smartq_enabled":   wanMemberSet("enabled"),
@@ -404,7 +356,7 @@ func wanKitSpec() resourcekit.Spec[wanKitModel, ui.Network] {
 				Decode:    decodeWANProviderCapabilities,
 				Elide:     resourcekit.KeepZero,
 			},
-		},
+		}),
 
 		// Seeded so ToModel doesn't nil-dereference: Configure replaces the
 		// whole Backend, so a test binary that never calls it would panic

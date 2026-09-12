@@ -84,19 +84,6 @@ func (m destinationModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-type trafficRouteKitModel struct {
-	ID                types.String      `tfsdk:"id"`
-	Site              types.String      `tfsdk:"site"`
-	Description       types.String      `tfsdk:"description"`
-	Destination       types.Object      `tfsdk:"destination"`
-	Enabled           types.Bool        `tfsdk:"enabled"`
-	KillSwitchEnabled types.Bool        `tfsdk:"kill_switch_enabled"`
-	NetworkID         types.String      `tfsdk:"network_id"`
-	NextHop           iptypes.IPAddress `tfsdk:"next_hop"`
-	Source            types.Object      `tfsdk:"source"`
-	Timeouts          timeouts.Value    `tfsdk:"timeouts"`
-}
-
 // trafficRouteKitSpec is the whole of what varies.
 //
 // matching_target defaults to INTERNET and target_devices to a single
@@ -124,23 +111,7 @@ func trafficRouteKitSpec() resourcekit.Spec[trafficRouteKitModel, ui.TrafficRout
 		// Prefetch is bound in Configure, where the client exists.
 		BeforeSend: trafficRouteBeforeSend,
 		AlwaysWire: []string{"matching_target", "target_devices", "network_id"},
-		Fields: []resourcekit.Field[trafficRouteKitModel, ui.TrafficRoute]{
-			resourcekit.StringField[trafficRouteKitModel, ui.TrafficRoute]{
-				Wire:  "description",
-				Model: func(m *trafficRouteKitModel) *types.String { return &m.Description },
-				SDK:   func(s *ui.TrafficRoute) *string { return &s.Description },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[trafficRouteKitModel, ui.TrafficRoute]{
-				Wire:  "enabled",
-				Model: func(m *trafficRouteKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.TrafficRoute) *bool { return &s.Enabled },
-			},
-			resourcekit.BoolField[trafficRouteKitModel, ui.TrafficRoute]{
-				Wire:  "kill_switch_enabled",
-				Model: func(m *trafficRouteKitModel) *types.Bool { return &m.KillSwitchEnabled },
-				SDK:   func(s *ui.TrafficRoute) *bool { return &s.KillSwitchEnabled },
-			},
+		Fields: resourcekit.Override(trafficRouteGenFields(), []resourcekit.Field[trafficRouteKitModel, ui.TrafficRoute]{
 			resourcekit.StringField[trafficRouteKitModel, ui.TrafficRoute]{
 				Wire:  "network_id",
 				Model: func(m *trafficRouteKitModel) *types.String { return &m.NetworkID },
@@ -190,7 +161,7 @@ func trafficRouteKitSpec() resourcekit.Spec[trafficRouteKitModel, ui.TrafficRout
 				Encode:    trafficRouteSourceToAPI,
 				Decode:    trafficRouteSourceDecode,
 			},
-		},
+		}),
 		// The identity accessors are seeded here rather than left to Configure,
 		// which replaces this whole Backend with the client-bound one. They are
 		// struct accessors and need no client, so ToModel works on a spec that

@@ -1055,29 +1055,29 @@ func Test_networkResource_modelToNetwork(t *testing.T) {
 					IPv6RAPreferredLifetime:     timetypes.NewGoDurationNull(),
 					IPv6RAValidLifetime:         timetypes.NewGoDurationNull(),
 					IPv6PDInterface:             types.StringNull(),
-					IPv6PDPrefixID:              types.StringNull(),
+					IPv6PDPrefixid:              types.StringNull(),
 					IPv6PDStart:                 types.StringNull(),
 					IPv6PDStop:                  types.StringNull(),
 					IPv6PDAutoPrefixidEnabled:   types.BoolValue(false),
-					LteLan:                      types.BoolValue(false),
+					LteLAN:                      types.BoolValue(false),
 					ThirdPartyGateway:           types.BoolValue(false),
-					IgmpSnooping:                types.BoolValue(false),
-					Vlan:                        types.Int64Null(),
-					NatOutboundIPAddresses: types.ListNull(
+					IGMPSnooping:                types.BoolValue(false),
+					VLAN:                        types.Int64Null(),
+					NATOutboundIPAddresses: types.ListNull(
 						types.ObjectType{AttrTypes: natOutboundIPAddresses()},
 					),
 					IPAliases:   types.ListNull(types.StringType),
 					IPv6Aliases: types.ListNull(types.StringType),
-					DhcpServer: types.ObjectNull(
+					DHCPServer: types.ObjectNull(
 						dhcpServerModel{}.AttributeTypes(),
 					),
-					DhcpRelay: types.ObjectNull(
+					DHCPRelay: types.ObjectNull(
 						dhcpRelayModel{}.AttributeTypes(),
 					),
-					DhcpV6Server: types.ObjectNull(
+					DHCPV6Server: types.ObjectNull(
 						dhcpV6ServerModel{}.AttributeTypes(),
 					),
-					DhcpGuarding: types.ObjectNull(
+					DHCPGuarding: types.ObjectNull(
 						dhcpGuardingModel{}.AttributeTypes(),
 					),
 				},
@@ -1136,11 +1136,11 @@ func Test_networkResource_networkToModel(t *testing.T) {
 				model: &netModel{},
 				site:  "default",
 				previousModel: &netModel{
-					DhcpServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
-					DhcpRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
-					DhcpV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
-					DhcpGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
-					NatOutboundIPAddresses: types.ListNull(
+					DHCPServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
+					DHCPRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
+					DHCPV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
+					DHCPGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
+					NATOutboundIPAddresses: types.ListNull(
 						types.ObjectType{AttrTypes: natOutboundIPAddresses()},
 					),
 					IPAliases:   types.ListNull(types.StringType),
@@ -1253,11 +1253,11 @@ func Test_networkResource_networkToModel_multicastDNS(t *testing.T) {
 	r := newNetworkKitResource()
 	base := func() *netModel {
 		return &netModel{
-			DhcpServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
-			DhcpRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
-			DhcpV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
-			DhcpGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
-			NatOutboundIPAddresses: types.ListNull(
+			DHCPServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
+			DHCPRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
+			DHCPV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
+			DHCPGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
+			NATOutboundIPAddresses: types.ListNull(
 				types.ObjectType{AttrTypes: natOutboundIPAddresses()},
 			),
 			IPAliases:   types.ListNull(types.StringType),
@@ -1312,15 +1312,15 @@ func Test_networkResource_purpose(t *testing.T) {
 			Subnet:            cidrtypes.NewIPv4PrefixValue("10.0.0.0/24"),
 			ThirdPartyGateway: types.BoolValue(false),
 			Purpose:           types.StringNull(),
-			NatOutboundIPAddresses: types.ListNull(
+			NATOutboundIPAddresses: types.ListNull(
 				types.ObjectType{AttrTypes: natOutboundIPAddresses()},
 			),
 			IPAliases:    types.ListNull(types.StringType),
 			IPv6Aliases:  types.ListNull(types.StringType),
-			DhcpServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
-			DhcpRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
-			DhcpV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
-			DhcpGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
+			DHCPServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
+			DHCPRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
+			DHCPV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
+			DHCPGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
 		}
 	}
 
@@ -1491,10 +1491,10 @@ func Test_networkToModel_readsBackTheMaskedCollections(t *testing.T) {
 		t.Errorf("ip_aliases = %v, want the controller's two", aliases)
 	}
 
-	if model.NatOutboundIPAddresses.IsNull() {
+	if model.NATOutboundIPAddresses.IsNull() {
 		t.Fatal("nat_outbound_ip_addresses came back null; same defect, same mask")
 	}
-	if n := len(model.NatOutboundIPAddresses.Elements()); n != 1 {
+	if n := len(model.NATOutboundIPAddresses.Elements()); n != 1 {
 		t.Errorf("nat_outbound_ip_addresses has %d entries, want 1", n)
 	}
 }
@@ -1555,19 +1555,19 @@ func Test_networkToModel_vlanOnlyResolvesUnknownPrefixID(t *testing.T) {
 		ID: "net-1", Name: strPtr("VLAN"), Purpose: unifi.PurposeVLANOnly, Enabled: true,
 		IPV6PDPrefixid: "1a",
 	}
-	prev := &netModel{IPv6PDPrefixID: types.StringUnknown()}
+	prev := &netModel{IPv6PDPrefixid: types.StringUnknown()}
 
 	var model netModel
 	if d := r.networkToModel(ctx, network, &model, "default", prev); d.HasError() {
 		t.Fatalf("networkToModel: %v", d)
 	}
-	if model.IPv6PDPrefixID.IsUnknown() {
+	if model.IPv6PDPrefixid.IsUnknown() {
 		t.Fatal("ipv6_pd_prefixid is still unknown after apply; Terraform rejects that " +
 			"with \"Provider produced inconsistent result after apply\"")
 	}
-	if model.IPv6PDPrefixID.ValueString() != "1a" {
+	if model.IPv6PDPrefixid.ValueString() != "1a" {
 		t.Errorf("ipv6_pd_prefixid = %q, want the controller's 1a",
-			model.IPv6PDPrefixID.ValueString())
+			model.IPv6PDPrefixid.ValueString())
 	}
 }
 

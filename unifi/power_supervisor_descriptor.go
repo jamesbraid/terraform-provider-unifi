@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -19,19 +18,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
-
-type powerSupervisorKitModel struct {
-	ID                  types.String         `tfsdk:"id"`
-	Site                types.String         `tfsdk:"site"`
-	DeviceMAC           hwtypes.MACAddress   `tfsdk:"device_mac"`
-	Enabled             types.Bool           `tfsdk:"enabled"`
-	HeartbeatInterval   timetypes.GoDuration `tfsdk:"heartbeat_interval"`
-	SilenceThreshold    timetypes.GoDuration `tfsdk:"silence_threshold"`
-	PowerOffDuration    timetypes.GoDuration `tfsdk:"power_off_duration"`
-	ConsecutiveFailures types.Int64          `tfsdk:"consecutive_failures"`
-	PowerSources        types.List           `tfsdk:"power_sources"`
-	Timeouts            timeouts.Value       `tfsdk:"timeouts"`
-}
 
 // powerSourceAttrTypes is the object schema of a resolved upstream power source.
 func powerSourceAttrTypes() map[string]attr.Type {
@@ -52,7 +38,7 @@ func powerSupervisorKitSpec() resourcekit.Spec[powerSupervisorKitModel, ui.Power
 		ID:       func(m *powerSupervisorKitModel) *types.String { return &m.ID },
 		Site:     func(m *powerSupervisorKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *powerSupervisorKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[powerSupervisorKitModel, ui.PowerSupervisor]{
+		Fields: resourcekit.Override(powerSupervisorGenFields(), []resourcekit.Field[powerSupervisorKitModel, ui.PowerSupervisor]{
 			resourcekit.StringLikeField[powerSupervisorKitModel, ui.PowerSupervisor, hwtypes.MACAddress]{
 				Wire:  "client_mac",
 				Model: func(m *powerSupervisorKitModel) *hwtypes.MACAddress { return &m.DeviceMAC },
@@ -61,11 +47,6 @@ func powerSupervisorKitSpec() resourcekit.Spec[powerSupervisorKitModel, ui.Power
 					return hwtypes.MACAddress{StringValue: v}
 				},
 				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[powerSupervisorKitModel, ui.PowerSupervisor]{
-				Wire:  "enabled",
-				Model: func(m *powerSupervisorKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.PowerSupervisor) *bool { return &s.Enabled },
 			},
 			// The controller resolves the upstream PoE source itself; the
 			// resource never writes it, so the write side stays with the hook
@@ -86,7 +67,7 @@ func powerSupervisorKitSpec() resourcekit.Spec[powerSupervisorKitModel, ui.Power
 					},
 					Elide: resourcekit.KeepZero,
 				}),
-		},
+		}),
 		// The three durations and consecutive_failures are plain ints on the
 		// SDK struct -- the recorded sdk-int blocker -- and the durations
 		// also live inside the nested settings document, which the masked

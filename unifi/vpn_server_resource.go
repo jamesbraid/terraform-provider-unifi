@@ -37,6 +37,13 @@ type vpnServerResource struct {
 	resourcekit.Resource[vpnServerKitModel, unifi.Network]
 }
 
+// vpnServerWireguardModel describes the WireGuard-specific server configuration.
+type vpnServerWireguardModel struct {
+	PrivateKey types.String `tfsdk:"private_key"`
+	PublicKey  types.String `tfsdk:"public_key"`
+	Port       types.Int64  `tfsdk:"port"`
+}
+
 func newVPNServerKitResource() *vpnServerResource {
 	r := &vpnServerResource{}
 	r.Spec = vpnServerKitSpec()
@@ -75,13 +82,6 @@ func (m vpnServerWANModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// vpnServerWireguardModel describes the WireGuard-specific server configuration.
-type vpnServerWireguardModel struct {
-	PrivateKey types.String `tfsdk:"private_key"`
-	PublicKey  types.String `tfsdk:"public_key"`
-	Port       types.Int64  `tfsdk:"port"`
-}
-
 func (m vpnServerWireguardModel) AttributeTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		"private_key": types.StringType,
@@ -103,7 +103,7 @@ func (m vpnServerL2TPModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// vpnServerOpenVPNModel describes the OpenVPN-specific server configuration.
+// vpnServerOpenVPNModel describes the Openvpn-specific server configuration.
 type vpnServerOpenVPNModel struct {
 	Port             types.Int64  `tfsdk:"port"`
 	Mode             types.String `tfsdk:"mode"`

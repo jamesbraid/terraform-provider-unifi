@@ -57,23 +57,73 @@ func loadMapping(path string) (*mapping, error) {
 type handFacts struct {
 	AlwaysWire      map[string]bool
 	MappedElsewhere map[string]bool
+	// Claimed is every wire a hand Fields entry names, read from Wire and
+	// Wires values and from per-file constructor calls (firewall_rule's
+	// str/boolean, port_profile's ppInt). A claimed wire is judgment by
+	// definition -- the hand file kept it -- so the emitter never emits a
+	// twin for it. This is also what keeps the emitter honest about SDK
+	// fields with defined types (device's state is a ui.DeviceState, not an
+	// int64): every such wire is hand-claimed, so no generated accessor
+	// asserts the primitive type the struct does not have.
+	Claimed map[string]bool
 }
 
 func scanHandDescriptor(path string) (handFacts, error) {
-	facts := handFacts{AlwaysWire: map[string]bool{}, MappedElsewhere: map[string]bool{}}
+	facts := handFacts{
+		AlwaysWire:      map[string]bool{},
+		MappedElsewhere: map[string]bool{},
+		Claimed:         map[string]bool{},
+	}
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
 	if err != nil {
 		return facts, err
 	}
+	helperWireArg := helperWirePositions(file)
 	var bad error
 	ast.Inspect(file, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok {
+			name := ""
+			if id, ok := call.Fun.(*ast.Ident); ok {
+				name = id.Name
+			}
+			if at, ok := helperWireArg[name]; ok && at < len(call.Args) {
+				if bl, ok := call.Args[at].(*ast.BasicLit); ok {
+					wire, _ := strconv.Unquote(bl.Value)
+					facts.Claimed[wire] = true
+				}
+			}
+			return true
+		}
 		kv, ok := n.(*ast.KeyValueExpr)
 		if !ok {
 			return true
 		}
 		key, ok := kv.Key.(*ast.Ident)
-		if !ok || (key.Name != "AlwaysWire" && key.Name != "MappedElsewhere") {
+		if !ok {
+			return true
+		}
+		switch key.Name {
+		case "Wire":
+			if bl, ok := kv.Value.(*ast.BasicLit); ok {
+				wire, _ := strconv.Unquote(bl.Value)
+				facts.Claimed[wire] = true
+			}
+			return true
+		case "Wires":
+			lit, ok := kv.Value.(*ast.CompositeLit)
+			if !ok {
+				return true
+			}
+			for _, item := range lit.Elts {
+				if bl, ok := item.(*ast.BasicLit); ok {
+					wire, _ := strconv.Unquote(bl.Value)
+					facts.Claimed[wire] = true
+				}
+			}
+			return true
+		case "AlwaysWire", "MappedElsewhere":
+		default:
 			return true
 		}
 		into := facts.AlwaysWire
@@ -97,6 +147,68 @@ func scanHandDescriptor(path string) (handFacts, error) {
 		return true
 	})
 	return facts, bad
+}
+
+// helperWirePositions finds the per-file field constructors -- functions or
+// closures whose single-return body is a resourcekit field literal with its
+// Wire forwarded from a parameter -- and reports which argument position
+// carries the wire name.
+func helperWirePositions(file *ast.File) map[string]int {
+	out := map[string]int{}
+	consider := func(name string, params *ast.FieldList, body *ast.BlockStmt) {
+		if params == nil || body == nil || len(body.List) != 1 {
+			return
+		}
+		ret, ok := body.List[0].(*ast.ReturnStmt)
+		if !ok || len(ret.Results) != 1 {
+			return
+		}
+		lit, ok := ret.Results[0].(*ast.CompositeLit)
+		if !ok {
+			return
+		}
+		if sel, ok := lit.Type.(*ast.IndexListExpr); ok {
+			_ = sel
+		}
+		index := map[string]int{}
+		position := 0
+		for _, group := range params.List {
+			for _, ident := range group.Names {
+				index[ident.Name] = position
+				position++
+			}
+		}
+		for _, el := range lit.Elts {
+			kv, ok := el.(*ast.KeyValueExpr)
+			if !ok {
+				continue
+			}
+			key, _ := kv.Key.(*ast.Ident)
+			value, _ := kv.Value.(*ast.Ident)
+			if key == nil || value == nil || key.Name != "Wire" {
+				continue
+			}
+			if at, ok := index[value.Name]; ok {
+				out[name] = at
+			}
+		}
+	}
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch decl := n.(type) {
+		case *ast.FuncDecl:
+			consider(decl.Name.Name, decl.Type.Params, decl.Body)
+		case *ast.AssignStmt:
+			if len(decl.Lhs) == 1 && len(decl.Rhs) == 1 {
+				if name, ok := decl.Lhs[0].(*ast.Ident); ok {
+					if fn, ok := decl.Rhs[0].(*ast.FuncLit); ok {
+						consider(name.Name, fn.Type.Params, fn.Body)
+					}
+				}
+			}
+		}
+		return true
+	})
+	return out
 }
 
 // genField is one derivable Fields entry.
@@ -177,7 +289,8 @@ func deriveFields(
 		if f.TerraformName == "id" || f.TerraformName == "site" {
 			continue
 		}
-		if hand.AlwaysWire[f.StructuralName] || hand.MappedElsewhere[f.StructuralName] {
+		if hand.AlwaysWire[f.StructuralName] || hand.MappedElsewhere[f.StructuralName] ||
+			hand.Claimed[f.StructuralName] {
 			continue
 		}
 		member, ok := members[f.StructuralName]

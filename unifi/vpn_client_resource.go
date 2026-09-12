@@ -82,7 +82,7 @@ func (m wireguardModel) AttributeTypes() map[string]attr.Type {
 }
 
 type vpnClientResource struct {
-	resourcekit.Resource[vpnClientResourceModel, unifi.Network]
+	resourcekit.Resource[vpnClientKitModel, unifi.Network]
 }
 
 var (
@@ -208,7 +208,7 @@ func (r *vpnClientResource) ValidateConfig(
 	req resource.ValidateConfigRequest,
 	resp *resource.ValidateConfigResponse,
 ) {
-	var model vpnClientResourceModel
+	var model vpnClientKitModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &model)...)
 	if resp.Diagnostics.HasError() {
 		return

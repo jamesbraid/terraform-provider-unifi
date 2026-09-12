@@ -764,7 +764,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.100.0.1/24"),
 			Wireguard: types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes()),
 			L2TP:      types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes()),
-			OpenVPN:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
+			Openvpn:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
@@ -806,7 +806,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.100.0.1/24"),
 			Wireguard: wgObj,
 			L2TP:      types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes()),
-			OpenVPN:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
+			Openvpn:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
@@ -849,7 +849,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.110.0.1/24"),
 			Wireguard: types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes()),
 			L2TP:      l2tpObj,
-			OpenVPN:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
+			Openvpn:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
@@ -922,12 +922,12 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 		if wg.Port.ValueInt64() != port {
 			t.Errorf("Port = %d, want %d", wg.Port.ValueInt64(), port)
 		}
-		// L2TP and OpenVPN should be null for a wireguard server
+		// L2TP and Openvpn should be null for a wireguard server
 		if !model.L2TP.IsNull() {
 			t.Error("L2TP should be null for wireguard server")
 		}
-		if !model.OpenVPN.IsNull() {
-			t.Error("OpenVPN should be null for wireguard server")
+		if !model.Openvpn.IsNull() {
+			t.Error("Openvpn should be null for wireguard server")
 		}
 	})
 
@@ -1304,7 +1304,7 @@ func vpnServerMaskTestModel(t *testing.T, dns types.Object) vpnServerKitModel {
 		WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		Wireguard: wireguard,
 		L2TP:      types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes()),
-		OpenVPN:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
+		Openvpn:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
 	}
 }
 

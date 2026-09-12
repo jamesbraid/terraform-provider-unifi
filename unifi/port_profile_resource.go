@@ -145,8 +145,8 @@ func portProfileAfterReceive(
 
 	// lldpmed_notify_enabled is Optional-only, so an omitted config must read
 	// back as null, not the false Spec.ToModel writes unconditionally -- restored here unless prior already had a value or the controller reports true.
-	if prior.LLDPMedNotifyEnabled.IsNull() && !sdk.LldpmedNotifyEnabled {
-		model.LLDPMedNotifyEnabled = types.BoolNull()
+	if prior.LldpmedNotifyEnabled.IsNull() && !sdk.LldpmedNotifyEnabled {
+		model.LldpmedNotifyEnabled = types.BoolNull()
 	}
 
 	// excluded_networkconf_ids is read back ONLY under the custom mode, which
@@ -158,9 +158,9 @@ func portProfileAfterReceive(
 		}
 		value, d := types.SetValueFrom(ctx, types.StringType, excluded)
 		diags.Append(d...)
-		model.ExcludedNetworkConfIDs = value
+		model.ExcludedNetworkconfIDs = value
 	} else {
-		model.ExcludedNetworkConfIDs = types.SetNull(types.StringType)
+		model.ExcludedNetworkconfIDs = types.SetNull(types.StringType)
 	}
 	return diags
 }
@@ -315,30 +315,30 @@ func portProfileVLANConfigFromModel(
 	var diags diag.Diagnostics
 	config := portProfileVLANConfig{}
 
-	if !model.TaggedNetworkConfIDs.IsNull() {
+	if !model.TaggedNetworkconfIDs.IsNull() {
 		config.TaggedConfigured = true
-		if model.TaggedNetworkConfIDs.IsUnknown() {
+		if model.TaggedNetworkconfIDs.IsUnknown() {
 			diags.AddError(
 				"Unknown tagged network IDs",
 				"tagged_networkconf_ids must be known before the port profile can be written.",
 			)
 		} else {
 			diags.Append(
-				model.TaggedNetworkConfIDs.ElementsAs(ctx, &config.TaggedIDs, false)...,
+				model.TaggedNetworkconfIDs.ElementsAs(ctx, &config.TaggedIDs, false)...,
 			)
 		}
 	}
 
-	if !model.ExcludedNetworkConfIDs.IsNull() {
+	if !model.ExcludedNetworkconfIDs.IsNull() {
 		config.ExcludedConfigured = true
-		if model.ExcludedNetworkConfIDs.IsUnknown() {
+		if model.ExcludedNetworkconfIDs.IsUnknown() {
 			diags.AddError(
 				"Unknown excluded network IDs",
 				"excluded_networkconf_ids must be known before the port profile can be written.",
 			)
 		} else {
 			diags.Append(
-				model.ExcludedNetworkConfIDs.ElementsAs(ctx, &config.ExcludedIDs, false)...,
+				model.ExcludedNetworkconfIDs.ElementsAs(ctx, &config.ExcludedIDs, false)...,
 			)
 		}
 	}
@@ -444,13 +444,13 @@ func setPortProfileTaggedNetworkState(
 		api.ExcludedNetworkIDs,
 	)
 	if tagged == nil {
-		model.TaggedNetworkConfIDs = types.SetNull(types.StringType)
+		model.TaggedNetworkconfIDs = types.SetNull(types.StringType)
 		return diags
 	}
 
 	value, d := types.SetValueFrom(ctx, types.StringType, tagged)
 	diags.Append(d...)
-	model.TaggedNetworkConfIDs = value
+	model.TaggedNetworkconfIDs = value
 	return diags
 }
 

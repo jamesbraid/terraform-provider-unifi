@@ -19,7 +19,7 @@ import (
 )
 
 type siteToSiteVPNKitResource struct {
-	resourcekit.Resource[siteToSiteVPNKitModel, ui.Network]
+	resourcekit.Resource[siteToSiteVpnKitModel, ui.Network]
 }
 
 var (

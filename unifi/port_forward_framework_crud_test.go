@@ -148,7 +148,7 @@ func objectOf(t *testing.T, types_ map[string]attr.Type, values map[string]attr.
 
 func portForwardWan(t *testing.T, iface, ip, port string) types.Object {
 	t.Helper()
-	return objectOf(t, portForwardWanModel{}.AttributeTypes(), map[string]attr.Value{
+	return objectOf(t, portForwardWanAttrTypes, map[string]attr.Value{
 		"interface":  types.StringValue(iface),
 		"ip_address": types.StringValue(ip),
 		"port":       types.StringValue(port),
@@ -157,7 +157,7 @@ func portForwardWan(t *testing.T, iface, ip, port string) types.Object {
 
 func portForwardForward(t *testing.T, ip, port string) types.Object {
 	t.Helper()
-	return objectOf(t, portForwardForwardModel{}.AttributeTypes(), map[string]attr.Value{
+	return objectOf(t, portForwardForwardAttrTypes, map[string]attr.Value{
 		"ip":   types.StringValue(ip),
 		"port": types.StringValue(port),
 	})
@@ -165,7 +165,7 @@ func portForwardForward(t *testing.T, ip, port string) types.Object {
 
 func portForwardSourceLimiting(t *testing.T, ip, group string, enabled bool, kind attr.Value) types.Object {
 	t.Helper()
-	return objectOf(t, portForwardSourceLimitingModel{}.AttributeTypes(), map[string]attr.Value{
+	return objectOf(t, portForwardSourceLimitingAttrTypes, map[string]attr.Value{
 		"ip":                types.StringValue(ip),
 		"firewall_group_id": portForwardStringOrNullValue(group),
 		"enabled":           types.BoolValue(enabled),
@@ -179,11 +179,11 @@ func portForwardModel(t *testing.T, id string) portForwardCRUDModel {
 		ID:             portForwardStringOrNullValue(id),
 		Site:           types.StringValue("default"),
 		Name:           types.StringValue("web"),
-		Wan:            portForwardWan(t, "wan", "203.0.113.9", "8080"),
+		WAN:            portForwardWan(t, "wan", "203.0.113.9", "8080"),
 		Forward:        portForwardForward(t, "10.0.0.5", "80"),
-		SourceLimiting: types.ObjectNull(portForwardSourceLimitingModel{}.AttributeTypes()),
+		SourceLimiting: types.ObjectNull(portForwardSourceLimitingAttrTypes),
 		DestinationIPs: types.ListNull(types.ObjectType{
-			AttrTypes: portForwardDestinationIPModel{}.AttributeTypes(),
+			AttrTypes: portForwardDestinationIpsAttrTypes,
 		}),
 		Protocol: types.StringValue("tcp"),
 		Logging:  types.BoolValue(true),
@@ -579,7 +579,7 @@ func TestPortForwardReadReportsABlockTheControllerEmptiedAsAbsent(t *testing.T) 
 	if diags := resp.State.Get(ctx, &got); diags.HasError() {
 		t.Fatalf("read back the state: %v", diags)
 	}
-	for name, object := range map[string]types.Object{"wan": got.Wan, "forward": got.Forward} {
+	for name, object := range map[string]types.Object{"wan": got.WAN, "forward": got.Forward} {
 		if !object.IsNull() {
 			t.Errorf("%s = %v, want null: the controller reported none of its members", name, object)
 		}
@@ -596,11 +596,11 @@ func TestPortForwardReadReportsABlockTheControllerEmptiedAsAbsent(t *testing.T) 
 	if diags := resp.State.Get(ctx, &got); diags.HasError() {
 		t.Fatalf("read back the state: %v", diags)
 	}
-	if got.Wan.IsNull() {
+	if got.WAN.IsNull() {
 		t.Fatal("wan is null although the controller reported a dst_port")
 	}
-	port, ok := got.Wan.Attributes()["port"].(types.String)
+	port, ok := got.WAN.Attributes()["port"].(types.String)
 	if !ok || port.ValueString() != "8080" {
-		t.Errorf("wan.port = %v, want the controller's value", got.Wan.Attributes()["port"])
+		t.Errorf("wan.port = %v, want the controller's value", got.WAN.Attributes()["port"])
 	}
 }

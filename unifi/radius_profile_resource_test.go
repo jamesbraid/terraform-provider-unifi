@@ -566,8 +566,8 @@ func Test_radiusProfileKit_writePath(t *testing.T) {
 	model := radiusProfileKitModel{
 		Name:              types.StringValue("profile-1"),
 		AccountingEnabled: types.BoolValue(true),
-		VlanEnabled:       types.BoolValue(true),
-		VlanWlanMode:      types.StringValue("required"),
+		VLANEnabled:       types.BoolValue(true),
+		VLANWLANMode:      types.StringValue("required"),
 		AuthServer:        radiusServerList(t, [3]string{"1.2.3.4", "1812", "s3cret"}),
 		AcctServer:        radiusServerList(t),
 	}
@@ -626,14 +626,14 @@ func Test_radiusProfileKit_planOverridesStatePerField(t *testing.T) {
 	plan := radiusProfileKitModel{
 		Name:              types.StringValue("new"),
 		AccountingEnabled: types.BoolValue(true),
-		VlanWlanMode:      types.StringValue("required"),
+		VLANWLANMode:      types.StringValue("required"),
 		AuthServer:        radiusServerList(t, [3]string{"1.1.1.1", "1812", "x"}),
 	}
 	state := radiusProfileKitModel{
 		ID:                types.StringValue("prof-1"),
 		Name:              types.StringValue("old"),
 		AccountingEnabled: types.BoolValue(false),
-		VlanWlanMode:      types.StringValue("disabled"),
+		VLANWLANMode:      types.StringValue("disabled"),
 		AuthServer:        types.ListNull(types.ObjectType{AttrTypes: radiusServerAttrTypes()}),
 	}
 	spec.ApplyPlanToState(&plan, &state)
@@ -644,8 +644,8 @@ func Test_radiusProfileKit_planOverridesStatePerField(t *testing.T) {
 	if !state.AccountingEnabled.ValueBool() {
 		t.Error("accounting_enabled did not follow the plan")
 	}
-	if state.VlanWlanMode.ValueString() != "required" {
-		t.Errorf("vlan_wlan_mode = %q, want the plan's", state.VlanWlanMode.ValueString())
+	if state.VLANWLANMode.ValueString() != "required" {
+		t.Errorf("vlan_wlan_mode = %q, want the plan's", state.VLANWLANMode.ValueString())
 	}
 	if state.AuthServer.IsNull() {
 		t.Error("auth_server did not follow the plan; a block missing from Spec.Fields " +

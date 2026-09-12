@@ -15,36 +15,15 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// vpnClientResourceModel describes the resource data model.
-type vpnClientResourceModel struct {
-	ID           types.String         `tfsdk:"id"`
-	Site         types.String         `tfsdk:"site"`
-	Name         types.String         `tfsdk:"name"`
-	Enabled      types.Bool           `tfsdk:"enabled"`
-	Subnet       cidrtypes.IPv4Prefix `tfsdk:"subnet"`
-	DefaultRoute types.Bool           `tfsdk:"default_route"`
-	PullDNS      types.Bool           `tfsdk:"pull_dns"`
-	Wireguard    types.Object         `tfsdk:"wireguard"`
-	Timeouts     timeouts.Value       `tfsdk:"timeouts"`
-}
-
 func vpnClientPtr(
 	wire string,
-	model func(*vpnClientResourceModel) *types.String,
+	model func(*vpnClientKitModel) *types.String,
 	sdk func(*ui.Network) **string,
-) resourcekit.StringLikePtrField[vpnClientResourceModel, ui.Network, types.String] {
-	return resourcekit.StringLikePtrField[vpnClientResourceModel, ui.Network, types.String]{
+) resourcekit.StringLikePtrField[vpnClientKitModel, ui.Network, types.String] {
+	return resourcekit.StringLikePtrField[vpnClientKitModel, ui.Network, types.String]{
 		Wire: wire, Model: model, SDK: sdk,
 		New: func(v basetypes.StringValue) types.String { return v },
 	}
-}
-
-func vpnClientBool(
-	wire string,
-	model func(*vpnClientResourceModel) *types.Bool,
-	sdk func(*ui.Network) *bool,
-) resourcekit.BoolField[vpnClientResourceModel, ui.Network] {
-	return resourcekit.BoolField[vpnClientResourceModel, ui.Network]{Wire: wire, Model: model, SDK: sdk}
 }
 
 // vpnClientAfterReceive carries forward what the controller cannot report.
@@ -54,8 +33,8 @@ func vpnClientBool(
 func vpnClientAfterReceive(
 	ctx context.Context,
 	_ *ui.Network,
-	model *vpnClientResourceModel,
-	prior vpnClientResourceModel,
+	model *vpnClientKitModel,
+	prior vpnClientKitModel,
 	_ any,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -107,8 +86,8 @@ func vpnClientAfterReceive(
 // vpnClientClearDroppedDNS).
 func vpnClientBeforeSend(
 	ctx context.Context,
-	config, effective *vpnClientResourceModel,
-	prior vpnClientResourceModel,
+	config, effective *vpnClientKitModel,
+	prior vpnClientKitModel,
 	sdk *ui.Network,
 	_ any,
 ) diag.Diagnostics {
@@ -149,8 +128,8 @@ func vpnClientUnwritableWires(sdk *ui.Network) []string {
 	return unwritable
 }
 
-func vpnClientKitSpec() resourcekit.Spec[vpnClientResourceModel, ui.Network] {
-	return resourcekit.Spec[vpnClientResourceModel, ui.Network]{
+func vpnClientKitSpec() resourcekit.Spec[vpnClientKitModel, ui.Network] {
+	return resourcekit.Spec[vpnClientKitModel, ui.Network]{
 		TypeName: "vpn_client",
 		Subject:  "VPN Client",
 		New: func() *ui.Network {
@@ -159,38 +138,30 @@ func vpnClientKitSpec() resourcekit.Spec[vpnClientResourceModel, ui.Network] {
 				VPNType: util.Ptr("wireguard-client"),
 			}
 		},
-		ID:       func(m *vpnClientResourceModel) *types.String { return &m.ID },
-		Site:     func(m *vpnClientResourceModel) *types.String { return &m.Site },
-		Timeouts: func(m *vpnClientResourceModel) *timeouts.Value { return &m.Timeouts },
+		ID:       func(m *vpnClientKitModel) *types.String { return &m.ID },
+		Site:     func(m *vpnClientKitModel) *types.String { return &m.Site },
+		Timeouts: func(m *vpnClientKitModel) *timeouts.Value { return &m.Timeouts },
 		// AlwaysWire is required: no attribute carries purpose/vpn_type, so
 		// without it an update omits them and the controller picks the wrong encoder.
 		AlwaysWire:      []string{"purpose", "vpn_type"},
 		BeforeSend:      vpnClientBeforeSend,
 		AfterReceive:    vpnClientAfterReceive,
 		UnwritableWires: vpnClientUnwritableWires,
-		Fields: []resourcekit.Field[vpnClientResourceModel, ui.Network]{
-			vpnClientPtr("name", func(m *vpnClientResourceModel) *types.String { return &m.Name },
+		Fields: resourcekit.Override(vpnClientGenFields(), []resourcekit.Field[vpnClientKitModel, ui.Network]{
+			vpnClientPtr("name", func(m *vpnClientKitModel) *types.String { return &m.Name },
 				func(s *ui.Network) **string { return &s.Name }),
-			vpnClientBool("enabled", func(m *vpnClientResourceModel) *types.Bool { return &m.Enabled },
-				func(s *ui.Network) *bool { return &s.Enabled }),
-			resourcekit.StringLikePtrField[vpnClientResourceModel, ui.Network, cidrtypes.IPv4Prefix]{
+			resourcekit.StringLikePtrField[vpnClientKitModel, ui.Network, cidrtypes.IPv4Prefix]{
 				Wire:  "ip_subnet",
-				Model: func(m *vpnClientResourceModel) *cidrtypes.IPv4Prefix { return &m.Subnet },
+				Model: func(m *vpnClientKitModel) *cidrtypes.IPv4Prefix { return &m.Subnet },
 				SDK:   func(s *ui.Network) **string { return &s.IPSubnet },
 				New: func(v basetypes.StringValue) cidrtypes.IPv4Prefix {
 					return cidrtypes.IPv4Prefix{StringValue: v}
 				},
 			},
-			vpnClientBool("vpn_client_default_route",
-				func(m *vpnClientResourceModel) *types.Bool { return &m.DefaultRoute },
-				func(s *ui.Network) *bool { return &s.VPNClientDefaultRoute }),
-			vpnClientBool("vpn_client_pull_dns",
-				func(m *vpnClientResourceModel) *types.Bool { return &m.PullDNS },
-				func(s *ui.Network) *bool { return &s.VPNClientPullDNS }),
 			// Declared inline, not via a helper: the mapping reader parses a Fields
 			// entry as a composite literal, so indirection would hide these wire
 			// names and their attributes would silently stop applying.
-			resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network]{
+			resourcekit.ScatteredObjectField[vpnClientKitModel, ui.Network]{
 				Wires: []string{
 					"x_wireguard_private_key",
 					"wireguard_interface",
@@ -203,7 +174,7 @@ func vpnClientKitSpec() resourcekit.Spec[vpnClientResourceModel, ui.Network] {
 					"dhcpd_dns_1",
 					"dhcpd_dns_2",
 				},
-				Model:     func(m *vpnClientResourceModel) *types.Object { return &m.Wireguard },
+				Model:     func(m *vpnClientKitModel) *types.Object { return &m.Wireguard },
 				AttrTypes: wireguardModel{}.AttributeTypes(),
 				// dhcpd_dns_1 and dhcpd_dns_2 share nth=1's predicate --
 				// "does something supply at least one DNS server" -- rather
@@ -225,7 +196,7 @@ func vpnClientKitSpec() resourcekit.Spec[vpnClientResourceModel, ui.Network] {
 				Encode: encodeVPNClientWireguard,
 				Decode: decodeVPNClientWireguard,
 			},
-		},
+		}),
 	}
 }
 

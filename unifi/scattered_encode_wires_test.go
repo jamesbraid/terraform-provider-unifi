@@ -272,16 +272,27 @@ func TestBeforeSendAssignsOnlyDeclaredWires(t *testing.T) {
 // declares -- Wire, Wires and AlwaysWire alike -- and the BeforeSend bodies.
 func networkDescriptorWiresAndHooks(t *testing.T) (map[string]bool, []ast.Node) {
 	t.Helper()
-	path := filepath.Join("..", "unifi", "network_descriptor.go")
-	src, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("reading %s: %v", path, err)
+	// Both halves of the descriptor declare wires: the hand file's judgment
+	// entries and the emitted network_descriptor_gen.go the Spec composes
+	// with resourcekit.Override.
+	paths := []string{
+		filepath.Join("..", "unifi", "network_descriptor.go"),
+		filepath.Join("..", "unifi", "network_descriptor_gen.go"),
 	}
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, path, src, 0)
-	if err != nil {
-		t.Fatalf("parsing %s: %v", path, err)
+	files := make([]*ast.File, 0, len(paths))
+	for _, path := range paths {
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("reading %s: %v", path, err)
+		}
+		file, err := parser.ParseFile(fset, path, src, 0)
+		if err != nil {
+			t.Fatalf("parsing %s: %v", path, err)
+		}
+		files = append(files, file)
 	}
+	file := files[0]
 
 	declared := map[string]bool{}
 	addLit := func(v ast.Expr) {
@@ -291,27 +302,29 @@ func networkDescriptorWiresAndHooks(t *testing.T) (map[string]bool, []ast.Node) 
 			}
 		}
 	}
-	ast.Inspect(file, func(n ast.Node) bool {
-		kv, ok := n.(*ast.KeyValueExpr)
-		if !ok {
-			return true
-		}
-		key, ok := kv.Key.(*ast.Ident)
-		if !ok {
-			return true
-		}
-		switch key.Name {
-		case "Wire":
-			addLit(kv.Value)
-		case "Wires", "AlwaysWire":
-			if slice, ok := kv.Value.(*ast.CompositeLit); ok {
-				for _, item := range slice.Elts {
-					addLit(item)
+	for _, parsed := range files {
+		ast.Inspect(parsed, func(n ast.Node) bool {
+			kv, ok := n.(*ast.KeyValueExpr)
+			if !ok {
+				return true
+			}
+			key, ok := kv.Key.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			switch key.Name {
+			case "Wire":
+				addLit(kv.Value)
+			case "Wires", "AlwaysWire":
+				if slice, ok := kv.Value.(*ast.CompositeLit); ok {
+					for _, item := range slice.Elts {
+						addLit(item)
+					}
 				}
 			}
-		}
-		return true
-	})
+			return true
+		})
+	}
 	// The netPtr/netBool helpers pass the wire name as their first argument.
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
