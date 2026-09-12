@@ -78,7 +78,8 @@ package unifi
 // resourcekit.ElideProblems' zeroIsRejected only ever inspects a
 // schema.StringAttribute's validators, so it can't drive NullZero for an
 // Int64Attribute regardless of what its own pattern says -- setting NullZero
-// on any of the three fails TestGuestAccessKitSpecConformance's own
+// on any of the three fails
+// TestEverySettingSectionPassesTheConformanceInstruments/guest_access's own
 // ElideProblems check. Like box_opacity and logo_size, all three get no
 // derived validator either (int64validator.Between(1, 100),
 // int64validator.Between(0, 50) and int64validator.Between(64, 192) are

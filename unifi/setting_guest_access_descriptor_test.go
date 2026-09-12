@@ -823,7 +823,8 @@ func TestGuestAccessAfterReceiveKeepsThePlansSecretWhenNamed(t *testing.T) {
 // settings/validation.generated.go), so none carries a validator that would
 // reject "", and guestAccessKitSpec's Elide: KeepZero (not NullZero) is what
 // resourcekit.ElideProblems' schema-driven rule demands as a result -- also
-// asserted indirectly by TestGuestAccessKitSpecConformance's own
+// asserted indirectly by
+// TestEverySettingSectionPassesTheConformanceInstruments/guest_access's own
 // ElideProblems check, which would fail if this were ever set to NullZero.
 // So an explicit empty string the controller echoes back is a real,
 // distinguishable value here, not folded into null. A non-empty value is
