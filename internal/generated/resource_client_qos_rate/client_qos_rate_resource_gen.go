@@ -41,7 +41,7 @@ func ClientQosRateResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The QOS maximum download rate.",
 				MarkdownDescription: "The QOS maximum download rate.",
 				Validators: []validator.Int64{
-					int64validator.Between(2, 100000),
+					int64validator.Any(int64validator.OneOf(-1), int64validator.Between(2, 100000)),
 				},
 				Default: int64default.StaticInt64(-1),
 			},
@@ -51,7 +51,7 @@ func ClientQosRateResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The QOS maximum upload rate.",
 				MarkdownDescription: "The QOS maximum upload rate.",
 				Validators: []validator.Int64{
-					int64validator.Between(2, 100000),
+					int64validator.Any(int64validator.OneOf(-1), int64validator.Between(2, 100000)),
 				},
 				Default: int64default.StaticInt64(-1),
 			},
