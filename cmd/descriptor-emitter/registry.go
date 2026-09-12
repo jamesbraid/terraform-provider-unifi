@@ -66,7 +66,12 @@ type surface struct {
 	// settings section that reads the document, writes back the wires the
 	// plan named, and does nothing else. A section with a hook, a sibling
 	// document or a conditional write is not a mirror.
+	//
+	// crud is the managed-resource counterpart: the Spec, schema, list and
+	// Backend of a resource whose whole life is the SDK's five site-scoped
+	// methods over the generated field list, listed and filtered by name.
 	mirror bool
+	crud   bool
 	// subject names the surface in diagnostics ("NetFlow Setting"). The one
 	// token no artifact spells: the schema carries the wire name, not the
 	// capitalisation a practitioner reads in an error.
@@ -105,14 +110,14 @@ var surfaces = []surface{
 	{name: "wlan", schema: resource_wlan.WlanResourceSchema, handModel: true},
 	{name: "bgp", schema: resource_bgp.BgpResourceSchema},
 	{name: "client_qos_rate", schema: resource_client_qos_rate.ClientQosRateResourceSchema},
-	{name: "dhcp_option", schema: resource_dhcp_option.DhcpOptionResourceSchema},
+	{name: "dhcp_option", schema: resource_dhcp_option.DhcpOptionResourceSchema, crud: true, subject: "DHCP Option"},
 	{name: "dns_record", schema: resource_dns_record.DnsRecordResourceSchema},
-	{name: "dpi_app", schema: resource_dpi_app.DpiAppResourceSchema},
-	{name: "dpi_group", schema: resource_dpi_group.DpiGroupResourceSchema},
+	{name: "dpi_app", schema: resource_dpi_app.DpiAppResourceSchema, crud: true, subject: "DPI Application"},
+	{name: "dpi_group", schema: resource_dpi_group.DpiGroupResourceSchema, crud: true, subject: "DPI Group"},
 	{name: "dynamic_dns", schema: resource_dynamic_dns.DynamicDnsResourceSchema},
 	{name: "firewall_group", schema: resource_firewall_group.FirewallGroupResourceSchema},
 	{name: "firewall_zone", schema: resource_firewall_zone.FirewallZoneResourceSchema},
-	{name: "hotspot_op", schema: resource_hotspot_op.HotspotOpResourceSchema},
+	{name: "hotspot_op", schema: resource_hotspot_op.HotspotOpResourceSchema, crud: true, subject: "Hotspot Operator"},
 	{name: "radius_user", schema: resource_radius_user.RadiusUserResourceSchema},
 	{name: "schedule_task", schema: resource_schedule_task.ScheduleTaskResourceSchema},
 	{name: "setting_auto_speedtest", section: "auto_speedtest", mirror: true, subject: "Auto Speedtest Setting"},
@@ -149,5 +154,5 @@ var surfaces = []surface{
 	{name: "setting_traffic_flow", section: "traffic_flow", mirror: true, subject: "Traffic Flow Setting"},
 	{name: "setting_usw", section: "usw", mirror: true, subject: "USW Setting"},
 	{name: "wireguard_peer", schema: resource_wireguard_peer.WireguardPeerResourceSchema},
-	{name: "wlan_group", schema: resource_wlan_group.WlanGroupResourceSchema},
+	{name: "wlan_group", schema: resource_wlan_group.WlanGroupResourceSchema, crud: true, subject: "WLAN Group"},
 }

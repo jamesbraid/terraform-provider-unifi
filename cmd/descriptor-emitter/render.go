@@ -194,6 +194,11 @@ func render(
 			return nil, err
 		}
 	}
+	if s.crud {
+		if err := renderCRUD(&b, s, doc, sdk, modelName, sdkType, imports); err != nil {
+			return nil, err
+		}
+	}
 
 	// The import block is rendered last, once the body has declared every
 	// package it needs, then spliced ahead of the body.
