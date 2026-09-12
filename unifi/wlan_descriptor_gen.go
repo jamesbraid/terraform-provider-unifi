@@ -15,12 +15,6 @@ type wlanMacFilterModel struct {
 	Policy  types.String `tfsdk:"policy"`
 }
 
-var wlanMacFilterAttrTypes = map[string]attr.Type{
-	"enabled": types.BoolType,
-	"list":    types.SetType{ElemType: types.StringType},
-	"policy":  types.StringType,
-}
-
 type wlanPrivatePresharedKeysModel struct {
 	NetworkID types.String `tfsdk:"network_id"`
 	Password  types.String `tfsdk:"password"`

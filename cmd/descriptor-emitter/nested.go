@@ -18,12 +18,16 @@ import (
 type nestedDef struct {
 	stem  string // mdnsCustomServices
 	attrs map[string]schema.Attribute
+	// attribute is the surface's own top-level attribute this def hangs
+	// under, empty for anything deeper. Only a top-level def can be skipped:
+	// a deeper one's attr-type map is named by its parent's.
+	attribute string
 }
 
 // collectNested walks the attribute tree depth-first and returns every
 // nested object element, children before parents, so an emitted attr-type
 // map can reference its child's by name.
-func collectNested(stem string, attrs map[string]schema.Attribute) []nestedDef {
+func collectNested(stem string, attrs map[string]schema.Attribute, top bool) []nestedDef {
 	var out []nestedDef
 	for _, name := range sortedNames(attrs) {
 		members, ok := nestedAttrsOf(attrs[name])
@@ -34,7 +38,10 @@ func collectNested(stem string, attrs map[string]schema.Attribute) []nestedDef {
 			stem:  stem + camelNaive(name),
 			attrs: members,
 		}
-		out = append(out, collectNested(child.stem, child.attrs)...)
+		if top {
+			child.attribute = name
+		}
+		out = append(out, collectNested(child.stem, child.attrs, false)...)
 		out = append(out, child)
 	}
 	return out
@@ -122,23 +129,60 @@ func plainTypeExpr(t attr.Type, imports map[string]string) string {
 	return alias + "." + rt.Name() + "{}"
 }
 
+// supersededNested reports which of a def's two declarations the hand
+// descriptor has already replaced, so the emitter does not write a second
+// copy nothing can name.
+//
+// Only a top-level def is ever a candidate: a deeper one's attr-type map is
+// named by its parent's, and on a section every top-level one is named by
+// the section's own map. Mentions is the guard in both directions -- a name
+// the hand file uses is emitted whatever else that file does.
+func supersededNested(s surface, def nestedDef, doc *mapping, hand handFacts) (model, attrTypes bool) {
+	if def.attribute == "" || s.section != "" {
+		return false, false
+	}
+	if hand.AttributeTypesMethods[def.stem+"Model"] {
+		attrTypes = !hand.Mentions[def.stem+"AttrTypes"]
+	}
+	// A hand entry that claims the wire owns the element shape end to end:
+	// power_supervisor's power_sources carries its own AttrTypes and its own
+	// Decode, and reaches for neither generated declaration.
+	for _, f := range doc.Fields {
+		if f.TerraformName != def.attribute || !hand.Claimed[f.StructuralName] {
+			continue
+		}
+		model = !hand.Mentions[def.stem+"Model"]
+		attrTypes = attrTypes || !hand.Mentions[def.stem+"AttrTypes"]
+	}
+	return model, attrTypes
+}
+
 // renderNested writes the element model structs and attr-type maps for
 // every nested object under the surface, and -- for a section -- the
 // section's own attr-type map and NestedSchema helper.
-func renderNested(ctx context.Context, b *bytes.Buffer, s surface, built schema.Schema, imports map[string]string) {
+func renderNested(
+	ctx context.Context, b *bytes.Buffer, s surface, built schema.Schema,
+	doc *mapping, hand handFacts, imports map[string]string,
+) {
 	stem := lowerCamelNaive(s.name)
 	if s.section != "" {
 		stem = lowerCamelNaive(s.section)
 	}
-	defs := collectNested(stem, built.Attributes)
+	defs := collectNested(stem, built.Attributes, true)
 	for _, def := range defs {
-		imports["github.com/hashicorp/terraform-plugin-framework/attr"] = "attr"
-		fmt.Fprintf(b, "type %sModel struct {\n", def.stem)
-		for _, name := range sortedNames(def.attrs) {
-			fmt.Fprintf(b, "\t%s %s `tfsdk:%q`\n",
-				camel(name), modelTypeFor(ctx, def.attrs[name].GetType(), imports), name)
+		skipModel, skipAttrTypes := supersededNested(s, def, doc, hand)
+		if !skipModel {
+			fmt.Fprintf(b, "type %sModel struct {\n", def.stem)
+			for _, name := range sortedNames(def.attrs) {
+				fmt.Fprintf(b, "\t%s %s `tfsdk:%q`\n",
+					camel(name), modelTypeFor(ctx, def.attrs[name].GetType(), imports), name)
+			}
+			fmt.Fprintf(b, "}\n\n")
 		}
-		fmt.Fprintf(b, "}\n\n")
+		if skipAttrTypes {
+			continue
+		}
+		imports["github.com/hashicorp/terraform-plugin-framework/attr"] = "attr"
 		fmt.Fprintf(b, "var %sAttrTypes = map[string]attr.Type{\n", def.stem)
 		for _, name := range sortedNames(def.attrs) {
 			fmt.Fprintf(b, "\t%q: %s,\n", name, attrTypeExpr(def.attrs[name], def.stem+camelNaive(name), imports))

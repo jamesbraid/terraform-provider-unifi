@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -23,20 +22,6 @@ type powerSupervisorKitModel struct {
 	PowerOffDuration    timetypes.GoDuration `tfsdk:"power_off_duration"`
 	SilenceThreshold    timetypes.GoDuration `tfsdk:"silence_threshold"`
 	Timeouts            timeouts.Value       `tfsdk:"timeouts"`
-}
-
-type powerSupervisorPowerSourcesModel struct {
-	ClientPsuIndex   types.Int64  `tfsdk:"client_psu_index"`
-	PowerSourceIndex types.Int64  `tfsdk:"power_source_index"`
-	PowerSourceMAC   types.String `tfsdk:"power_source_mac"`
-	PowerSourceType  types.String `tfsdk:"power_source_type"`
-}
-
-var powerSupervisorPowerSourcesAttrTypes = map[string]attr.Type{
-	"client_psu_index":   types.Int64Type,
-	"power_source_index": types.Int64Type,
-	"power_source_mac":   types.StringType,
-	"power_source_type":  types.StringType,
 }
 
 // powerSupervisorGenFields is every unifi_power_supervisor attribute whose mapping the pipeline's
