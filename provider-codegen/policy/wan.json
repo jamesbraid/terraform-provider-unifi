@@ -604,19 +604,7 @@
             "default": {
               "static": 0
             },
-            "description": "The VLAN ID",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(0, 4094)"
-                }
-              }
-            ]
+            "description": "The VLAN ID"
           },
           "disposition": "managed",
           "structural_name": "wan_vlan",
@@ -662,19 +650,7 @@
             "default": {
               "static": 0
             },
-            "description": "Egress QoS priority",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(0, 7)"
-                }
-              }
-            ]
+            "description": "Egress QoS priority"
           },
           "disposition": "managed",
           "structural_name": "wan_egress_qos",
@@ -841,18 +817,6 @@
                   "schema_definition": "int64planmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(0, 7)"
-                }
-              }
             ]
           },
           "disposition": "managed",
@@ -926,18 +890,6 @@
                   "schema_definition": "int64planmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(0, 7)"
-                }
-              }
             ]
           },
           "disposition": "managed",
@@ -957,18 +909,6 @@
                     }
                   ],
                   "schema_definition": "int64planmodifier.UseStateForUnknown()"
-                }
-              }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(48, 64)"
                 }
               }
             ]
@@ -1265,18 +1205,6 @@
                   "schema_definition": "int64planmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(1, 100)"
-                }
-              }
             ]
           },
           "disposition": "managed",
@@ -1296,18 +1224,6 @@
                     }
                   ],
                   "schema_definition": "int64planmodifier.UseStateForUnknown()"
-                }
-              }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(1, 10)"
                 }
               }
             ]

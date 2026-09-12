@@ -4,6 +4,7 @@
   "surface_name": "unifi_dpi_app",
   "resource": "unifi_dpi_app",
   "collection": "dpiapp",
+  "sdk_struct": "DpiApp",
   "fields": [
     {
       "structural_name": "_id",

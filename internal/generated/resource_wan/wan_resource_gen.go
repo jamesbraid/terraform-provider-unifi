@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -47,6 +48,9 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 									Required:            true,
 									Description:         "DHCP option number",
 									MarkdownDescription: "DHCP option number",
+									Validators: []validator.Int64{
+										int64validator.Between(1, 254),
+									},
 								},
 								"value": schema.StringAttribute{
 									Required:            true,
@@ -230,7 +234,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Egress QoS priority",
 						MarkdownDescription: "Egress QoS priority",
 						Validators: []validator.Int64{
-							int64validator.Between(0, 7),
+							int64validator.Between(1, 7),
 						},
 						Default: int64default.StaticInt64(0),
 					},
@@ -295,6 +299,9 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "IP aliases",
 				MarkdownDescription: "IP aliases",
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([8-9]|[1-2][0-9]|3[0-2])$|^$`, "")),
+				},
 			},
 			"ipv6_setting_preference": schema.StringAttribute{
 				Optional:            true,
@@ -319,7 +326,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 							int64planmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.Int64{
-							int64validator.Between(1, 10),
+							int64validator.Between(1, 9),
 						},
 					},
 					"type": schema.StringAttribute{
@@ -343,7 +350,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 							int64planmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.Int64{
-							int64validator.Between(1, 100),
+							int64validator.Between(1, 99),
 						},
 					},
 				},
@@ -369,7 +376,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the WAN network",
 				MarkdownDescription: "The name of the WAN network",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"networkgroup": schema.StringAttribute{

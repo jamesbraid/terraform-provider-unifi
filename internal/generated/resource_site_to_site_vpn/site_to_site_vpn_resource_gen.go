@@ -192,7 +192,7 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the site-to-site VPN.",
 				MarkdownDescription: "The name of the site-to-site VPN.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"peer_ip": schema.StringAttribute{
@@ -241,6 +241,7 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The remote site's subnets reachable through the tunnel (CIDR). Must hold at least one subnet unless dynamic_routing is true, enforced by a config-time validator rather than a plain list-length check: a dynamic-routing tunnel discovers subnets itself, so an empty list is legal only then.",
 				Validators: []validator.List{
 					listvalidator.ValueStringsAre(validators.CIDRValidator()),
+					listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$|^$`, "")),
 				},
 			},
 			"route_distance": schema.Int64Attribute{

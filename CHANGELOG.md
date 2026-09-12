@@ -54,6 +54,23 @@ All notable changes to this project will be documented in this file.
   function it called formatted an error. Three `unifi_device` schema
   tests had been passing that way since they were written.
 
+### ✨ Features
+
+- **Plan-time validation is now derived from the controller's own rules.**
+  Numeric ranges, value lists, length limits and list-element patterns
+  that were hand-copied into the provider now come straight from the
+  bundled controller schema, and 43 attributes that had no check at all
+  gain one — values the controller has always rejected (an out-of-range
+  `radio_table.antenna_gain`, a typo in `setting.ips.enabled_categories`,
+  a malformed MAC in `wlan.mac_filter.list`) now fail at plan instead of
+  at apply. Five hand-copied ranges turned out to disagree with the
+  controller and are corrected: `unifi_dns_record.port` accepts the full
+  1–99999 the controller does (it was capped at 65535),
+  `unifi_network.vlan` is 2–4018 (was 1–4094), and `unifi_wan` no longer
+  accepts `egress_qos.priority = 0`, `load_balance.weight = 100` or
+  `load_balance.failover_priority = 10`, none of which the controller
+  ever accepted.
+
 ## [v0.109.0] - 2026-08-31
 
 ### ⚠️ Breaking Changes

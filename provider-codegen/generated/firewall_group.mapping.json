@@ -4,6 +4,7 @@
   "surface_name": "unifi_firewall_group",
   "resource": "unifi_firewall_group",
   "collection": "firewallgroup",
+  "sdk_struct": "FirewallGroup",
   "fields": [
     {
       "structural_name": "_id",

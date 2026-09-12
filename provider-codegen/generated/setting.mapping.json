@@ -4,6 +4,7 @@
   "surface_name": "unifi_setting",
   "resource": "unifi_setting",
   "collection": "setting",
+  "sdk_struct": "Usg",
   "fields": [
     {
       "structural_name": "AutoSpeedtest.cron_expr",

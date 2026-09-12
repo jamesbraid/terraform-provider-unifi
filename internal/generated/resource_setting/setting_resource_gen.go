@@ -162,18 +162,27 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Interval between supervision heartbeats, in seconds (60-300).",
 						MarkdownDescription: "Interval between supervision heartbeats, in seconds (60-300).",
+						Validators: []validator.Int64{
+							int64validator.Between(60, 300),
+						},
 					},
 					"power_off_duration_seconds": schema.Int64Attribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "How long power stays off when a supervised device is power-cycled, in seconds (60-9000).",
 						MarkdownDescription: "How long power stays off when a supervised device is power-cycled, in seconds (60-9000).",
+						Validators: []validator.Int64{
+							int64validator.Between(60, 9000),
+						},
 					},
 					"silence_threshold_seconds": schema.Int64Attribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "How long a supervised device may stay silent before supervision reacts, in seconds (300-9000).",
 						MarkdownDescription: "How long a supervised device may stay silent before supervision reacts, in seconds (300-9000).",
+						Validators: []validator.Int64{
+							int64validator.Between(300, 9000),
+						},
 					},
 				},
 				Optional:            true,
@@ -561,6 +570,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "MAC addresses of switches excluded from these global settings.",
 						MarkdownDescription: "MAC addresses of switches excluded from these global settings.",
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, "")),
+						},
 					},
 				},
 				Optional:            true,
@@ -1101,6 +1113,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "RADIUS Disconnect (RFC 3576) listening port.",
 						MarkdownDescription: "RADIUS Disconnect (RFC 3576) listening port.",
+						Validators: []validator.Int64{
+							int64validator.Between(1, 65535),
+						},
 					},
 					"radius_enabled": schema.BoolAttribute{
 						Optional:            true,
@@ -1274,6 +1289,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Emerging Threats ruleset categories to enable (e.g. \"emerging-malware\", \"tor\", \"phishing\").",
 						PlanModifiers: []planmodifier.List{
 							listplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(stringvalidator.OneOf("emerging-activex", "emerging-attackresponse", "botcc", "emerging-chat", "ciarmy", "compromised", "emerging-dns", "emerging-dos", "dshield", "emerging-exploit", "emerging-ftp", "emerging-games", "emerging-icmp", "emerging-icmpinfo", "emerging-imap", "emerging-inappropriate", "emerging-info", "emerging-malware", "emerging-misc", "emerging-mobile", "emerging-netbios", "emerging-p2p", "emerging-policy", "emerging-pop3", "emerging-rpc", "emerging-scada", "emerging-scan", "emerging-shellcode", "emerging-smtp", "emerging-snmp", "emerging-sql", "emerging-telnet", "emerging-tftp", "tor", "emerging-useragent", "emerging-voip", "emerging-webapps", "emerging-webclient", "emerging-webserver", "emerging-worm", "exploit-kit", "adware-pup", "botcc-portgrouped", "phishing", "threatview-cs-c2", "3coresec", "chat", "coinminer", "current-events", "drop", "hunting", "icmp-info", "inappropriate", "info", "ja3", "policy", "scada", "dark-web-blocker-list", "malicious-hosts", "dyn_dns", "file_sharing", "remote_access", "ta_abused_services")),
 						},
 					},
 					"enabled_networks": schema.ListAttribute{
@@ -1702,7 +1720,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
 						MarkdownDescription: "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
 						Validators: []validator.String{
-							controllerregex.Matches(`.{1,128}`, ""),
+							stringvalidator.LengthBetween(1, 128),
 						},
 					},
 					"ssh_username": schema.StringAttribute{
@@ -1969,6 +1987,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "5 GHz channels eligible for AI channel selection.",
 						MarkdownDescription: "5 GHz channels eligible for AI channel selection.",
+						Validators: []validator.List{
+							listvalidator.ValueInt64sAre(int64validator.OneOf(34, 36, 38, 40, 42, 44, 46, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165, 169)),
+						},
 					},
 					"channels_ng": schema.ListAttribute{
 						ElementType:         types.Int64Type,
@@ -1976,6 +1997,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "2.4 GHz channels eligible for AI channel selection.",
 						MarkdownDescription: "2.4 GHz channels eligible for AI channel selection.",
+						Validators: []validator.List{
+							listvalidator.ValueInt64sAre(int64validator.OneOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)),
+						},
 					},
 					"cron_expr": schema.StringAttribute{
 						Optional:            true,
@@ -1995,6 +2019,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "MAC addresses of devices excluded from AI optimization.",
 						MarkdownDescription: "MAC addresses of devices excluded from AI optimization.",
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`([0-9a-z]{2}:){5}[0-9a-z]{2}`, "")),
+						},
 					},
 					"high_priority_devices": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -2002,6 +2029,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "MAC addresses of devices given priority by AI optimization.",
 						MarkdownDescription: "MAC addresses of devices given priority by AI optimization.",
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`([0-9a-z]{2}:){5}[0-9a-z]{2}`, "")),
+						},
 					},
 					"ht_modes_na": schema.ListAttribute{
 						ElementType:         types.Int64Type,
@@ -2009,6 +2039,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
 						MarkdownDescription: "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
+						Validators: []validator.List{
+							listvalidator.ValueInt64sAre(int64validator.OneOf(20, 40, 80, 160)),
+						},
 					},
 					"ht_modes_ng": schema.ListAttribute{
 						ElementType:         types.Int64Type,
@@ -2016,6 +2049,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
 						MarkdownDescription: "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
+						Validators: []validator.List{
+							listvalidator.ValueInt64sAre(int64validator.OneOf(20, 40)),
+						},
 					},
 					"optimize": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -2023,6 +2059,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "What AI optimization adjusts.",
 						MarkdownDescription: "What AI optimization adjusts.",
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(stringvalidator.OneOf("channel", "power")),
+						},
 					},
 					"radios": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -2030,6 +2069,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Radio bands AI optimization applies to.",
 						MarkdownDescription: "Radio bands AI optimization applies to.",
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(stringvalidator.OneOf("na", "ng", "6e")),
+						},
 					},
 					"radios_configuration": schema.ListNestedAttribute{
 						NestedObject: schema.NestedAttributeObject{
@@ -2157,7 +2199,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
 						MarkdownDescription: "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
 						Validators: []validator.String{
-							controllerregex.Matches(`.{1,256}`, ""),
+							stringvalidator.LengthBetween(1, 256),
 						},
 					},
 					"enabled": schema.BoolAttribute{
@@ -2230,6 +2272,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Logged facilities (e.g. `device`, `client`, `firewall_default_policy`, `triggers`, `updates`, `admin_activity`, `critical`, `security_detections`, `vpn`).",
 						PlanModifiers: []planmodifier.List{
 							listplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(stringvalidator.OneOf("device", "client", "firewall_default_policy", "triggers", "updates", "admin_activity", "critical", "security_detections", "vpn", "gateway", "access_points", "switches")),
 						},
 					},
 					"debug": schema.BoolAttribute{

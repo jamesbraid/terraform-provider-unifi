@@ -4,6 +4,7 @@
   "surface_name": "unifi_client_qos_rate",
   "resource": "unifi_client_qos_rate",
   "collection": "usergroup",
+  "sdk_struct": "ClientGroup",
   "fields": [
     {
       "structural_name": "_id",

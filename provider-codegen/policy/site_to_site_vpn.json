@@ -481,18 +481,6 @@
               "schema_definition": "int64planmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 255)"
-            }
-          }
         ]
       },
       "disposition": "managed",

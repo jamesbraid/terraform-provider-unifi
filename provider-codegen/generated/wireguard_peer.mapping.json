@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_wireguard_peer",
   "resource": "unifi_wireguard_peer",
+  "sdk_struct": "WireGuardPeer",
   "fields": [
     {
       "structural_name": "_id",

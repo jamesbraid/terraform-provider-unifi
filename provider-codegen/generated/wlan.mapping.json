@@ -4,6 +4,7 @@
   "surface_name": "unifi_wlan",
   "resource": "unifi_wlan",
   "collection": "wlanconf",
+  "sdk_struct": "WLAN",
   "fields": [
     {
       "structural_name": "_id",

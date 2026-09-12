@@ -4,6 +4,7 @@
   "surface_name": "unifi_client",
   "resource": "unifi_client",
   "collection": "user",
+  "sdk_struct": "Client",
   "fields": [
     {
       "structural_name": "_id",

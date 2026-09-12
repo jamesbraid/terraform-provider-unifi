@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_ap_group",
   "resource": "unifi_ap_group",
+  "sdk_struct": "APGroup",
   "fields": [
     {
       "structural_name": "_id",

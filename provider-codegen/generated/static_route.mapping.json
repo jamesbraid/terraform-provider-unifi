@@ -4,6 +4,7 @@
   "surface_name": "unifi_static_route",
   "resource": "unifi_static_route",
   "collection": "routing",
+  "sdk_struct": "Routing",
   "fields": [
     {
       "structural_name": "_id",

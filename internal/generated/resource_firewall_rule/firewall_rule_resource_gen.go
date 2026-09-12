@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -46,6 +47,9 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The destination firewall group IDs of the firewall rule.",
 				MarkdownDescription: "The destination firewall group IDs of the firewall rule.",
+				Validators: []validator.Set{
+					setvalidator.ValueStringsAre(controllerregex.Matches(`[\d\w-]+`, "")),
+				},
 			},
 			"dst_network_id": schema.StringAttribute{
 				Optional:            true,
@@ -122,7 +126,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the firewall rule.",
 				MarkdownDescription: "The name of the firewall rule.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"protocol": schema.StringAttribute{
@@ -198,6 +202,9 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The source firewall group IDs for the firewall rule.",
 				MarkdownDescription: "The source firewall group IDs for the firewall rule.",
+				Validators: []validator.Set{
+					setvalidator.ValueStringsAre(controllerregex.Matches(`[\d\w-]+`, "")),
+				},
 			},
 			"src_mac": schema.StringAttribute{
 				CustomType:          hwtypes.MACAddressType{},

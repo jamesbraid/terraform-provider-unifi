@@ -14,14 +14,25 @@ import (
 // so the rest of the surface stays the plain testBootstrap shape.
 func oneOfBootstrap(t *testing.T, field string, constraint map[string]any) []byte {
 	t.Helper()
-	fields := make([]map[string]any, 0, len(dnsFieldNames()))
-	for _, name := range dnsFieldNames() {
+	names := dnsFieldNames()
+	switch field {
+	case "tags", "ports":
+		// The collection fixtures are not part of the dns_record surface;
+		// appending them here keeps every scalar test on the plain shape.
+		names = append(names, field)
+	}
+	fields := make([]map[string]any, 0, len(names))
+	for _, name := range names {
 		fieldType := "int64"
 		switch name {
 		case "enabled":
 			fieldType = "bool"
 		case "key", "record_type", "value":
 			fieldType = "string"
+		case "tags":
+			fieldType = "array<string>"
+		case "ports":
+			fieldType = "array<int64>"
 		}
 		entry := map[string]any{"name": name, "type": fieldType}
 		if name == field {
@@ -56,6 +67,28 @@ func oneOfPolicy(t *testing.T, field string, mutate func(attribute map[string]an
 			continue
 		}
 		attribute := jsonObject(entry["attribute"])
+		if mutate != nil {
+			mutate(attribute)
+		}
+	}
+	return mustJSON(t, document)
+}
+
+// elementPolicy is oneOfPolicy for the collection fixtures: it adds the
+// tags (array<string>) or ports (array<int64>) field with the list/set and
+// element-type declarations a collection policy must carry, then applies
+// mutate to its attribute.
+func elementPolicy(t *testing.T, field, terraformType, elementKind string, mutate func(attribute map[string]any)) []byte {
+	t.Helper()
+	document := testPolicyObject(append(dnsFieldNames(), field), testSpecificationDigest)
+	for _, raw := range jsonArray(document["fields"]) {
+		entry := jsonObject(raw)
+		if entry["structural_name"] != field {
+			continue
+		}
+		entry["terraform_type"] = terraformType
+		attribute := jsonObject(entry["attribute"])
+		attribute["element_type"] = map[string]any{elementKind: map[string]any{}}
 		if mutate != nil {
 			mutate(attribute)
 		}
@@ -699,5 +732,355 @@ func TestCompileLeavesSelfAnchoredTopLevelBranchesUnwrapped(t *testing.T) {
 	wantDefinition := "controllerregex.Matches(`" + pattern + "`, \"\")"
 	if got := jsonString(custom["schema_definition"]); got != wantDefinition {
 		t.Fatalf("schema_definition = %q, want %q (pattern must not be rewritten)", got, wantDefinition)
+	}
+}
+
+// TestCompileDerivesBetweenFromConstraint is Between's positive control: an
+// int64 field whose constraint carries the SDK's contiguous bounds gets
+// int64validator.Between with those bounds verbatim, negative bounds
+// included (the WLAN roaming-assistant RSSI ranges are negative at both
+// ends).
+func TestCompileDerivesBetweenFromConstraint(t *testing.T) {
+	tests := map[string]struct {
+		constraint     map[string]any
+		wantDefinition string
+	}{
+		"positive": {
+			constraint:     map[string]any{"pattern": "[1-9][0-9]{0,4}", "min": 1, "max": 99999, "has_bounds": true},
+			wantDefinition: "int64validator.Between(1, 99999)",
+		},
+		"negative": {
+			constraint:     map[string]any{"pattern": "-90|-89", "min": -90, "max": -70, "has_bounds": true},
+			wantDefinition: "int64validator.Between(-90, -70)",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := Compile(CompileInput{
+				Bootstrap: oneOfBootstrap(t, "port", test.constraint),
+				Policy:    oneOfPolicy(t, "port", nil),
+			})
+			if err != nil {
+				t.Fatalf("Compile() error = %v", err)
+			}
+			validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "int64", "port")
+			if len(validators) != 1 {
+				t.Fatalf("validators = %v, want exactly the derived Between", validators)
+			}
+			custom := jsonObject(validators[0]["custom"])
+			if got := jsonString(custom["schema_definition"]); got != test.wantDefinition {
+				t.Fatalf("schema_definition = %q, want %q", got, test.wantDefinition)
+			}
+			imports := jsonArray(custom["imports"])
+			if len(imports) != 1 || jsonString(jsonObject(imports[0])["path"]) != "github.com/hashicorp/terraform-plugin-framework-validators/int64validator" {
+				t.Fatalf("imports = %v, want exactly int64validator", imports)
+			}
+		})
+	}
+}
+
+// TestCompileRefusesAHandBetweenShadowingAConstraint is Between's refusal
+// path, mirroring the OneOf one: the message must name the surface, the
+// field, and both ranges -- the hand range here is the dns_record port
+// transcription error this derivation actually caught (65535 where the
+// controller accepts 99999).
+func TestCompileRefusesAHandBetweenShadowingAConstraint(t *testing.T) {
+	_, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "port", map[string]any{"pattern": "[1-9][0-9]{0,4}", "min": 1, "max": 99999, "has_bounds": true}),
+		Policy: oneOfPolicy(t, "port", func(attribute map[string]any) {
+			attribute["validators"] = []any{
+				map[string]any{
+					"custom": map[string]any{
+						"imports": []any{
+							map[string]any{"path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"},
+						},
+						"schema_definition": "int64validator.Between(1, 65535)",
+					},
+				},
+			}
+		}),
+	})
+	if err == nil {
+		t.Fatal("Compile() error = nil, want a refusal naming the shadowed hand Between")
+	}
+	for _, want := range []string{
+		"unifi_dns_record",
+		"port",
+		"int64validator.Between(1, 65535)",
+		"int64validator.Between(1, 99999)",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("Compile() error = %v, want it to contain %q", err, want)
+		}
+	}
+}
+
+// TestCompileDoesNotDeriveBetweenForAStringTypedAttribute is the boundary:
+// bounds on a field served as a string (a numeric wire the policy keeps
+// textual) derive nothing from the bounds -- the pattern, their display
+// form, is what a string attribute can enforce, and that path already
+// claims it.
+func TestCompileDoesNotDeriveBetweenForAStringTypedAttribute(t *testing.T) {
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "value", map[string]any{"pattern": "[1-9][0-9]{0,4}", "min": 1, "max": 99999, "has_bounds": true}),
+		Policy:    oneOfPolicy(t, "value", nil),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "string", "value")
+	if len(validators) != 1 {
+		t.Fatalf("validators = %v, want exactly the derived pattern", validators)
+	}
+	got := jsonString(jsonObject(validators[0]["custom"])["schema_definition"])
+	if want := "controllerregex.Matches(`[1-9][0-9]{0,4}`, \"\")"; got != want {
+		t.Fatalf("schema_definition = %q, want %q", got, want)
+	}
+}
+
+// TestCompileDerivesLengthBetweenFromConstraint is LengthBetween's positive
+// control, and the double-emit guard in the same breath: the SDK publishes
+// character-count bounds as the parsed form of a .{min,max} pattern, so the
+// derived LengthBetween must be the attribute's ONLY validator -- deriving
+// the pattern beside it would state the same controller rule twice.
+func TestCompileDerivesLengthBetweenFromConstraint(t *testing.T) {
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": ".{1,128}", "min_length": 1, "max_length": 128, "has_length": true}),
+		Policy:    oneOfPolicy(t, "key", nil),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "string", "name")
+	if len(validators) != 1 {
+		t.Fatalf("validators = %v, want exactly the derived LengthBetween, no pattern beside it", validators)
+	}
+	custom := jsonObject(validators[0]["custom"])
+	if got := jsonString(custom["schema_definition"]); got != "stringvalidator.LengthBetween(1, 128)" {
+		t.Fatalf("schema_definition = %q, want the derived LengthBetween", got)
+	}
+	imports := jsonArray(custom["imports"])
+	if len(imports) != 1 || jsonString(jsonObject(imports[0])["path"]) != "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator" {
+		t.Fatalf("imports = %v, want exactly stringvalidator", imports)
+	}
+}
+
+// TestCompileRefusesAHandLengthValidatorShadowingAConstraint is Length's
+// refusal path; the marker is the ".Length" prefix shared by LengthBetween,
+// LengthAtLeast and LengthAtMost, since a hand transcription of any of them
+// restates bounds the SDK now exports.
+func TestCompileRefusesAHandLengthValidatorShadowingAConstraint(t *testing.T) {
+	_, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": ".{1,128}", "min_length": 1, "max_length": 128, "has_length": true}),
+		Policy: oneOfPolicy(t, "key", func(attribute map[string]any) {
+			attribute["validators"] = []any{
+				map[string]any{
+					"custom": map[string]any{
+						"imports": []any{
+							map[string]any{"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"},
+						},
+						"schema_definition": "stringvalidator.LengthAtLeast(1)",
+					},
+				},
+			}
+		}),
+	})
+	if err == nil {
+		t.Fatal("Compile() error = nil, want a refusal naming the shadowed hand length validator")
+	}
+	for _, want := range []string{"key", "stringvalidator.LengthAtLeast(1)", "stringvalidator.LengthBetween(1, 128)"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("Compile() error = %v, want it to contain %q", err, want)
+		}
+	}
+}
+
+// TestCompileDerivesElementValidatorsForCollections covers the wrapped
+// forms: each parsed shape derives against a collection's element and is
+// wrapped in the list/set ValueStringsAre/ValueInt64sAre, with both the
+// wrapper's and the inner validator's imports.
+func TestCompileDerivesElementValidatorsForCollections(t *testing.T) {
+	tests := map[string]struct {
+		field          string
+		terraformType  string
+		elementKind    string
+		constraint     map[string]any
+		wantDefinition string
+		wantImports    []string
+	}{
+		"set of string values": {
+			field:          "tags",
+			terraformType:  "set",
+			elementKind:    "string",
+			constraint:     map[string]any{"values": []string{"2g", "5g", "6g"}},
+			wantDefinition: `setvalidator.ValueStringsAre(stringvalidator.OneOf("2g", "5g", "6g"))`,
+			wantImports: []string{
+				"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator",
+				"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator",
+			},
+		},
+		"list of string pattern": {
+			field:          "tags",
+			terraformType:  "list",
+			elementKind:    "string",
+			constraint:     map[string]any{"pattern": `^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`},
+			wantDefinition: "listvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, \"\"))",
+			wantImports: []string{
+				"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator",
+				"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex",
+			},
+		},
+		"list of string length": {
+			field:          "tags",
+			terraformType:  "list",
+			elementKind:    "string",
+			constraint:     map[string]any{"pattern": ".{1,64}", "min_length": 1, "max_length": 64, "has_length": true},
+			wantDefinition: "listvalidator.ValueStringsAre(stringvalidator.LengthBetween(1, 64))",
+			wantImports: []string{
+				"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator",
+				"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator",
+			},
+		},
+		"list of int64 values": {
+			field:          "ports",
+			terraformType:  "list",
+			elementKind:    "int64",
+			constraint:     map[string]any{"int64_values": []int64{20, 40, 80, 160}},
+			wantDefinition: "listvalidator.ValueInt64sAre(int64validator.OneOf(20, 40, 80, 160))",
+			wantImports: []string{
+				"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator",
+				"github.com/hashicorp/terraform-plugin-framework-validators/int64validator",
+			},
+		},
+		"list of int64 bounds": {
+			field:          "ports",
+			terraformType:  "list",
+			elementKind:    "int64",
+			constraint:     map[string]any{"pattern": "[1-9]", "min": 1, "max": 56, "has_bounds": true},
+			wantDefinition: "listvalidator.ValueInt64sAre(int64validator.Between(1, 56))",
+			wantImports: []string{
+				"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator",
+				"github.com/hashicorp/terraform-plugin-framework-validators/int64validator",
+			},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := Compile(CompileInput{
+				Bootstrap: oneOfBootstrap(t, test.field, test.constraint),
+				Policy:    elementPolicy(t, test.field, test.terraformType, test.elementKind, nil),
+			})
+			if err != nil {
+				t.Fatalf("Compile() error = %v", err)
+			}
+			validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, test.terraformType, test.field)
+			if len(validators) != 1 {
+				t.Fatalf("validators = %v, want exactly the derived element validator", validators)
+			}
+			custom := jsonObject(validators[0]["custom"])
+			if got := jsonString(custom["schema_definition"]); got != test.wantDefinition {
+				t.Fatalf("schema_definition = %q, want %q", got, test.wantDefinition)
+			}
+			var paths []string
+			for _, raw := range jsonArray(custom["imports"]) {
+				paths = append(paths, jsonString(jsonObject(raw)["path"]))
+			}
+			if fmt.Sprint(paths) != fmt.Sprint(test.wantImports) {
+				t.Fatalf("imports = %v, want %v", paths, test.wantImports)
+			}
+		})
+	}
+}
+
+// TestCompileRefusesAHandElementValidatorShadowingAConstraint: a hand
+// ValueStringsAre wrapping the same derived kind (here OneOf) is the same
+// transcription problem in wrapped form, and refuses the same way.
+func TestCompileRefusesAHandElementValidatorShadowingAConstraint(t *testing.T) {
+	_, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "tags", map[string]any{"values": []string{"2g", "5g", "6g"}}),
+		Policy: elementPolicy(t, "tags", "set", "string", func(attribute map[string]any) {
+			attribute["validators"] = []any{
+				map[string]any{
+					"custom": map[string]any{
+						"imports": []any{
+							map[string]any{"path": "github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"},
+							map[string]any{"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"},
+						},
+						"schema_definition": `setvalidator.ValueStringsAre(stringvalidator.OneOf("2g", "5g"))`,
+					},
+				},
+			}
+		}),
+	})
+	if err == nil {
+		t.Fatal("Compile() error = nil, want a refusal naming the shadowed hand element OneOf")
+	}
+	for _, want := range []string{
+		"tags",
+		`setvalidator.ValueStringsAre(stringvalidator.OneOf("2g", "5g"))`,
+		`setvalidator.ValueStringsAre(stringvalidator.OneOf("2g", "5g", "6g"))`,
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("Compile() error = %v, want it to contain %q", err, want)
+		}
+	}
+}
+
+// TestCompileAppendsDerivedElementValidatorBesideAHandOpinionValidator: a
+// hand element validator of a kind the SDK has no shape for (a semantic
+// CIDR check) is provider opinion, not transcription; it stays, and the
+// derived element pattern lands beside it -- the same boundary the scalar
+// path draws around IPv4Validator and friends.
+func TestCompileAppendsDerivedElementValidatorBesideAHandOpinionValidator(t *testing.T) {
+	hand := "listvalidator.ValueStringsAre(validators.CIDRValidator())"
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "tags", map[string]any{"pattern": "[a-z]+"}),
+		Policy: elementPolicy(t, "tags", "list", "string", func(attribute map[string]any) {
+			attribute["validators"] = []any{
+				map[string]any{
+					"custom": map[string]any{
+						"imports": []any{
+							map[string]any{"path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"},
+							map[string]any{"path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"},
+						},
+						"schema_definition": hand,
+					},
+				},
+			}
+		}),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	validatorEntries := oneOfAttributeValidators(t, result.ProviderCodeSpec, "list", "tags")
+	if len(validatorEntries) != 2 {
+		t.Fatalf("validators = %v, want the hand opinion plus the derived element pattern", validatorEntries)
+	}
+	var definitions []string
+	for _, v := range validatorEntries {
+		definitions = append(definitions, jsonString(jsonObject(v["custom"])["schema_definition"]))
+	}
+	wantDerived := "listvalidator.ValueStringsAre(controllerregex.Matches(`[a-z]+`, \"\"))"
+	hasHand := definitions[0] == hand || definitions[1] == hand
+	hasDerived := definitions[0] == wantDerived || definitions[1] == wantDerived
+	if !hasHand || !hasDerived {
+		t.Fatalf("validators = %v, want %q and %q", definitions, hand, wantDerived)
+	}
+}
+
+// TestCompileSuppressesElementDerivationWhenValidatorsIsNone: the "none"
+// marker suppresses the wrapped forms exactly as it does the scalar ones.
+func TestCompileSuppressesElementDerivationWhenValidatorsIsNone(t *testing.T) {
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "tags", map[string]any{"values": []string{"2g", "5g"}}),
+		Policy: elementPolicy(t, "tags", "set", "string", func(attribute map[string]any) {
+			attribute["validators"] = "none"
+		}),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	if validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "set", "tags"); len(validators) != 0 {
+		t.Fatalf("validators = %v, want none: derivation was suppressed", validators)
 	}
 }

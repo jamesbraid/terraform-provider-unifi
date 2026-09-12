@@ -65,6 +65,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				},
 				Validators: []validator.Set{
 					setvalidator.ValueStringsAre(validators.MACAddressValidator()),
+					setvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, "")),
 				},
 			},
 			"bss_transition": schema.BoolAttribute{
@@ -207,6 +208,9 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 						Optional:            true,
 						Description:         "List of MAC addresses to filter (only valid if `enabled` is `true`).",
 						MarkdownDescription: "List of MAC addresses to filter (only valid if `enabled` is `true`).",
+						Validators: []validator.Set{
+							setvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, "")),
+						},
 					},
 					"policy": schema.StringAttribute{
 						Optional:            true,
@@ -282,7 +286,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The SSID of the network.",
 				MarkdownDescription: "The SSID of the network.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,32}`, ""),
+					stringvalidator.LengthBetween(1, 32),
 				},
 			},
 			"nas_identifier_type": schema.StringAttribute{
@@ -346,7 +350,6 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "The passphrase for this key (8-255 characters).",
 							MarkdownDescription: "The passphrase for this key (8-255 characters).",
 							Validators: []validator.String{
-								stringvalidator.LengthBetween(8, 255),
 								controllerregex.Matches(`[\x20-\x7E]{8,255}`, ""),
 							},
 						},

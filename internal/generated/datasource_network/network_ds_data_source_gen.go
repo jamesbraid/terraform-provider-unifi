@@ -7,6 +7,8 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -54,6 +56,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of DHCP relay server addresses.",
 						MarkdownDescription: "List of DHCP relay server addresses.",
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, "")),
+						},
 					},
 				},
 				Computed:            true,
@@ -272,6 +277,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "List of IP aliases for the network.",
 				MarkdownDescription: "List of IP aliases for the network.",
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([8-9]|[1-2][0-9]|3[0-2])$|^$`, "")),
+				},
 			},
 			"ipv6_aliases": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -360,7 +368,7 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The name of the network.",
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(path.Expressions{path.MatchRoot("id")}...),
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"nat_outbound_ip_addresses": schema.ListNestedAttribute{
@@ -379,6 +387,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "The IP address pool.",
 							MarkdownDescription: "The IP address pool.",
+							Validators: []validator.List{
+								listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])-(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`, "")),
+							},
 						},
 						"mode": schema.StringAttribute{
 							Computed:            true,
@@ -451,6 +462,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The VLAN ID for the network.",
 				MarkdownDescription: "The VLAN ID for the network.",
+				Validators: []validator.Int64{
+					int64validator.Between(2, 4018),
+				},
 			},
 			"wan_dns": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -462,6 +476,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies the WAN egress quality of service.",
 				MarkdownDescription: "Specifies the WAN egress quality of service.",
+				Validators: []validator.Int64{
+					int64validator.Between(1, 7),
+				},
 			},
 			"wan_gateway": schema.StringAttribute{
 				Computed:            true,

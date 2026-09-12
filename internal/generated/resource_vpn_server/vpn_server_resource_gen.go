@@ -100,7 +100,7 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the VPN server.",
 				MarkdownDescription: "The name of the VPN server.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"openvpn": schema.SingleNestedAttribute{

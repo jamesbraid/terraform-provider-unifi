@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -46,7 +45,7 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.RequiresReplace(),
 				},
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"port": schema.Int64Attribute{
@@ -54,7 +53,7 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The port of the DNS record.",
 				MarkdownDescription: "The port of the DNS record.",
 				Validators: []validator.Int64{
-					int64validator.Between(1, 65535),
+					int64validator.Between(1, 99999),
 				},
 			},
 			"priority": schema.Int64Attribute{
@@ -98,7 +97,7 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The value of the DNS record.",
 				MarkdownDescription: "The value of the DNS record.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,256}`, ""),
+					stringvalidator.LengthBetween(1, 256),
 				},
 			},
 			"weight": schema.Int64Attribute{

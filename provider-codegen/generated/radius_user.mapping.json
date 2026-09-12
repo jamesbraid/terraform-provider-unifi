@@ -4,6 +4,7 @@
   "surface_name": "unifi_radius_user",
   "resource": "unifi_radius_user",
   "collection": "account",
+  "sdk_struct": "Account",
   "fields": [
     {
       "structural_name": "_id",

@@ -4,6 +4,7 @@
   "surface_name": "unifi_dpi_group",
   "resource": "unifi_dpi_group",
   "collection": "dpigroup",
+  "sdk_struct": "DpiGroup",
   "fields": [
     {
       "structural_name": "_id",

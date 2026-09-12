@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_firewall_zone",
   "resource": "unifi_firewall_zone",
+  "sdk_struct": "FirewallZone",
   "fields": [
     {
       "structural_name": "_id",

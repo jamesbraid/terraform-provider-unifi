@@ -4,6 +4,7 @@
   "surface_name": "unifi_firewall_rule",
   "resource": "unifi_firewall_rule",
   "collection": "firewallrule",
+  "sdk_struct": "FirewallRule",
   "fields": [
     {
       "structural_name": "_id",

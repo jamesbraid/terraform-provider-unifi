@@ -6,10 +6,10 @@ package resource_hotspot_op
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -30,7 +30,7 @@ func HotspotOpResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the hotspot operator.",
 				MarkdownDescription: "The name of the hotspot operator.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,256}`, ""),
+					stringvalidator.LengthBetween(1, 256),
 				},
 			},
 			"note": schema.StringAttribute{
@@ -44,7 +44,7 @@ func HotspotOpResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The password of the hotspot operator.",
 				MarkdownDescription: "The password of the hotspot operator.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,256}`, ""),
+					stringvalidator.LengthBetween(1, 256),
 				},
 			},
 			"site": schema.StringAttribute{

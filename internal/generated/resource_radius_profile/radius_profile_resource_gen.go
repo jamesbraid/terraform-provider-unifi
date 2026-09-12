@@ -64,7 +64,7 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the profile.",
 				MarkdownDescription: "The name of the profile.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"site": schema.StringAttribute{

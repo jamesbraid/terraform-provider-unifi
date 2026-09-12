@@ -6,6 +6,7 @@ package datasource_radius_user
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
@@ -49,11 +50,17 @@ func RadiusUserDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "See RFC2868 section 3.2.",
 				MarkdownDescription: "See RFC2868 section 3.2.",
+				Validators: []validator.Int64{
+					int64validator.Between(1, 15),
+				},
 			},
 			"tunnel_type": schema.Int64Attribute{
 				Computed:            true,
 				Description:         "See RFC2868 section 3.1.",
 				MarkdownDescription: "See RFC2868 section 3.1.",
+				Validators: []validator.Int64{
+					int64validator.Between(1, 13),
+				},
 			},
 		},
 		MarkdownDescription: "Data source for RADIUS users.",

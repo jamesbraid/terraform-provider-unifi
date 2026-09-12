@@ -4,6 +4,7 @@
   "surface_name": "unifi_client_list",
   "resource": "unifi_client_list",
   "collection": "user",
+  "sdk_struct": "Client",
   "fields": [
     {
       "structural_name": "blocked",

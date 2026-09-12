@@ -4,6 +4,7 @@
   "surface_name": "unifi_port_profile",
   "resource": "unifi_port_profile",
   "collection": "portconf",
+  "sdk_struct": "PortProfile",
   "fields": [
     {
       "structural_name": "_id",

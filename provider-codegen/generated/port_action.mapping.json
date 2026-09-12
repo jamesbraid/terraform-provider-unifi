@@ -4,6 +4,7 @@
   "surface_name": "unifi_port",
   "resource": "unifi_port",
   "collection": "device",
+  "sdk_struct": "Device",
   "fields": [],
   "provider_owned": [
     {

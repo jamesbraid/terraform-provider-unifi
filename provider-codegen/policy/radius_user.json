@@ -67,19 +67,7 @@
         "default": {
           "static": 6
         },
-        "description": "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.2",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 15)"
-            }
-          }
-        ]
+        "description": "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.2"
       },
       "disposition": "managed",
       "structural_name": "tunnel_medium_type",
@@ -91,19 +79,7 @@
         "default": {
           "static": 3
         },
-        "description": "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.1. Valid values are 1-13; `13` (VLAN) is the most common.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 13)"
-            }
-          }
-        ]
+        "description": "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.1. Valid values are 1-13; `13` (VLAN) is the most common."
       },
       "disposition": "managed",
       "structural_name": "tunnel_type",
@@ -122,18 +98,6 @@
                 }
               ],
               "schema_definition": "int64planmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(2, 4009)"
             }
           }
         ]

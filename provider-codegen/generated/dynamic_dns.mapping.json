@@ -4,6 +4,7 @@
   "surface_name": "unifi_dynamic_dns",
   "resource": "unifi_dynamic_dns",
   "collection": "dynamicdns",
+  "sdk_struct": "DynamicDNS",
   "fields": [
     {
       "structural_name": "_id",

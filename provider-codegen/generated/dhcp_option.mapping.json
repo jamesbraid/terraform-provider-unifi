@@ -4,6 +4,7 @@
   "surface_name": "unifi_dhcp_option",
   "resource": "unifi_dhcp_option",
   "collection": "dhcpoption",
+  "sdk_struct": "DHCPOption",
   "fields": [
     {
       "structural_name": "_id",

@@ -4,6 +4,7 @@
   "surface_name": "unifi_port_forward",
   "resource": "unifi_port_forward",
   "collection": "portforward",
+  "sdk_struct": "PortForward",
   "fields": [
     {
       "structural_name": "destination_ips",
