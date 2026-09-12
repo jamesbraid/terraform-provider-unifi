@@ -392,7 +392,13 @@ type mappingReport struct {
 	// companion's collection can differ (unifi_client projects user and
 	// usergroup together); no companion carries a declared secret today, and
 	// the suite would over-demand, loudly, if one ever did.
-	Collection    string                 `json:"collection,omitempty"`
+	Collection string `json:"collection,omitempty"`
+	// SDKStruct is the lead struct's Go type name, copied from the bootstrap
+	// for the same reason Collection is: the conformance suite keys
+	// unifi.FieldConstraints by Go type, and committed bytes must carry
+	// that key. Companion members carry structural_source in policy, so
+	// only the lead needs recording here.
+	SDKStruct     string                 `json:"sdk_struct,omitempty"`
 	Fields        []mappingField         `json:"fields"`
 	ProviderOwned []providerOwnedMapping `json:"provider_owned"`
 }

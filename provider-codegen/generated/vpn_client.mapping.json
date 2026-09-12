@@ -4,6 +4,7 @@
   "surface_name": "unifi_vpn_client",
   "resource": "unifi_vpn_client",
   "collection": "networkconf",
+  "sdk_struct": "Network",
   "fields": [
     {
       "structural_name": "_id",

@@ -67,19 +67,7 @@
             "default": {
               "static": 1813
             },
-            "description": "Port of accounting service.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(1, 65535)"
-                }
-              }
-            ]
+            "description": "Port of accounting service."
           },
           "disposition": "managed",
           "structural_name": "port",
@@ -132,19 +120,7 @@
             "default": {
               "static": 1812
             },
-            "description": "Port of authentication service.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(1, 65535)"
-                }
-              }
-            ]
+            "description": "Port of authentication service."
           },
           "disposition": "managed",
           "structural_name": "port",

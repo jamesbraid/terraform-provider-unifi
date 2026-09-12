@@ -4,6 +4,7 @@
   "surface_name": "unifi_schedule_task",
   "resource": "unifi_schedule_task",
   "collection": "scheduletask",
+  "sdk_struct": "ScheduleTask",
   "fields": [
     {
       "structural_name": "_id",

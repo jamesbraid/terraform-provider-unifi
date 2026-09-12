@@ -344,6 +344,9 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						PlanModifiers: []planmodifier.List{
 							listplanmodifier.UseStateForUnknown(),
 						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(stringvalidator.OneOf("mon", "tue", "wed", "thu", "fri", "sat", "sun")),
+						},
 					},
 					"time_all_day": schema.BoolAttribute{
 						Optional:            true,

@@ -307,6 +307,7 @@ func Compile(input CompileInput) (Result, error) {
 		SurfaceName:   rules.Resource,
 		Resource:      rules.Resource,
 		Collection:    source.Resource.Collection,
+		SDKStruct:     source.Resource.Struct,
 		Fields:        make([]mappingField, 0, len(fieldNames)),
 		ProviderOwned: make([]providerOwnedMapping, 0, len(providerOwned)),
 	}
@@ -1648,9 +1649,9 @@ func buildCodeAttribute(
 		)
 	}
 	terraformType := field.TerraformType
-	isCollection := false
+	elementType := ""
 	if element, ok := structuralElementType(structural.Type); ok {
-		isCollection = true
+		elementType = element
 		resolved, err := collectionTerraformType(field, element)
 		if err != nil {
 			return codeAttribute{}, err
@@ -1661,22 +1662,20 @@ func buildCodeAttribute(
 	} else if err := requireScalarOverride(field.StructuralName, structural.Type, terraformType); err != nil {
 		return codeAttribute{}, err
 	}
-	attribute := field.Attribute
-	// Derivation is scoped to scalar attributes: a collection's element type
-	// carries no OneOf/RegexMatches shape this task derives (deferred; see
-	// the task report), and structuralElementType already routed those here
-	// with isCollection set.
-	if !isCollection {
-		derived, err := deriveConstraintValidators(surface+"."+owner, terraformType, structural.Constraint, attribute, notices)
-		if err != nil {
-			return codeAttribute{}, err
-		}
-		attribute = derived
+	// Scalars and collections both derive: a collection's constraint
+	// describes its element, and elementType routes it to the wrapped
+	// ValueStringsAre/ValueInt64sAre form. What this call cannot reach --
+	// claims, invented members, collapsed elements -- is hand-mapped
+	// surface by design; the conformance suite checks those hand
+	// validators against the SDK's facts from the other end.
+	attribute, err := deriveConstraintValidators(surface+"."+owner, terraformType, elementType, structural.Constraint, field.Attribute, notices)
+	if err != nil {
+		return codeAttribute{}, err
 	}
-	// Sensitivity is not scoped the same way: a declared secret served as a
-	// list of strings is every bit as secret, and the flag sits on the
-	// attribute, not its element type.
-	attribute, err := deriveSensitive(surface+"."+owner, structural.Sensitive, attribute)
+	// Sensitivity has no element scoping of its own: a declared secret
+	// served as a list of strings is every bit as secret, and the flag sits
+	// on the attribute, not its element type.
+	attribute, err = deriveSensitive(surface+"."+owner, structural.Sensitive, attribute)
 	if err != nil {
 		return codeAttribute{}, err
 	}

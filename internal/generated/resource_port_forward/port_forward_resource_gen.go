@@ -100,7 +100,7 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the port forwarding rule.",
 				MarkdownDescription: "The name of the port forwarding rule.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"protocol": schema.StringAttribute{

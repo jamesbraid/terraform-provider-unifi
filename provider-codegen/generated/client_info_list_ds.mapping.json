@@ -3,6 +3,7 @@
   "surface_kind": "data_source",
   "surface_name": "unifi_client_info_list",
   "resource": "unifi_client_info_list",
+  "sdk_struct": "ClientInfo",
   "fields": [
     {
       "structural_name": "ap_mac",

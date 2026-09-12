@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -187,6 +188,9 @@ func PortProfileResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The MAC addresses associated with the port security for the port profile.",
 				MarkdownDescription: "The MAC addresses associated with the port security for the port profile.",
+				Validators: []validator.Set{
+					setvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$`, "")),
+				},
 			},
 			"priority_queue1_level": schema.Int64Attribute{
 				Optional:            true,
@@ -259,8 +263,8 @@ func PortProfileResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The broadcast Storm Control level for the port profile. Can be between 0 and 100.",
 				MarkdownDescription: "The broadcast Storm Control level for the port profile. Can be between 0 and 100.",
 				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
 					int64validator.ConflictsWith(path.MatchRoot("stormctrl_bcast_rate")),
+					int64validator.Between(0, 100),
 				},
 			},
 			"stormctrl_bcast_rate": schema.Int64Attribute{
@@ -284,8 +288,8 @@ func PortProfileResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The multicast Storm Control level for the port profile. Can be between 0 and 100.",
 				MarkdownDescription: "The multicast Storm Control level for the port profile. Can be between 0 and 100.",
 				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
 					int64validator.ConflictsWith(path.MatchRoot("stormctrl_mcast_rate")),
+					int64validator.Between(0, 100),
 				},
 			},
 			"stormctrl_mcast_rate": schema.Int64Attribute{
@@ -317,8 +321,8 @@ func PortProfileResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The unknown unicast Storm Control level for the port profile. Can be between 0 and 100.",
 				MarkdownDescription: "The unknown unicast Storm Control level for the port profile. Can be between 0 and 100.",
 				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
 					int64validator.ConflictsWith(path.MatchRoot("stormctrl_ucast_rate")),
+					int64validator.Between(0, 100),
 				},
 			},
 			"stormctrl_ucast_rate": schema.Int64Attribute{

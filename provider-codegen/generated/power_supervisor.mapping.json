@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_power_supervisor",
   "resource": "unifi_power_supervisor",
+  "sdk_struct": "PowerSupervisor",
   "fields": [
     {
       "structural_name": "client_mac",

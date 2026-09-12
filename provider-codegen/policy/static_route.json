@@ -79,19 +79,7 @@
     {
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The distance of the static route.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 255)"
-            }
-          }
-        ]
+        "description": "The distance of the static route."
       },
       "disposition": "managed",
       "structural_name": "static-route_distance",

@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -38,7 +37,7 @@ func FirewallGroupResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the firewall group.",
 				MarkdownDescription: "The name of the firewall group.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,64}`, ""),
+					stringvalidator.LengthBetween(1, 64),
 				},
 			},
 			"site": schema.StringAttribute{

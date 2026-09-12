@@ -319,19 +319,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The priority queue 1 level for the port profile. Can be between 0 and 100.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(0, 100)"
-            }
-          }
-        ]
+        "description": "The priority queue 1 level for the port profile. Can be between 0 and 100."
       },
       "disposition": "managed",
       "structural_name": "priority_queue1_level",
@@ -340,19 +328,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The priority queue 2 level for the port profile. Can be between 0 and 100.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(0, 100)"
-            }
-          }
-        ]
+        "description": "The priority queue 2 level for the port profile. Can be between 0 and 100."
       },
       "disposition": "managed",
       "structural_name": "priority_queue2_level",
@@ -361,19 +337,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The priority queue 3 level for the port profile. Can be between 0 and 100.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(0, 100)"
-            }
-          }
-        ]
+        "description": "The priority queue 3 level for the port profile. Can be between 0 and 100."
       },
       "disposition": "managed",
       "structural_name": "priority_queue3_level",
@@ -382,19 +346,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The priority queue 4 level for the port profile. Can be between 0 and 100.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(0, 100)"
-            }
-          }
-        ]
+        "description": "The priority queue 4 level for the port profile. Can be between 0 and 100."
       },
       "disposition": "managed",
       "structural_name": "priority_queue4_level",
@@ -435,16 +387,6 @@
         "computed_optional_required": "optional",
         "description": "The broadcast Storm Control level for the port profile. Can be between 0 and 100.",
         "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(0, 100)"
-            }
-          },
           {
             "custom": {
               "imports": [
@@ -515,16 +457,6 @@
         "computed_optional_required": "optional",
         "description": "The multicast Storm Control level for the port profile. Can be between 0 and 100.",
         "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(0, 100)"
-            }
-          },
           {
             "custom": {
               "imports": [
@@ -604,16 +536,6 @@
         "computed_optional_required": "optional",
         "description": "The unknown unicast Storm Control level for the port profile. Can be between 0 and 100.",
         "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(0, 100)"
-            }
-          },
           {
             "custom": {
               "imports": [

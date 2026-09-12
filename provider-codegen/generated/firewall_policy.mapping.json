@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_firewall_policy",
   "resource": "unifi_firewall_policy",
+  "sdk_struct": "FirewallPolicy",
   "fields": [
     {
       "structural_name": "action",

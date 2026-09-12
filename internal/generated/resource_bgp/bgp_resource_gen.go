@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -47,7 +46,7 @@ func BgpResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Description of the BGP configuration.",
 				MarkdownDescription: "Description of the BGP configuration.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{0,128}`, ""),
+					stringvalidator.LengthBetween(0, 128),
 				},
 				Default: stringdefault.StaticString("BGP Configuration"),
 			},
@@ -123,7 +122,7 @@ func BgpResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the uploaded configuration file.",
 				MarkdownDescription: "The name of the uploaded configuration file.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{0,256}`, ""),
+					stringvalidator.LengthBetween(0, 256),
 				},
 				Default: stringdefault.StaticString("frr.conf"),
 			},

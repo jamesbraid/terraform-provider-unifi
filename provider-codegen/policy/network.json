@@ -810,9 +810,12 @@
               "imports": [
                 {
                   "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                },
+                {
+                  "path": "github.com/ubiquiti-community/go-unifi/unifi"
                 }
               ],
-              "schema_definition": "int64validator.Between(1, 4094)"
+              "schema_definition": "int64validator.Between(unifi.NetworkVLANMin, unifi.NetworkVLANMax)"
             }
           }
         ]

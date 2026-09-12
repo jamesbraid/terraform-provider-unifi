@@ -56,19 +56,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The port of the DNS record.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 65535)"
-            }
-          }
-        ]
+        "description": "The port of the DNS record."
       }
     },
     {
@@ -118,7 +106,7 @@
           "type": "timetypes.GoDurationType{}",
           "value_type": "timetypes.GoDuration"
         },
-        "description": "The TTL of the DNS record, as a Go duration string (e.g. `1h`, `300s`). The controller stores this value as whole seconds in the range 0–65535s (≈18h12m15s).",
+        "description": "The TTL of the DNS record, as a Go duration string (e.g. `1h`, `300s`). The controller stores this value as whole seconds in the range 0\u201365535s (\u224818h12m15s).",
         "validators": [
           {
             "custom": {

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -168,6 +169,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "LCM brightness (1-100).",
 				MarkdownDescription: "LCM brightness (1-100).",
+				Validators: []validator.Int64{
+					int64validator.Between(1, 100),
+				},
 			},
 			"lcm_brightness_override": schema.BoolAttribute{
 				Optional:            true,
@@ -242,6 +246,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
+				Validators: []validator.Int64{
+					int64validator.Between(0, 100),
+				},
 			},
 			"locked": schema.BoolAttribute{
 				Optional:            true,
@@ -289,7 +296,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the device.",
 				MarkdownDescription: "The name of the device.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{0,128}`, ""),
+					stringvalidator.LengthBetween(0, 128),
 				},
 			},
 			"outdoor_mode_override": schema.StringAttribute{
@@ -327,7 +334,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Outlet name.",
 							MarkdownDescription: "Outlet name.",
 							Validators: []validator.String{
-								controllerregex.Matches(`.{0,128}`, ""),
+								stringvalidator.LengthBetween(0, 128),
 							},
 						},
 						"relay_state": schema.BoolAttribute{
@@ -363,12 +370,18 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "Antenna gain.",
 							MarkdownDescription: "Antenna gain.",
+							Validators: []validator.Int64{
+								int64validator.Between(-99, 99),
+							},
 						},
 						"antenna_id": schema.Int64Attribute{
 							Optional:            true,
 							Computed:            true,
 							Description:         "Antenna ID.",
 							MarkdownDescription: "Antenna ID.",
+							Validators: []validator.Int64{
+								int64validator.Between(-1, 9),
+							},
 						},
 						"channel": schema.StringAttribute{
 							Optional:            true,
@@ -411,12 +424,18 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "Maximum number of stations.",
 							MarkdownDescription: "Maximum number of stations.",
+							Validators: []validator.Int64{
+								int64validator.Between(1, 200),
+							},
 						},
 						"min_rssi": schema.Int64Attribute{
 							Optional:            true,
 							Computed:            true,
 							Description:         "Minimum RSSI value.",
 							MarkdownDescription: "Minimum RSSI value.",
+							Validators: []validator.Int64{
+								int64validator.Between(-90, -67),
+							},
 						},
 						"min_rssi_enabled": schema.BoolAttribute{
 							Optional:            true,
@@ -444,6 +463,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "Sensitivity level.",
 							MarkdownDescription: "Sensitivity level.",
+							Validators: []validator.Int64{
+								int64validator.Between(-90, -50),
+							},
 						},
 						"sens_level_enabled": schema.BoolAttribute{
 							Optional:            true,
@@ -537,6 +559,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Volume level (0-100).",
 				MarkdownDescription: "Volume level (0-100).",
+				Validators: []validator.Int64{
+					int64validator.Between(0, 100),
+				},
 			},
 			"x_baresip_password": schema.StringAttribute{
 				Optional:            true,
@@ -558,6 +583,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Port indices that make up this link-aggregation (LAG) group. Only takes effect when `op_mode` is `aggregate` on this port.",
 							MarkdownDescription: "Port indices that make up this link-aggregation (LAG) group. Only takes effect when `op_mode` is `aggregate` on this port.",
+							Validators: []validator.List{
+								listvalidator.ValueInt64sAre(int64validator.Between(1, 56)),
+							},
 						},
 						"autoneg": schema.BoolAttribute{
 							Optional:            true,
@@ -632,6 +660,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Required:            true,
 							Description:         "Switch port index.",
 							MarkdownDescription: "Switch port index.",
+							Validators: []validator.Int64{
+								int64validator.Between(1, 56),
+							},
 						},
 						"isolation": schema.BoolAttribute{
 							Optional:            true,
@@ -655,6 +686,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Mirror port index.",
 							MarkdownDescription: "Mirror port index.",
+							Validators: []validator.Int64{
+								int64validator.Between(1, 56),
+							},
 						},
 						"multicast_router_networkconf_ids": schema.SetAttribute{
 							ElementType:         types.StringType,
@@ -667,7 +701,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Human-readable name of the port.",
 							MarkdownDescription: "Human-readable name of the port.",
 							Validators: []validator.String{
-								controllerregex.Matches(`.{0,128}`, ""),
+								stringvalidator.LengthBetween(0, 128),
 							},
 						},
 						"native_networkconf_id": schema.StringAttribute{
@@ -718,26 +752,41 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "List of MAC addresses allowed when port security is enabled.",
 							MarkdownDescription: "List of MAC addresses allowed when port security is enabled.",
+							Validators: []validator.List{
+								listvalidator.ValueStringsAre(controllerregex.Matches(`^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$`, "")),
+							},
 						},
 						"priority_queue1_level": schema.Int64Attribute{
 							Optional:            true,
 							Description:         "Priority queue 1 level.",
 							MarkdownDescription: "Priority queue 1 level.",
+							Validators: []validator.Int64{
+								int64validator.Between(0, 100),
+							},
 						},
 						"priority_queue2_level": schema.Int64Attribute{
 							Optional:            true,
 							Description:         "Priority queue 2 level.",
 							MarkdownDescription: "Priority queue 2 level.",
+							Validators: []validator.Int64{
+								int64validator.Between(0, 100),
+							},
 						},
 						"priority_queue3_level": schema.Int64Attribute{
 							Optional:            true,
 							Description:         "Priority queue 3 level.",
 							MarkdownDescription: "Priority queue 3 level.",
+							Validators: []validator.Int64{
+								int64validator.Between(0, 100),
+							},
 						},
 						"priority_queue4_level": schema.Int64Attribute{
 							Optional:            true,
 							Description:         "Priority queue 4 level.",
 							MarkdownDescription: "Priority queue 4 level.",
+							Validators: []validator.Int64{
+								int64validator.Between(0, 100),
+							},
 						},
 						"setting_preference": schema.StringAttribute{
 							Optional:            true,
@@ -765,6 +814,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Broadcast storm control level.",
 							MarkdownDescription: "Broadcast storm control level.",
+							Validators: []validator.Int64{
+								int64validator.Between(0, 100),
+							},
 						},
 						"stormctrl_bcast_rate": schema.Int64Attribute{
 							Optional:            true,
@@ -781,6 +833,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Multicast storm control level.",
 							MarkdownDescription: "Multicast storm control level.",
+							Validators: []validator.Int64{
+								int64validator.Between(0, 100),
+							},
 						},
 						"stormctrl_mcast_rate": schema.Int64Attribute{
 							Optional:            true,
@@ -805,6 +860,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Unicast storm control level.",
 							MarkdownDescription: "Unicast storm control level.",
+							Validators: []validator.Int64{
+								int64validator.Between(0, 100),
+							},
 						},
 						"stormctrl_ucast_rate": schema.Int64Attribute{
 							Optional:            true,

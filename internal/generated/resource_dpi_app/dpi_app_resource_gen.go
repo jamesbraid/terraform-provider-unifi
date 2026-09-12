@@ -6,12 +6,12 @@ package resource_dpi_app
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -65,7 +65,7 @@ func DpiAppResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the DPI application rule.",
 				MarkdownDescription: "The name of the DPI application rule.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"qos_rate_max_down": schema.Int64Attribute{

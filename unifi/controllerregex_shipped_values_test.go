@@ -133,13 +133,29 @@ func TestControllerregexShippedValuesAreAccepted(t *testing.T) {
 	}
 }
 
-// isControllerregexValidator reports whether v is a validator.String built
-// by controllerregex.Matches, identified by its concrete type's package path
-// -- matchesValidator is unexported, so this package cannot type-assert to
-// it directly.
-func isControllerregexValidator(v validator.String) bool {
+// stringvalidatorPkgPath identifies the framework's own string validators;
+// together with the type-name prefix below it picks out LengthBetween, the
+// shape the compiler derives where the SDK exports character-count bounds
+// (formerly derived as a .{min,max} controllerregex pattern).
+const stringvalidatorPkgPath = "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+
+// isDerivedStringValidator reports whether v is one of the two validator
+// shapes the compiler derives onto string attributes -- a
+// controllerregex.Matches pattern or a stringvalidator.LengthBetween --
+// identified by concrete type, since both types are unexported and this
+// package cannot type-assert to them directly. Hand validators of other
+// kinds (OneOf and the semantic helpers) are deliberately not collected:
+// this corpus asks whether derivation rejects a value the provider itself
+// ships, not whether the examples exercise every hand rule.
+func isDerivedStringValidator(v validator.String) bool {
 	t := reflect.TypeOf(v)
-	return t != nil && t.PkgPath() == controllerregexPkgPath
+	if t == nil {
+		return false
+	}
+	if t.PkgPath() == controllerregexPkgPath {
+		return true
+	}
+	return t.PkgPath() == stringvalidatorPkgPath && strings.HasPrefix(t.Name(), "lengthBetween")
 }
 
 // collectResourcePatternValidators walks every registered resource's schema
@@ -179,7 +195,7 @@ func collectResourceAttrPatternValidators(attrs map[string]rschema.Attribute, pr
 		case rschema.StringAttribute:
 			var matched []validator.String
 			for _, v := range at.Validators {
-				if isControllerregexValidator(v) {
+				if isDerivedStringValidator(v) {
 					matched = append(matched, v)
 				}
 			}
@@ -249,7 +265,7 @@ func collectDataSourceAttrPatternValidators(attrs map[string]dschema.Attribute, 
 		case dschema.StringAttribute:
 			var matched []validator.String
 			for _, v := range at.Validators {
-				if isControllerregexValidator(v) {
+				if isDerivedStringValidator(v) {
 					matched = append(matched, v)
 				}
 			}

@@ -78,7 +78,7 @@ func StaticRouteResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the static route.",
 				MarkdownDescription: "The name of the static route.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"network": schema.StringAttribute{

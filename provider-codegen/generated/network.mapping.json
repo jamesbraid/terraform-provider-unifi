@@ -4,6 +4,7 @@
   "surface_name": "unifi_network",
   "resource": "unifi_network",
   "collection": "networkconf",
+  "sdk_struct": "Network",
   "fields": [
     {
       "structural_name": "_id",

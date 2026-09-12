@@ -3,6 +3,7 @@
   "surface_kind": "managed_resource",
   "surface_name": "unifi_bgp",
   "resource": "unifi_bgp",
+  "sdk_struct": "BGPConfig",
   "fields": [
     {
       "structural_name": "_id",

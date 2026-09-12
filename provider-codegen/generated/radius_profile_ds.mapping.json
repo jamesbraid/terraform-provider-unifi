@@ -4,6 +4,7 @@
   "surface_name": "unifi_radius_profile",
   "resource": "unifi_radius_profile",
   "collection": "radiusprofile",
+  "sdk_struct": "RADIUSProfile",
   "fields": [
     {
       "structural_name": "_id",

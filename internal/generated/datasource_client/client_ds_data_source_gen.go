@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
@@ -110,7 +111,7 @@ func ClientDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Description:         "The name of the client group.",
 						MarkdownDescription: "The name of the client group.",
 						Validators: []validator.String{
-							controllerregex.Matches(`.{1,128}`, ""),
+							stringvalidator.LengthBetween(1, 128),
 						},
 					},
 				},

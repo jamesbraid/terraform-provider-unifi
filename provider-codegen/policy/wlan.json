@@ -126,18 +126,6 @@
               "schema_definition": "int64planmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 255)"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -171,18 +159,6 @@
               "schema_definition": "int64planmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 255)"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -202,18 +178,6 @@
                 }
               ],
               "schema_definition": "int64planmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(1, 255)"
             }
           }
         ]
@@ -539,19 +503,7 @@
           "attribute": {
             "computed_optional_required": "required",
             "description": "The passphrase for this key (8-255 characters).",
-            "sensitive": true,
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.LengthBetween(8, 255)"
-                }
-              }
-            ]
+            "sensitive": true
           },
           "disposition": "managed",
           "structural_name": "password",
@@ -655,18 +607,6 @@
               "schema_definition": "int64planmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(-90, -70)"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -707,18 +647,6 @@
                 }
               ],
               "schema_definition": "int64planmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(-80, -60)"
             }
           }
         ]
@@ -812,19 +740,7 @@
         {
           "attribute": {
             "computed_optional_required": "required",
-            "description": "Start hour for the block (0-23).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(0, 23)"
-                }
-              }
-            ]
+            "description": "Start hour for the block (0-23)."
           },
           "disposition": "managed",
           "structural_name": "start_hour",
@@ -836,19 +752,7 @@
             "default": {
               "static": 0
             },
-            "description": "Start minute for the block (0-59).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.Between(0, 59)"
-                }
-              }
-            ]
+            "description": "Start minute for the block (0-59)."
           },
           "disposition": "managed",
           "structural_name": "start_minute",
@@ -897,19 +801,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "VLAN ID.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.Between(2, 4095)"
-            }
-          }
-        ]
+        "description": "VLAN ID."
       },
       "disposition": "managed",
       "structural_name": "vlan",
@@ -946,21 +838,6 @@
         "element_type": {
           "string": {}
         },
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
-                },
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "setvalidator.ValueStringsAre(stringvalidator.OneOf(\"2g\", \"5g\", \"6g\"))"
-            }
-          }
-        ],
         "default": {
           "custom": {
             "imports": [

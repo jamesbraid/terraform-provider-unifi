@@ -6,10 +6,10 @@ package resource_wlan_group
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -30,7 +30,7 @@ func WlanGroupResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the WLAN group.",
 				MarkdownDescription: "The name of the WLAN group.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"site": schema.StringAttribute{

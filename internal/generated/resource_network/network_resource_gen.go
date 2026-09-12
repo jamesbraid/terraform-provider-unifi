@@ -82,6 +82,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "List of DHCP relay server addresses.",
 						Validators: []validator.List{
 							listvalidator.SizeAtMost(4),
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, "")),
 						},
 					},
 				},
@@ -411,6 +412,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
 				},
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([8-9]|[1-2][0-9]|3[0-2])$|^$`, "")),
+				},
 			},
 			"ipv6_aliases": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -574,7 +578,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the network.",
 				MarkdownDescription: "The name of the network.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"nat_outbound_ip_addresses": schema.ListNestedAttribute{
@@ -593,6 +597,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "The IP address pool.",
 							MarkdownDescription: "The IP address pool.",
+							Validators: []validator.List{
+								listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])-(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`, "")),
+							},
 						},
 						"mode": schema.StringAttribute{
 							Optional:            true,
@@ -684,7 +691,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The VLAN ID for the network.",
 				MarkdownDescription: "The VLAN ID for the network.",
 				Validators: []validator.Int64{
-					int64validator.Between(1, 4094),
+					int64validator.Between(unifi.NetworkVLANMin, unifi.NetworkVLANMax),
 				},
 			},
 		},

@@ -6,6 +6,8 @@ package resource_dpi_group
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -24,6 +26,9 @@ func DpiGroupResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The IDs of the DPI application rules the group contains.",
 				MarkdownDescription: "The IDs of the DPI application rules the group contains.",
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(controllerregex.Matches(`[\d\w-]+`, "")),
+				},
 			},
 			"enabled": schema.BoolAttribute{
 				Optional:            true,
@@ -45,7 +50,7 @@ func DpiGroupResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the DPI group.",
 				MarkdownDescription: "The name of the DPI group.",
 				Validators: []validator.String{
-					controllerregex.Matches(`.{1,128}`, ""),
+					stringvalidator.LengthBetween(1, 128),
 				},
 			},
 			"site": schema.StringAttribute{

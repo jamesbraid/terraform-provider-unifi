@@ -4,6 +4,7 @@
   "surface_name": "unifi_hotspot_op",
   "resource": "unifi_hotspot_op",
   "collection": "hotspotop",
+  "sdk_struct": "HotspotOp",
   "fields": [
     {
       "structural_name": "_id",

@@ -4,6 +4,7 @@
   "surface_name": "unifi_device",
   "resource": "unifi_device",
   "collection": "device",
+  "sdk_struct": "Device",
   "fields": [
     {
       "structural_name": "adopted",
