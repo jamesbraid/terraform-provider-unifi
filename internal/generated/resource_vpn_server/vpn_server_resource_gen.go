@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -167,7 +168,7 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Port for the OpenVPN server to listen on.",
 						MarkdownDescription: "Port for the OpenVPN server to listen on.",
 						Validators: []validator.Int64{
-							int64validator.Between(1, 65535),
+							int64validator.Between(unifi.NetworkLocalPortMin, unifi.NetworkLocalPortMax),
 						},
 						Default: int64default.StaticInt64(1194),
 					},
@@ -272,7 +273,7 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "UDP port for the WireGuard server to listen on.",
 						MarkdownDescription: "UDP port for the WireGuard server to listen on.",
 						Validators: []validator.Int64{
-							int64validator.Between(1, 65535),
+							int64validator.Between(unifi.NetworkLocalPortMin, unifi.NetworkLocalPortMax),
 						},
 						Default: int64default.StaticInt64(51820),
 					},
