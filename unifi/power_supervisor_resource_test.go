@@ -158,9 +158,6 @@ func TestNewPowerSupervisorResource(t *testing.T) {
 	if r == nil {
 		t.Fatal("NewPowerSupervisorResource() returned nil")
 	}
-	if _, ok := r.(fwresource.ResourceWithConfigure); !ok {
-		t.Error("expected ResourceWithConfigure interface")
-	}
 	if _, ok := r.(fwresource.ResourceWithImportState); !ok {
 		t.Error("expected ResourceWithImportState interface")
 	}

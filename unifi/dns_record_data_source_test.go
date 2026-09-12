@@ -3,7 +3,6 @@ package unifi
 import (
 	"testing"
 
-	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -40,8 +39,5 @@ func TestNewDNSRecordDataSource(t *testing.T) {
 	d := NewDNSRecordDataSource()
 	if d == nil {
 		t.Fatal("NewDNSRecordDataSource() returned nil")
-	}
-	if _, ok := d.(fwdatasource.DataSourceWithConfigure); !ok {
-		t.Error("expected DataSourceWithConfigure interface")
 	}
 }

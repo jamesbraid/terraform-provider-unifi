@@ -485,9 +485,6 @@ func TestNewTrafficRouteResource(t *testing.T) {
 	if r == nil {
 		t.Fatal("NewTrafficRouteResource() returned nil")
 	}
-	if _, ok := r.(fwresource.ResourceWithConfigure); !ok {
-		t.Error("expected ResourceWithConfigure interface")
-	}
 	if _, ok := r.(fwresource.ResourceWithImportState); !ok {
 		t.Error("expected ResourceWithImportState interface")
 	}

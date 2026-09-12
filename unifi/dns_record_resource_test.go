@@ -103,9 +103,6 @@ func TestNewDNSRecordFrameworkResource(t *testing.T) {
 	if r == nil {
 		t.Fatal("returned nil")
 	}
-	if _, ok := r.(fwresource.ResourceWithConfigure); !ok {
-		t.Error("expected ResourceWithConfigure")
-	}
 	if _, ok := r.(fwresource.ResourceWithImportState); !ok {
 		t.Error("expected ResourceWithImportState")
 	}

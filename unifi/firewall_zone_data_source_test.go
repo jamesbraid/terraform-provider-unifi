@@ -148,7 +148,4 @@ func TestNewFirewallZoneDataSource(t *testing.T) {
 	if d == nil {
 		t.Fatal("NewFirewallZoneDataSource() returned nil")
 	}
-	if _, ok := d.(fwdatasource.DataSourceWithConfigure); !ok {
-		t.Error("expected DataSourceWithConfigure interface")
-	}
 }

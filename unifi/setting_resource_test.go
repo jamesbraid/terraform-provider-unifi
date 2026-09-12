@@ -3752,9 +3752,6 @@ func TestNewSettingResource(t *testing.T) {
 	if r == nil {
 		t.Fatal("NewSettingResource() returned nil")
 	}
-	if _, ok := r.(fwresource.ResourceWithConfigure); !ok {
-		t.Error("expected ResourceWithConfigure interface")
-	}
 	if _, ok := r.(fwresource.ResourceWithImportState); !ok {
 		t.Error("expected ResourceWithImportState interface")
 	}

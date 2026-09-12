@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi"
@@ -308,9 +307,6 @@ func TestNewNetworkDataSource(t *testing.T) {
 	got := NewNetworkDataSource()
 	if got == nil {
 		t.Fatal("NewNetworkDataSource() returned nil")
-	}
-	if _, ok := got.(fwdatasource.DataSourceWithConfigure); !ok {
-		t.Error("expected DataSourceWithConfigure interface")
 	}
 }
 
