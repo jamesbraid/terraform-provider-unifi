@@ -143,6 +143,11 @@ var validatorOpinions = map[string]map[string]string{
 		// pins the served range to those constants.
 		"vlan": "claim member; bounds are the SDK constants by reference",
 	},
+	"vpn_client": {
+		// The claim releases the whole peer object; its port carries the
+		// wireguard_client_peer_port bounds as SDK constants by reference.
+		"wireguard.peer": "claim member; bounds are the SDK constants by reference",
+	},
 	"vpn_server": {
 		// All three claim members restate facts derivation cannot reach.
 		"openvpn.port":   "claim member; bounds are the SDK constants by reference",
@@ -190,7 +195,27 @@ type vaPolicyMember struct {
 	ElementMember    string            `json:"element_member"`
 	Invented         string            `json:"invented"`
 	Attribute        vaPolicyAttribute `json:"attribute"`
+	RawAttribute     json.RawMessage   `json:"-"`
 	Fields           []vaPolicyMember  `json:"fields"`
+}
+
+// UnmarshalJSON keeps the raw attribute bytes beside the decoded slice so
+// deepHandDefinitions can walk hand-authored nested attributes.
+func (m *vaPolicyMember) UnmarshalJSON(data []byte) error {
+	type plain vaPolicyMember
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var envelope struct {
+		Attribute json.RawMessage `json:"attribute"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return err
+	}
+	decoded.RawAttribute = envelope.Attribute
+	*m = vaPolicyMember(decoded)
+	return nil
 }
 
 type vaPolicyAttribute struct {
@@ -208,6 +233,37 @@ func (a vaPolicyAttribute) elementKind() string {
 		return kind
 	}
 	return ""
+}
+
+// deepHandDefinitions collects every schema_definition anywhere inside a
+// raw attribute document. A claim-released object carries its nested
+// attributes hand-authored inside the attribute JSON itself -- not as
+// policy member fields -- so the flat reader above cannot see a validator
+// on, say, wireguard.peer's port; this walk can, and the per-kind marker
+// match keeps the wider net precise.
+func deepHandDefinitions(raw json.RawMessage) []string {
+	var definitions []string
+	var walk func(node any)
+	walk = func(node any) {
+		switch value := node.(type) {
+		case map[string]any:
+			if definition, ok := value["schema_definition"].(string); ok {
+				definitions = append(definitions, definition)
+			}
+			for _, child := range value {
+				walk(child)
+			}
+		case []any:
+			for _, child := range value {
+				walk(child)
+			}
+		}
+	}
+	var decoded any
+	if err := json.Unmarshal(raw, &decoded); err == nil {
+		walk(decoded)
+	}
+	return definitions
 }
 
 // handDefinitions decodes the attribute's hand validators. The "none"
@@ -395,6 +451,14 @@ type vaSurface struct {
 // invented members produce no site (their handling is the ledgers');
 // collapsed elements resolve to the element member's own field.
 func collectSites(surface *vaSurface, members []vaPolicyMember, context reflect.Type, basePath string, parentServed, topLevel bool) {
+	collectSitesReleased(surface, members, context, basePath, parentServed, topLevel, nil)
+}
+
+// collectSitesReleased is collectSites with the released-claim wires a
+// structural-less subtree inherits: a claim that releases an object
+// carries its constrained wires onto every member below it, so a hand
+// validator on a nested claim member is still held against them.
+func collectSitesReleased(surface *vaSurface, members []vaPolicyMember, context reflect.Type, basePath string, parentServed, topLevel bool, inherited []releasedClaimWire) {
 	for _, member := range members {
 		if member.Invented != "" {
 			continue
@@ -411,24 +475,30 @@ func collectSites(surface *vaSurface, members []vaPolicyMember, context reflect.
 			// A claim-released member: policy supplies its type and the
 			// claim its mapping. Derivation never reaches it, but its hand
 			// validators are still held against the constrained wires the
-			// claim consumes -- one pseudo-site per such wire.
-			hand, suppressed := member.Attribute.handDefinitions()
-			for _, released := range surface.claimReleased[path] {
+			// claim consumes -- one pseudo-site per such wire. A claim that
+			// releases an object carries its wires onto the members below.
+			released := surface.claimReleased[path]
+			if released == nil {
+				released = inherited
+			}
+			_, suppressed := member.Attribute.handDefinitions()
+			hand := deepHandDefinitions(member.RawAttribute)
+			for _, wire := range released {
 				surface.sites = append(surface.sites, constraintSite{
 					path:          path,
-					wire:          released.wire,
+					wire:          wire.wire,
 					goType:        surface.lead.Name(),
 					terraformType: member.TerraformType,
 					elementType:   member.Attribute.elementKind(),
 					goDuration:    strings.Contains(member.Attribute.CustomType.Type, "GoDurationType"),
 					suppressed:    suppressed,
 					claimConsumed: true,
-					constraint:    released.constraint,
+					constraint:    wire.constraint,
 					hasConstraint: true,
 					hand:          hand,
 				})
 			}
-			collectSites(surface, member.Fields, context, path, served, false)
+			collectSitesReleased(surface, member.Fields, context, path, served, false, released)
 			continue
 		}
 		claimConsumed := topLevel && surface.claimed[member.StructuralName]
@@ -460,7 +530,7 @@ func collectSites(surface *vaSurface, members []vaPolicyMember, context reflect.
 		}
 		switch kind {
 		case "object", "array<object>":
-			collectSites(surface, member.Fields, nested, path, served, false)
+			collectSitesReleased(surface, member.Fields, nested, path, served, false, nil)
 			continue
 		case "":
 			surface.unresolved = append(surface.unresolved,
@@ -602,6 +672,22 @@ func constraintKinds(site constraintSite) []string {
 		return nil
 	}
 	constraint := site.constraint
+	if site.claimConsumed {
+		// A claim releases whatever shape its hand mapping chose -- often
+		// an object over scalar wires -- so the served type says nothing
+		// about the fact's kind; read the constraint's own parsed shape.
+		switch {
+		case len(constraint.Values) > 0, len(constraint.Int64Values) > 0:
+			return []string{"OneOf"}
+		case constraint.HasBounds:
+			return []string{"Between"}
+		case constraint.HasLength:
+			return []string{"Length"}
+		case constraint.Pattern != "":
+			return []string{"RegexMatches"}
+		}
+		return nil
+	}
 	elementOrSelf := site.terraformType
 	if elementOrSelf == "list" || elementOrSelf == "set" {
 		elementOrSelf = site.elementType

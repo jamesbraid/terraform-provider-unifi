@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -131,7 +132,7 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 								Description:         "WireGuard peer endpoint port.",
 								MarkdownDescription: "WireGuard peer endpoint port.",
 								Validators: []validator.Int64{
-									int64validator.Between(1, 65535),
+									int64validator.Between(unifi.NetworkWireguardClientPeerPortMin, unifi.NetworkWireguardClientPeerPortMax),
 								},
 							},
 							"public_key": schema.StringAttribute{
