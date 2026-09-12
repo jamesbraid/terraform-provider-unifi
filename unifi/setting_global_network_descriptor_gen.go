@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -41,5 +42,53 @@ func settingGlobalNetworkGenFields() []resourcekit.Field[settingGlobalNetworkMod
 			SDK:   func(s *settings.GlobalNetwork) *string { return &s.DefaultSecurityPosture },
 			Elide: resourcekit.KeepZero,
 		},
+	}
+}
+
+// globalNetworkKitSpec is the global_network section's Spec: the generated field
+// list over settings.GlobalNetwork, with no hook and no conditional write.
+func globalNetworkKitSpec() resourcekit.Spec[settingGlobalNetworkModel, settings.GlobalNetwork] {
+	return resourcekit.Spec[settingGlobalNetworkModel, settings.GlobalNetwork]{
+		TypeName: "setting_global_network",
+		Subject:  "Global Network Setting",
+		New:      func() *settings.GlobalNetwork { return &settings.GlobalNetwork{} },
+		Fields:   settingGlobalNetworkGenFields(),
+	}
+}
+
+// globalNetworkKitBackend binds globalNetworkKitSpec to a client: Read is
+// GetSetting[*settings.GlobalNetwork], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func globalNetworkKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.GlobalNetwork] {
+	return resourcekit.Backend[settings.GlobalNetwork]{
+		Read: func(ctx context.Context, site, _ string) (*settings.GlobalNetwork, error) {
+			_, doc, err := ui.GetSetting[*settings.GlobalNetwork](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.GlobalNetwork, fields ...string,
+		) (*settings.GlobalNetwork, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// globalNetworkKitSection builds the global_network entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func globalNetworkKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := globalNetworkKitSpec()
+	spec.Backend = globalNetworkKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingGlobalNetworkModel, settings.GlobalNetwork]{
+		SectionName: "global_network",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.GlobalNetwork },
+		Set:         func(m *settingResourceModel, o types.Object) { m.GlobalNetwork = o },
+		AttrTypes:   globalNetworkAttrTypes,
+		Spec:        spec,
 	}
 }

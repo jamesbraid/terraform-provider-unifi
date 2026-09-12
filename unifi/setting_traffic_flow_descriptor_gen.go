@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -61,5 +62,53 @@ func settingTrafficFlowGenFields() []resourcekit.Field[settingTrafficFlowModel, 
 			Model: func(m *settingTrafficFlowModel) *types.Bool { return &m.UnifiServicesEnabled },
 			SDK:   func(s *settings.TrafficFlow) *bool { return &s.UnifiServicesEnabled },
 		},
+	}
+}
+
+// trafficFlowKitSpec is the traffic_flow section's Spec: the generated field
+// list over settings.TrafficFlow, with no hook and no conditional write.
+func trafficFlowKitSpec() resourcekit.Spec[settingTrafficFlowModel, settings.TrafficFlow] {
+	return resourcekit.Spec[settingTrafficFlowModel, settings.TrafficFlow]{
+		TypeName: "setting_traffic_flow",
+		Subject:  "Traffic Flow Setting",
+		New:      func() *settings.TrafficFlow { return &settings.TrafficFlow{} },
+		Fields:   settingTrafficFlowGenFields(),
+	}
+}
+
+// trafficFlowKitBackend binds trafficFlowKitSpec to a client: Read is
+// GetSetting[*settings.TrafficFlow], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func trafficFlowKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.TrafficFlow] {
+	return resourcekit.Backend[settings.TrafficFlow]{
+		Read: func(ctx context.Context, site, _ string) (*settings.TrafficFlow, error) {
+			_, doc, err := ui.GetSetting[*settings.TrafficFlow](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.TrafficFlow, fields ...string,
+		) (*settings.TrafficFlow, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// trafficFlowKitSection builds the traffic_flow entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func trafficFlowKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := trafficFlowKitSpec()
+	spec.Backend = trafficFlowKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingTrafficFlowModel, settings.TrafficFlow]{
+		SectionName: "traffic_flow",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.TrafficFlow },
+		Set:         func(m *settingResourceModel, o types.Object) { m.TrafficFlow = o },
+		AttrTypes:   trafficFlowAttrTypes,
+		Spec:        spec,
 	}
 }

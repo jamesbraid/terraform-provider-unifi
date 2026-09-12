@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -40,5 +41,53 @@ func settingMagicSiteToSiteVpnGenFields() []resourcekit.Field[settingMagicSiteTo
 			Model: func(m *settingMagicSiteToSiteVpnModel) *types.Bool { return &m.Enabled },
 			SDK:   func(s *settings.MagicSiteToSiteVpn) *bool { return &s.Enabled },
 		},
+	}
+}
+
+// magicSiteToSiteVpnKitSpec is the magic_site_to_site_vpn section's Spec: the generated field
+// list over settings.MagicSiteToSiteVpn, with no hook and no conditional write.
+func magicSiteToSiteVpnKitSpec() resourcekit.Spec[settingMagicSiteToSiteVpnModel, settings.MagicSiteToSiteVpn] {
+	return resourcekit.Spec[settingMagicSiteToSiteVpnModel, settings.MagicSiteToSiteVpn]{
+		TypeName: "setting_magic_site_to_site_vpn",
+		Subject:  "Magic Site-to-Site VPN Setting",
+		New:      func() *settings.MagicSiteToSiteVpn { return &settings.MagicSiteToSiteVpn{} },
+		Fields:   settingMagicSiteToSiteVpnGenFields(),
+	}
+}
+
+// magicSiteToSiteVpnKitBackend binds magicSiteToSiteVpnKitSpec to a client: Read is
+// GetSetting[*settings.MagicSiteToSiteVpn], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func magicSiteToSiteVpnKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.MagicSiteToSiteVpn] {
+	return resourcekit.Backend[settings.MagicSiteToSiteVpn]{
+		Read: func(ctx context.Context, site, _ string) (*settings.MagicSiteToSiteVpn, error) {
+			_, doc, err := ui.GetSetting[*settings.MagicSiteToSiteVpn](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.MagicSiteToSiteVpn, fields ...string,
+		) (*settings.MagicSiteToSiteVpn, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// magicSiteToSiteVpnKitSection builds the magic_site_to_site_vpn entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func magicSiteToSiteVpnKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := magicSiteToSiteVpnKitSpec()
+	spec.Backend = magicSiteToSiteVpnKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingMagicSiteToSiteVpnModel, settings.MagicSiteToSiteVpn]{
+		SectionName: "magic_site_to_site_vpn",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.MagicSiteToSiteVpn },
+		Set:         func(m *settingResourceModel, o types.Object) { m.MagicSiteToSiteVpn = o },
+		AttrTypes:   magicSiteToSiteVpnAttrTypes,
+		Spec:        spec,
 	}
 }

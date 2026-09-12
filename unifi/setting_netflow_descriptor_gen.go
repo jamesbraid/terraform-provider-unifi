@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -123,5 +124,53 @@ func settingNetflowGenFields() []resourcekit.Field[settingNetflowModel, settings
 			Elide:    resourcekit.KeepZero,
 			OmitZero: true,
 		},
+	}
+}
+
+// netflowKitSpec is the netflow section's Spec: the generated field
+// list over settings.Netflow, with no hook and no conditional write.
+func netflowKitSpec() resourcekit.Spec[settingNetflowModel, settings.Netflow] {
+	return resourcekit.Spec[settingNetflowModel, settings.Netflow]{
+		TypeName: "setting_netflow",
+		Subject:  "NetFlow Setting",
+		New:      func() *settings.Netflow { return &settings.Netflow{} },
+		Fields:   settingNetflowGenFields(),
+	}
+}
+
+// netflowKitBackend binds netflowKitSpec to a client: Read is
+// GetSetting[*settings.Netflow], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func netflowKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Netflow] {
+	return resourcekit.Backend[settings.Netflow]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Netflow, error) {
+			_, doc, err := ui.GetSetting[*settings.Netflow](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Netflow, fields ...string,
+		) (*settings.Netflow, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// netflowKitSection builds the netflow entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func netflowKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := netflowKitSpec()
+	spec.Backend = netflowKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingNetflowModel, settings.Netflow]{
+		SectionName: "netflow",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Netflow },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Netflow = o },
+		AttrTypes:   netflowAttrTypes,
+		Spec:        spec,
 	}
 }

@@ -379,6 +379,11 @@ func loadMapping(t *testing.T, surface string) []mappingField {
 // files are parsed first -- model tags and every GenFields function -- so the
 // hand Spec's Fields expression can be resolved to the same flat list the
 // runtime composes, and every assertion below runs over it unchanged.
+//
+// Spec literals are then read from both halves. A surface with no judgment at
+// all -- a plain-mirror settings section -- keeps no hand file, and its Spec
+// is emitted; reading only the hand files would drop it from every check
+// below without failing one of them.
 func loadDescriptors(t *testing.T) map[string]descriptor {
 	t.Helper()
 	paths, err := filepath.Glob("*_descriptor.go")
@@ -423,7 +428,7 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 		}
 	}
 	out := map[string]descriptor{}
-	for _, path := range paths {
+	for _, path := range append(append([]string{}, paths...), genPaths...) {
 		fset := token.NewFileSet()
 		file, err := parser.ParseFile(fset, path, nil, 0)
 		if err != nil {

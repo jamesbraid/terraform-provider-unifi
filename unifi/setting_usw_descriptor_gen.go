@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -40,5 +41,53 @@ func settingUswGenFields() []resourcekit.Field[settingUswModel, settings.Usw] {
 			Model: func(m *settingUswModel) *types.Bool { return &m.DHCPSnoop },
 			SDK:   func(s *settings.Usw) *bool { return &s.DHCPSnoop },
 		},
+	}
+}
+
+// uswKitSpec is the usw section's Spec: the generated field
+// list over settings.Usw, with no hook and no conditional write.
+func uswKitSpec() resourcekit.Spec[settingUswModel, settings.Usw] {
+	return resourcekit.Spec[settingUswModel, settings.Usw]{
+		TypeName: "setting_usw",
+		Subject:  "USW Setting",
+		New:      func() *settings.Usw { return &settings.Usw{} },
+		Fields:   settingUswGenFields(),
+	}
+}
+
+// uswKitBackend binds uswKitSpec to a client: Read is
+// GetSetting[*settings.Usw], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func uswKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Usw] {
+	return resourcekit.Backend[settings.Usw]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Usw, error) {
+			_, doc, err := ui.GetSetting[*settings.Usw](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Usw, fields ...string,
+		) (*settings.Usw, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// uswKitSection builds the usw entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func uswKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := uswKitSpec()
+	spec.Backend = uswKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingUswModel, settings.Usw]{
+		SectionName: "usw",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Usw },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Usw = o },
+		AttrTypes:   uswAttrTypes,
+		Spec:        spec,
 	}
 }

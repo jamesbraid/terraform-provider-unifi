@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -41,5 +42,53 @@ func settingCountryGenFields() []resourcekit.Field[settingCountryModel, settings
 			SDK:   func(s *settings.Country) **int64 { return &s.Code },
 			Elide: resourcekit.KeepZero,
 		},
+	}
+}
+
+// countryKitSpec is the country section's Spec: the generated field
+// list over settings.Country, with no hook and no conditional write.
+func countryKitSpec() resourcekit.Spec[settingCountryModel, settings.Country] {
+	return resourcekit.Spec[settingCountryModel, settings.Country]{
+		TypeName: "setting_country",
+		Subject:  "Country Setting",
+		New:      func() *settings.Country { return &settings.Country{} },
+		Fields:   settingCountryGenFields(),
+	}
+}
+
+// countryKitBackend binds countryKitSpec to a client: Read is
+// GetSetting[*settings.Country], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func countryKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Country] {
+	return resourcekit.Backend[settings.Country]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Country, error) {
+			_, doc, err := ui.GetSetting[*settings.Country](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Country, fields ...string,
+		) (*settings.Country, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// countryKitSection builds the country entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func countryKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := countryKitSpec()
+	spec.Backend = countryKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingCountryModel, settings.Country]{
+		SectionName: "country",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Country },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Country = o },
+		AttrTypes:   countryAttrTypes,
+		Spec:        spec,
 	}
 }

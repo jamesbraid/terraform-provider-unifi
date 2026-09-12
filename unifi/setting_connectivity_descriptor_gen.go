@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -70,5 +71,53 @@ func settingConnectivityGenFields() []resourcekit.Field[settingConnectivityModel
 			SDK:   func(s *settings.Connectivity) *string { return &s.UplinkType },
 			Elide: resourcekit.KeepZero,
 		},
+	}
+}
+
+// connectivityKitSpec is the connectivity section's Spec: the generated field
+// list over settings.Connectivity, with no hook and no conditional write.
+func connectivityKitSpec() resourcekit.Spec[settingConnectivityModel, settings.Connectivity] {
+	return resourcekit.Spec[settingConnectivityModel, settings.Connectivity]{
+		TypeName: "setting_connectivity",
+		Subject:  "Connectivity Setting",
+		New:      func() *settings.Connectivity { return &settings.Connectivity{} },
+		Fields:   settingConnectivityGenFields(),
+	}
+}
+
+// connectivityKitBackend binds connectivityKitSpec to a client: Read is
+// GetSetting[*settings.Connectivity], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func connectivityKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Connectivity] {
+	return resourcekit.Backend[settings.Connectivity]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Connectivity, error) {
+			_, doc, err := ui.GetSetting[*settings.Connectivity](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Connectivity, fields ...string,
+		) (*settings.Connectivity, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// connectivityKitSection builds the connectivity entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func connectivityKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := connectivityKitSpec()
+	spec.Backend = connectivityKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingConnectivityModel, settings.Connectivity]{
+		SectionName: "connectivity",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Connectivity },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Connectivity = o },
+		AttrTypes:   connectivityAttrTypes,
+		Spec:        spec,
 	}
 }

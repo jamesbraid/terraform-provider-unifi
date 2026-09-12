@@ -62,6 +62,15 @@ type surface struct {
 	// for the same reason one nesting level down (vpn_client's wireguard
 	// object gains private_key_wo at serve time).
 	handNested bool
+	// mirror emits the whole descriptor -- Spec, Backend, Section -- for a
+	// settings section that reads the document, writes back the wires the
+	// plan named, and does nothing else. A section with a hook, a sibling
+	// document or a conditional write is not a mirror.
+	mirror bool
+	// subject names the surface in diagnostics ("NetFlow Setting"). The one
+	// token no artifact spells: the schema carries the wire name, not the
+	// capitalisation a practitioner reads in an error.
+	subject string
 }
 
 func (s surface) built(ctx context.Context) schema.Schema {
@@ -106,39 +115,39 @@ var surfaces = []surface{
 	{name: "hotspot_op", schema: resource_hotspot_op.HotspotOpResourceSchema},
 	{name: "radius_user", schema: resource_radius_user.RadiusUserResourceSchema},
 	{name: "schedule_task", schema: resource_schedule_task.ScheduleTaskResourceSchema},
-	{name: "setting_auto_speedtest", section: "auto_speedtest"},
+	{name: "setting_auto_speedtest", section: "auto_speedtest", mirror: true, subject: "Auto Speedtest Setting"},
 	{name: "setting_dashboard", section: "dashboard"},
 	{name: "setting_doh", section: "doh"},
 	{name: "setting_ether_lighting", section: "ether_lighting"},
 	{name: "setting_global_switch", section: "global_switch"},
-	{name: "setting_igmp_snooping", section: "igmp_snooping"},
+	{name: "setting_igmp_snooping", section: "igmp_snooping", mirror: true, subject: "IGMP Snooping Setting"},
 	{name: "setting_ips", section: "ips"},
-	{name: "setting_ipsec", section: "ipsec"},
+	{name: "setting_ipsec", section: "ipsec", mirror: true, subject: "IPsec Setting"},
 	{name: "setting_mdns", section: "mdns"},
 	{name: "setting_usg", section: "usg"},
-	{name: "setting_connectivity", section: "connectivity"},
-	{name: "setting_country", section: "country"},
-	{name: "setting_device_supervision", section: "device_supervision"},
-	{name: "setting_dpi", section: "dpi"},
-	{name: "setting_global_ap", section: "global_ap"},
-	{name: "setting_global_nat", section: "global_nat"},
-	{name: "setting_global_network", section: "global_network"},
+	{name: "setting_connectivity", section: "connectivity", mirror: true, subject: "Connectivity Setting"},
+	{name: "setting_country", section: "country", mirror: true, subject: "Country Setting"},
+	{name: "setting_device_supervision", section: "device_supervision", mirror: true, subject: "Device Supervision Setting"},
+	{name: "setting_dpi", section: "dpi", mirror: true, subject: "DPI Setting"},
+	{name: "setting_global_ap", section: "global_ap", mirror: true, subject: "Global AP Setting"},
+	{name: "setting_global_nat", section: "global_nat", mirror: true, subject: "Global NAT Setting"},
+	{name: "setting_global_network", section: "global_network", mirror: true, subject: "Global Network Setting"},
 	{name: "setting_guest_access", section: "guest_access"},
-	{name: "setting_lcm", section: "lcm"},
-	{name: "setting_locale", section: "locale"},
-	{name: "setting_magic_site_to_site_vpn", section: "magic_site_to_site_vpn"},
+	{name: "setting_lcm", section: "lcm", mirror: true, subject: "LCM Setting"},
+	{name: "setting_locale", section: "locale", mirror: true, subject: "Locale Setting"},
+	{name: "setting_magic_site_to_site_vpn", section: "magic_site_to_site_vpn", mirror: true, subject: "Magic Site-to-Site VPN Setting"},
 	{name: "setting_mgmt", section: "mgmt"},
-	{name: "setting_netflow", section: "netflow"},
-	{name: "setting_network_optimization", section: "network_optimization"},
-	{name: "setting_ntp", section: "ntp"},
+	{name: "setting_netflow", section: "netflow", mirror: true, subject: "NetFlow Setting"},
+	{name: "setting_network_optimization", section: "network_optimization", mirror: true, subject: "Network Optimization Setting"},
+	{name: "setting_ntp", section: "ntp", mirror: true, subject: "NTP Setting"},
 	{name: "setting_radio_ai", section: "radio_ai"},
 	{name: "setting_radius", section: "radius"},
 	{name: "setting_snmp", section: "snmp"},
-	{name: "setting_ssl_inspection", section: "ssl_inspection"},
-	{name: "setting_syslog", section: "syslog"},
-	{name: "setting_teleport", section: "teleport"},
-	{name: "setting_traffic_flow", section: "traffic_flow"},
-	{name: "setting_usw", section: "usw"},
+	{name: "setting_ssl_inspection", section: "ssl_inspection", mirror: true, subject: "SSL Inspection Setting"},
+	{name: "setting_syslog", section: "syslog", mirror: true, subject: "Syslog Setting"},
+	{name: "setting_teleport", section: "teleport", mirror: true, subject: "Teleport Setting"},
+	{name: "setting_traffic_flow", section: "traffic_flow", mirror: true, subject: "Traffic Flow Setting"},
+	{name: "setting_usw", section: "usw", mirror: true, subject: "USW Setting"},
 	{name: "wireguard_peer", schema: resource_wireguard_peer.WireguardPeerResourceSchema},
 	{name: "wlan_group", schema: resource_wlan_group.WlanGroupResourceSchema},
 }

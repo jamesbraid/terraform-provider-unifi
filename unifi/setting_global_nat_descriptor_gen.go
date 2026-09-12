@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -49,5 +50,53 @@ func settingGlobalNatGenFields() []resourcekit.Field[settingGlobalNatModel, sett
 			SDK:   func(s *settings.GlobalNat) *string { return &s.Mode },
 			Elide: resourcekit.NullZero,
 		},
+	}
+}
+
+// globalNatKitSpec is the global_nat section's Spec: the generated field
+// list over settings.GlobalNat, with no hook and no conditional write.
+func globalNatKitSpec() resourcekit.Spec[settingGlobalNatModel, settings.GlobalNat] {
+	return resourcekit.Spec[settingGlobalNatModel, settings.GlobalNat]{
+		TypeName: "setting_global_nat",
+		Subject:  "Global NAT Setting",
+		New:      func() *settings.GlobalNat { return &settings.GlobalNat{} },
+		Fields:   settingGlobalNatGenFields(),
+	}
+}
+
+// globalNatKitBackend binds globalNatKitSpec to a client: Read is
+// GetSetting[*settings.GlobalNat], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func globalNatKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.GlobalNat] {
+	return resourcekit.Backend[settings.GlobalNat]{
+		Read: func(ctx context.Context, site, _ string) (*settings.GlobalNat, error) {
+			_, doc, err := ui.GetSetting[*settings.GlobalNat](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.GlobalNat, fields ...string,
+		) (*settings.GlobalNat, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// globalNatKitSection builds the global_nat entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func globalNatKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := globalNatKitSpec()
+	spec.Backend = globalNatKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingGlobalNatModel, settings.GlobalNat]{
+		SectionName: "global_nat",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.GlobalNat },
+		Set:         func(m *settingResourceModel, o types.Object) { m.GlobalNat = o },
+		AttrTypes:   globalNatAttrTypes,
+		Spec:        spec,
 	}
 }

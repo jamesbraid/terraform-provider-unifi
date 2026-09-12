@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -48,5 +49,53 @@ func settingTeleportGenFields() []resourcekit.Field[settingTeleportModel, settin
 			SDK:   func(s *settings.Teleport) *string { return &s.SubnetCidr },
 			Elide: resourcekit.KeepZero,
 		},
+	}
+}
+
+// teleportKitSpec is the teleport section's Spec: the generated field
+// list over settings.Teleport, with no hook and no conditional write.
+func teleportKitSpec() resourcekit.Spec[settingTeleportModel, settings.Teleport] {
+	return resourcekit.Spec[settingTeleportModel, settings.Teleport]{
+		TypeName: "setting_teleport",
+		Subject:  "Teleport Setting",
+		New:      func() *settings.Teleport { return &settings.Teleport{} },
+		Fields:   settingTeleportGenFields(),
+	}
+}
+
+// teleportKitBackend binds teleportKitSpec to a client: Read is
+// GetSetting[*settings.Teleport], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func teleportKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Teleport] {
+	return resourcekit.Backend[settings.Teleport]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Teleport, error) {
+			_, doc, err := ui.GetSetting[*settings.Teleport](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Teleport, fields ...string,
+		) (*settings.Teleport, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// teleportKitSection builds the teleport entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func teleportKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := teleportKitSpec()
+	spec.Backend = teleportKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingTeleportModel, settings.Teleport]{
+		SectionName: "teleport",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Teleport },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Teleport = o },
+		AttrTypes:   teleportAttrTypes,
+		Spec:        spec,
 	}
 }

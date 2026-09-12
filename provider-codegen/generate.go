@@ -272,8 +272,9 @@ package providercodegen
 // references to the generated value types, so running this first would break the build.
 //go:generate go run ../cmd/generated-value-strip ../internal/generated
 
-// The descriptor emitter writes the mechanical half of each kit descriptor
-// (unifi/*_descriptor_gen.go) from the mapping artifacts above, the
-// generated schemas and the SDK structs; the hand descriptors keep the
-// judgment half and lay it over the generated list with resourcekit.Override.
+// The descriptor emitter writes unifi/*_descriptor_gen.go from the mapping
+// artifacts above, the generated schemas and the SDK structs: the mechanical
+// half of each kit descriptor, and the whole of one whose every token the
+// artifacts determine. A hand descriptor exists only where a surface carries
+// judgment, and lays it over the generated list with resourcekit.Override.
 //go:generate go run ../cmd/descriptor-emitter -mappings generated -descriptors ../unifi

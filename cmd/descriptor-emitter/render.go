@@ -189,6 +189,12 @@ func render(
 	}
 	fmt.Fprintf(&b, "\t}\n}\n")
 
+	if s.mirror {
+		if err := renderMirrorSection(&b, s, modelName, sdkType, imports); err != nil {
+			return nil, err
+		}
+	}
+
 	// The import block is rendered last, once the body has declared every
 	// package it needs, then spliced ahead of the body.
 	var file bytes.Buffer

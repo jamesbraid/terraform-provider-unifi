@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -48,5 +49,53 @@ func settingIgmpSnoopingGenFields() []resourcekit.Field[settingIgmpSnoopingModel
 			SDK:   func(s *settings.IgmpSnooping) *[]string { return &s.NetworkIDs },
 			Elide: resourcekit.KeepZero,
 		},
+	}
+}
+
+// igmpSnoopingKitSpec is the igmp_snooping section's Spec: the generated field
+// list over settings.IgmpSnooping, with no hook and no conditional write.
+func igmpSnoopingKitSpec() resourcekit.Spec[settingIgmpSnoopingModel, settings.IgmpSnooping] {
+	return resourcekit.Spec[settingIgmpSnoopingModel, settings.IgmpSnooping]{
+		TypeName: "setting_igmp_snooping",
+		Subject:  "IGMP Snooping Setting",
+		New:      func() *settings.IgmpSnooping { return &settings.IgmpSnooping{} },
+		Fields:   settingIgmpSnoopingGenFields(),
+	}
+}
+
+// igmpSnoopingKitBackend binds igmpSnoopingKitSpec to a client: Read is
+// GetSetting[*settings.IgmpSnooping], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func igmpSnoopingKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.IgmpSnooping] {
+	return resourcekit.Backend[settings.IgmpSnooping]{
+		Read: func(ctx context.Context, site, _ string) (*settings.IgmpSnooping, error) {
+			_, doc, err := ui.GetSetting[*settings.IgmpSnooping](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.IgmpSnooping, fields ...string,
+		) (*settings.IgmpSnooping, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// igmpSnoopingKitSection builds the igmp_snooping entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func igmpSnoopingKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := igmpSnoopingKitSpec()
+	spec.Backend = igmpSnoopingKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingIgmpSnoopingModel, settings.IgmpSnooping]{
+		SectionName: "igmp_snooping",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.IgmpSnooping },
+		Set:         func(m *settingResourceModel, o types.Object) { m.IgmpSnooping = o },
+		AttrTypes:   igmpSnoopingAttrTypes,
+		Spec:        spec,
 	}
 }

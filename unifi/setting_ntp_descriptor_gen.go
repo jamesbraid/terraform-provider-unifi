@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -73,5 +74,53 @@ func settingNtpGenFields() []resourcekit.Field[settingNtpModel, settings.Ntp] {
 			SDK:   func(s *settings.Ntp) *string { return &s.SettingPreference },
 			Elide: resourcekit.NullZero,
 		},
+	}
+}
+
+// ntpKitSpec is the ntp section's Spec: the generated field
+// list over settings.Ntp, with no hook and no conditional write.
+func ntpKitSpec() resourcekit.Spec[settingNtpModel, settings.Ntp] {
+	return resourcekit.Spec[settingNtpModel, settings.Ntp]{
+		TypeName: "setting_ntp",
+		Subject:  "NTP Setting",
+		New:      func() *settings.Ntp { return &settings.Ntp{} },
+		Fields:   settingNtpGenFields(),
+	}
+}
+
+// ntpKitBackend binds ntpKitSpec to a client: Read is
+// GetSetting[*settings.Ntp], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func ntpKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Ntp] {
+	return resourcekit.Backend[settings.Ntp]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Ntp, error) {
+			_, doc, err := ui.GetSetting[*settings.Ntp](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Ntp, fields ...string,
+		) (*settings.Ntp, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// ntpKitSection builds the ntp entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func ntpKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := ntpKitSpec()
+	spec.Backend = ntpKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingNtpModel, settings.Ntp]{
+		SectionName: "ntp",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Ntp },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Ntp = o },
+		AttrTypes:   ntpAttrTypes,
+		Spec:        spec,
 	}
 }
