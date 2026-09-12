@@ -2725,7 +2725,8 @@ resource "unifi_setting" "test" {
 // this dispatch did not have the budget to fully characterize which
 // combination of fields avoids it, so channels_na's wire mapping is
 // covered by the unit/conformance tests instead
-// (TestRadioAiKitSpecConformance, TestInt64ListFieldRoundTrips) and by
+// (TestEverySettingSectionPassesTheConformanceInstruments/radio_ai,
+// TestInt64ListFieldRoundTrips) and by
 // TestRadioAiAfterReceiveNullsEveryUnconfiguredAttribute's direct proof
 // that an UNCONFIGURED channels_na is genuinely nulled.
 func TestAccSettingResource_radioAi(t *testing.T) {
@@ -3823,7 +3824,8 @@ func TestSettingNtpServersUseStateForUnknown(t *testing.T) {
 // split is TestMgmtAfterReceive's AutoUpgrade (configured) and
 // WifimanEnabled (unconfigured) cases -- boolOrNull is one shared helper
 // across all eight bools, so a second field exercising the same branch adds
-// no coverage; and the wire name itself is TestMgmtKitSpecConformance's
+// no coverage; and the wire name itself is
+// TestEverySettingSectionPassesTheConformanceInstruments/mgmt's
 // WireNameProblems.
 
 // Test_settingResource_radiusModelToSetting and

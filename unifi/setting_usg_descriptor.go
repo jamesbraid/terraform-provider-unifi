@@ -41,8 +41,9 @@ package unifi
 // exist and must not be hand-authored. usgKitSpec's own MappedElsewhere
 // records the other half: those four wires are real, just carried by this
 // sibling document instead of a Fields entry on the primary. The geo Spec's
-// own fields are what TestUsgKitSpecConformance and the rest of this file's
-// own tests actually verify.
+// own fields are what
+// TestEverySettingSectionPassesTheConformanceInstruments/usg_geo and the
+// rest of this file's own tests actually verify.
 
 import (
 	"context"
