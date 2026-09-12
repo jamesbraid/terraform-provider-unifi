@@ -8,30 +8,12 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	resource_bgp "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_bgp"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// bgpPeerModel describes a single BGP peer in the peers list.
-type bgpPeerModel struct {
-	Name        types.String `tfsdk:"name"`
-	RemoteAS    types.Int64  `tfsdk:"remote_as"`
-	Description types.String `tfsdk:"description"`
-	Networks    types.List   `tfsdk:"networks"`
-}
-
-func (m bgpPeerModel) AttributeTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"name":        types.StringType,
-		"remote_as":   types.Int64Type,
-		"description": types.StringType,
-		"networks":    types.ListType{ElemType: types.StringType},
-	}
-}
 
 // frrConfigTemplate renders FRR config from the structured attributes.
 var frrConfigTemplate = template.Must(template.New("frr").Parse(strings.TrimSpace(`
@@ -110,7 +92,7 @@ type frrNeighborData struct {
 func renderFRRConfig(ctx context.Context, model *bgpKitModel) (string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	var peers []bgpPeerModel
+	var peers []bgpPeersModel
 	diags.Append(model.Peers.ElementsAs(ctx, &peers, false)...)
 	if diags.HasError() {
 		return "", diags

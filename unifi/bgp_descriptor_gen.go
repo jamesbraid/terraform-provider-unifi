@@ -4,6 +4,7 @@ package unifi
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -20,6 +21,20 @@ type bgpKitModel struct {
 	Peers          types.List     `tfsdk:"peers"`
 	RouterID       types.String   `tfsdk:"router_id"`
 	Timeouts       timeouts.Value `tfsdk:"timeouts"`
+}
+
+type bgpPeersModel struct {
+	Description types.String `tfsdk:"description"`
+	Name        types.String `tfsdk:"name"`
+	Networks    types.List   `tfsdk:"networks"`
+	RemoteAS    types.Int64  `tfsdk:"remote_as"`
+}
+
+var bgpPeersAttrTypes = map[string]attr.Type{
+	"description": types.StringType,
+	"name":        types.StringType,
+	"networks":    types.ListType{ElemType: types.StringType},
+	"remote_as":   types.Int64Type,
 }
 
 // bgpGenFields is every unifi_bgp attribute whose mapping the pipeline's

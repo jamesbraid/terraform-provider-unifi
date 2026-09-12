@@ -38,12 +38,18 @@ const (
 	goUnifiSettingsPackage = goUnifiPackage + "/settings"
 )
 
+// settingMappingPath locates setting.mapping.json, whose qualified names
+// resolve a section to its settings struct; set from -mappings in main.
+var settingMappingPath string
+
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("descriptor-emitter: ")
 	mappings := flag.String("mappings", "generated", "directory holding the *.mapping.json artifacts")
 	descriptors := flag.String("descriptors", "../unifi", "directory holding the hand descriptors; output lands beside them")
 	flag.Parse()
+
+	settingMappingPath = filepath.Join(*mappings, "setting.mapping.json")
 
 	sdk, err := sdkshape.Load(goUnifiPackage, goUnifiSettingsPackage)
 	if err != nil {

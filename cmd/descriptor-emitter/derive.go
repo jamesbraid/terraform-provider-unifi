@@ -9,11 +9,11 @@ import (
 	"go/token"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/sdkshape"
@@ -166,7 +166,7 @@ func deriveFields(
 	built schema.Schema,
 	doc *mapping,
 	members map[string]sdkshape.Member,
-	constraints map[string]ui.FieldConstraint,
+	patterns map[string]string,
 	hand handFacts,
 ) ([]genField, error) {
 	var out []genField
@@ -218,7 +218,7 @@ func deriveFields(
 			}
 		}
 		if kind == "Int64PtrField" {
-			omit, err := deriveOmitZero(constraints, f.StructuralName, attribute)
+			omit, err := deriveOmitZero(patterns, f.StructuralName, attribute)
 			if err != nil {
 				return nil, err
 			}
@@ -244,15 +244,66 @@ func plainTyped(attribute schema.Attribute) bool {
 // unset, so omission is the wrong tool for it -- the reasoning
 // omit_zero_census_test.go's pins record for rule_index and distance).
 func deriveOmitZero(
-	constraints map[string]ui.FieldConstraint, wire string, attribute schema.Attribute,
+	patterns map[string]string, wire string, attribute schema.Attribute,
 ) (bool, error) {
-	constraint, ok := constraints[wire]
-	if !ok || constraint.Pattern == "" {
+	pattern := patterns[wire]
+	if pattern == "" {
 		return false, nil
 	}
-	re, err := regexp.Compile(controllerregex.Anchored(constraint.Pattern))
+	re, err := regexp.Compile(controllerregex.Anchored(pattern))
 	if err != nil {
-		return false, fmt.Errorf("%s: constraint pattern %q does not compile: %w", wire, constraint.Pattern, err)
+		return false, fmt.Errorf("%s: constraint pattern %q does not compile: %w", wire, pattern, err)
 	}
 	return !re.MatchString("0") && !attribute.IsRequired(), nil
+}
+
+// sectionStruct names the settings struct a section descriptor's Spec is
+// generic over. The settings package almost always spells it as the naive
+// camel of the section name (Mdns, GuestAccess, RadioAi); where it does not
+// (syslog's struct is Rsyslogd), setting.mapping.json's own qualified
+// structural names carry the stem, and the unique stem the settings package
+// declares is the answer.
+func sectionStruct(section string, sdk *sdkshape.Package) (string, error) {
+	name := camelNaive(section)
+	if _, ok := sdk.Members("settings." + name); ok {
+		return name, nil
+	}
+	stems, err := settingMappingStems(section)
+	if err != nil {
+		return "", err
+	}
+	var declared []string
+	for _, stem := range stems {
+		if _, ok := sdk.Members("settings." + stem); ok {
+			declared = append(declared, stem)
+		}
+	}
+	if len(declared) != 1 {
+		return "", fmt.Errorf("section %s: cannot resolve its settings struct (candidates %v)", section, declared)
+	}
+	return declared[0], nil
+}
+
+// settingMappingStems reads the SDK struct stems setting.mapping.json's
+// qualified structural names carry for one section.
+func settingMappingStems(section string) ([]string, error) {
+	doc, err := loadMapping(settingMappingPath)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	var stems []string
+	for _, f := range doc.Fields {
+		structural, terraform := f.StructuralName, f.TerraformName
+		si, ti := strings.IndexByte(structural, '.'), strings.IndexByte(terraform, '.')
+		if si <= 0 || ti <= 0 || terraform[:ti] != section {
+			continue
+		}
+		if stem := structural[:si]; !seen[stem] {
+			seen[stem] = true
+			stems = append(stems, stem)
+		}
+	}
+	sort.Strings(stems)
+	return stems, nil
 }

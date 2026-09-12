@@ -118,8 +118,8 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		"unifi_setting.network_optimization":             "settingMagicSiteToSiteVpnModel settingNetworkOptimizationModel",
 		// A schedule task's upgrade target and a traffic route's source client
 		// are both a lone mac, so their models share a member set.
-		"unifi_schedule_task.upgrade_targets": "scheduleTaskTargetModel sourceClientModel",
-		"unifi_traffic_route.source.clients":  "scheduleTaskTargetModel sourceClientModel",
+		"unifi_schedule_task.upgrade_targets": "scheduleTaskUpgradeTargetsModel sourceClientModel",
+		"unifi_traffic_route.source.clients":  "scheduleTaskUpgradeTargetsModel sourceClientModel",
 		"unifi_vpn_server.dns":                "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"data.unifi_network.dhcp_guarding":    "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"data.unifi_network.dhcp_relay":       "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
