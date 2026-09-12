@@ -14,34 +14,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingLcmModel is lcm's own section model, decoded out of
-// settingResourceModel.Lcm.
-type settingLcmModel struct {
-	Brightness  types.Int64 `tfsdk:"brightness"`
-	Enabled     types.Bool  `tfsdk:"enabled"`
-	IdleTimeout types.Int64 `tfsdk:"idle_timeout"`
-	Sync        types.Bool  `tfsdk:"sync"`
-	TouchEvent  types.Bool  `tfsdk:"touch_event"`
-}
-
-// lcmAttrTypes types lcm's own object in state; it must match the generated
-// schema exactly.
-var lcmAttrTypes = map[string]attr.Type{
-	"brightness":   types.Int64Type,
-	"enabled":      types.BoolType,
-	"idle_timeout": types.Int64Type,
-	"sync":         types.BoolType,
-	"touch_event":  types.BoolType,
-}
 
 // lcmKitSpec maps every attribute of the generated lcm schema
 // (resource_setting/setting_resource_gen.go's "lcm" SingleNestedAttribute)
@@ -61,48 +38,8 @@ func lcmKitSpec() resourcekit.Spec[settingLcmModel, settings.Lcm] {
 		TypeName: "setting_lcm",
 		Subject:  "LCM Setting",
 		New:      func() *settings.Lcm { return &settings.Lcm{} },
-		Fields: []resourcekit.Field[settingLcmModel, settings.Lcm]{
-			resourcekit.Int64PtrField[settingLcmModel, settings.Lcm]{
-				Wire:     "brightness",
-				Model:    func(m *settingLcmModel) *types.Int64 { return &m.Brightness },
-				SDK:      func(s *settings.Lcm) **int64 { return &s.Brightness },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.BoolField[settingLcmModel, settings.Lcm]{
-				Wire:  "enabled",
-				Model: func(m *settingLcmModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.Lcm) *bool { return &s.Enabled },
-			},
-			resourcekit.Int64PtrField[settingLcmModel, settings.Lcm]{
-				Wire:     "idle_timeout",
-				Model:    func(m *settingLcmModel) *types.Int64 { return &m.IdleTimeout },
-				SDK:      func(s *settings.Lcm) **int64 { return &s.IDleTimeout },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.BoolField[settingLcmModel, settings.Lcm]{
-				Wire:  "sync",
-				Model: func(m *settingLcmModel) *types.Bool { return &m.Sync },
-				SDK:   func(s *settings.Lcm) *bool { return &s.Sync },
-			},
-			resourcekit.BoolField[settingLcmModel, settings.Lcm]{
-				Wire:  "touch_event",
-				Model: func(m *settingLcmModel) *types.Bool { return &m.TouchEvent },
-				SDK:   func(s *settings.Lcm) *bool { return &s.TouchEvent },
-			},
-		},
+		Fields:   settingLcmGenFields(),
 	}
-}
-
-// lcmNestedSchema is the lcm SingleNestedAttribute's own Attributes, wrapped
-// as a schema.Schema so resourcekit's conformance checks -- built for a
-// whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func lcmNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	lcm := built.Attributes["lcm"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // lcm is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: lcm.Attributes}
 }
 
 // lcmKitBackend binds lcmKitSpec to a client: Read is GetSetting[*Lcm],

@@ -31,7 +31,7 @@ type vpnServerKitModel struct {
 	Subnet          cidrtypes.IPv4Prefix `tfsdk:"subnet"`
 	DNS             types.Object         `tfsdk:"dns"`
 	WAN             types.Object         `tfsdk:"wan"`
-	RADIUSProfileID types.String         `tfsdk:"radiusprofile_id"`
+	RadiusprofileID types.String         `tfsdk:"radiusprofile_id"`
 	Wireguard       types.Object         `tfsdk:"wireguard"`
 	L2TP            types.Object         `tfsdk:"l2tp"`
 	OpenVPN         types.Object         `tfsdk:"openvpn"`
@@ -573,7 +573,7 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 			},
 			resourcekit.StringLikePtrField[vpnServerKitModel, ui.Network, types.String]{
 				Wire:  "radiusprofile_id",
-				Model: func(m *vpnServerKitModel) *types.String { return &m.RADIUSProfileID },
+				Model: func(m *vpnServerKitModel) *types.String { return &m.RadiusprofileID },
 				SDK:   func(s *ui.Network) **string { return &s.RADIUSProfileID },
 				New:   func(v basetypes.StringValue) types.String { return v },
 			},

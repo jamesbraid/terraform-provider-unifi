@@ -17,26 +17,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingMagicSiteToSiteVpnModel is magic_site_to_site_vpn's own section
-// model, decoded out of settingResourceModel.MagicSiteToSiteVpn.
-type settingMagicSiteToSiteVpnModel struct {
-	Enabled types.Bool `tfsdk:"enabled"`
-}
-
-// magicSiteToSiteVpnAttrTypes types magic_site_to_site_vpn's own object in
-// state; it must match the generated schema exactly.
-var magicSiteToSiteVpnAttrTypes = map[string]attr.Type{
-	"enabled": types.BoolType,
-}
 
 // magicSiteToSiteVpnKitSpec maps the one attribute of the generated
 // magic_site_to_site_vpn schema (resource_setting/setting_resource_gen.go's
@@ -47,25 +32,8 @@ func magicSiteToSiteVpnKitSpec() resourcekit.Spec[settingMagicSiteToSiteVpnModel
 		TypeName: "setting_magic_site_to_site_vpn",
 		Subject:  "Magic Site-to-Site VPN Setting",
 		New:      func() *settings.MagicSiteToSiteVpn { return &settings.MagicSiteToSiteVpn{} },
-		Fields: []resourcekit.Field[settingMagicSiteToSiteVpnModel, settings.MagicSiteToSiteVpn]{
-			resourcekit.BoolField[settingMagicSiteToSiteVpnModel, settings.MagicSiteToSiteVpn]{
-				Wire:  "enabled",
-				Model: func(m *settingMagicSiteToSiteVpnModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.MagicSiteToSiteVpn) *bool { return &s.Enabled },
-			},
-		},
+		Fields:   settingMagicSiteToSiteVpnGenFields(),
 	}
-}
-
-// magicSiteToSiteVpnNestedSchema is the magic_site_to_site_vpn
-// SingleNestedAttribute's own Attributes, wrapped as a schema.Schema so
-// resourcekit's conformance checks -- built for a whole resource's
-// top-level schema -- can run against one section of unifi_setting
-// instead.
-func magicSiteToSiteVpnNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	magicSiteToSiteVpn := built.Attributes["magic_site_to_site_vpn"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // magic_site_to_site_vpn is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: magicSiteToSiteVpn.Attributes}
 }
 
 // magicSiteToSiteVpnKitBackend binds magicSiteToSiteVpnKitSpec to a

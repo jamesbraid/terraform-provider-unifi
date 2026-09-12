@@ -24,38 +24,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingGlobalApModel is global_ap's own section model, decoded out of
-// settingResourceModel.GlobalAp.
-type settingGlobalApModel struct {
-	ApExclusions  types.List   `tfsdk:"ap_exclusions"`
-	NaChannelSize types.Int64  `tfsdk:"na_channel_size"`
-	NaTxPower     types.Int64  `tfsdk:"na_tx_power"`
-	NaTxPowerMode types.String `tfsdk:"na_tx_power_mode"`
-	NgChannelSize types.Int64  `tfsdk:"ng_channel_size"`
-	NgTxPower     types.Int64  `tfsdk:"ng_tx_power"`
-	NgTxPowerMode types.String `tfsdk:"ng_tx_power_mode"`
-}
-
-// globalApAttrTypes types global_ap's own object in state; it must match
-// the generated schema exactly.
-var globalApAttrTypes = map[string]attr.Type{
-	"ap_exclusions":    types.ListType{ElemType: types.StringType},
-	"na_channel_size":  types.Int64Type,
-	"na_tx_power":      types.Int64Type,
-	"na_tx_power_mode": types.StringType,
-	"ng_channel_size":  types.Int64Type,
-	"ng_tx_power":      types.Int64Type,
-	"ng_tx_power_mode": types.StringType,
-}
 
 // globalApKitSpec maps every modelled attribute of the generated global_ap
 // schema (resource_setting/setting_resource_gen.go's "global_ap"
@@ -73,63 +46,8 @@ func globalApKitSpec() resourcekit.Spec[settingGlobalApModel, settings.GlobalAp]
 		TypeName: "setting_global_ap",
 		Subject:  "Global AP Setting",
 		New:      func() *settings.GlobalAp { return &settings.GlobalAp{} },
-		Fields: []resourcekit.Field[settingGlobalApModel, settings.GlobalAp]{
-			resourcekit.StringListField[settingGlobalApModel, settings.GlobalAp]{
-				Wire:  "ap_exclusions",
-				Model: func(m *settingGlobalApModel) *types.List { return &m.ApExclusions },
-				SDK:   func(s *settings.GlobalAp) *[]string { return &s.ApExclusions },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64PtrField[settingGlobalApModel, settings.GlobalAp]{
-				Wire:     "na_channel_size",
-				Model:    func(m *settingGlobalApModel) *types.Int64 { return &m.NaChannelSize },
-				SDK:      func(s *settings.GlobalAp) **int64 { return &s.NaChannelSize },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[settingGlobalApModel, settings.GlobalAp]{
-				Wire:  "na_tx_power",
-				Model: func(m *settingGlobalApModel) *types.Int64 { return &m.NaTxPower },
-				SDK:   func(s *settings.GlobalAp) **int64 { return &s.NaTxPower },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingGlobalApModel, settings.GlobalAp]{
-				Wire:  "na_tx_power_mode",
-				Model: func(m *settingGlobalApModel) *types.String { return &m.NaTxPowerMode },
-				SDK:   func(s *settings.GlobalAp) *string { return &s.NaTxPowerMode },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.Int64PtrField[settingGlobalApModel, settings.GlobalAp]{
-				Wire:     "ng_channel_size",
-				Model:    func(m *settingGlobalApModel) *types.Int64 { return &m.NgChannelSize },
-				SDK:      func(s *settings.GlobalAp) **int64 { return &s.NgChannelSize },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[settingGlobalApModel, settings.GlobalAp]{
-				Wire:  "ng_tx_power",
-				Model: func(m *settingGlobalApModel) *types.Int64 { return &m.NgTxPower },
-				SDK:   func(s *settings.GlobalAp) **int64 { return &s.NgTxPower },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingGlobalApModel, settings.GlobalAp]{
-				Wire:  "ng_tx_power_mode",
-				Model: func(m *settingGlobalApModel) *types.String { return &m.NgTxPowerMode },
-				SDK:   func(s *settings.GlobalAp) *string { return &s.NgTxPowerMode },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		Fields:   settingGlobalApGenFields(),
 	}
-}
-
-// globalApNestedSchema is the global_ap SingleNestedAttribute's own
-// Attributes, wrapped as a schema.Schema so resourcekit's conformance
-// checks -- built for a whole resource's top-level schema -- can run
-// against one section of unifi_setting instead.
-func globalApNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	globalAp := built.Attributes["global_ap"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // global_ap is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: globalAp.Attributes}
 }
 
 // globalApKitBackend binds globalApKitSpec to a client: Read is

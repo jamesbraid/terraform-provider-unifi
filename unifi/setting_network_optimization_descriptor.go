@@ -14,26 +14,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingNetworkOptimizationModel is network_optimization's own section
-// model, decoded out of settingResourceModel.NetworkOpt.
-type settingNetworkOptimizationModel struct {
-	Enabled types.Bool `tfsdk:"enabled"`
-}
-
-// networkOptimizationAttrTypes types network_optimization's own object in
-// state; it must match the generated schema exactly.
-var networkOptimizationAttrTypes = map[string]attr.Type{
-	"enabled": types.BoolType,
-}
 
 // networkOptimizationKitSpec maps every attribute of the generated
 // network_optimization schema (resource_setting/setting_resource_gen.go's
@@ -45,24 +30,8 @@ func networkOptimizationKitSpec() resourcekit.Spec[settingNetworkOptimizationMod
 		TypeName: "setting_network_optimization",
 		Subject:  "Network Optimization Setting",
 		New:      func() *settings.NetworkOptimization { return &settings.NetworkOptimization{} },
-		Fields: []resourcekit.Field[settingNetworkOptimizationModel, settings.NetworkOptimization]{
-			resourcekit.BoolField[settingNetworkOptimizationModel, settings.NetworkOptimization]{
-				Wire:  "enabled",
-				Model: func(m *settingNetworkOptimizationModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.NetworkOptimization) *bool { return &s.Enabled },
-			},
-		},
+		Fields:   settingNetworkOptimizationGenFields(),
 	}
-}
-
-// networkOptimizationNestedSchema is the network_optimization
-// SingleNestedAttribute's own Attributes, wrapped as a schema.Schema so
-// resourcekit's conformance checks -- built for a whole resource's top-level
-// schema -- can run against one section of unifi_setting instead.
-func networkOptimizationNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	networkOpt := built.Attributes["network_optimization"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // network_optimization is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: networkOpt.Attributes}
 }
 
 // networkOptimizationKitBackend binds networkOptimizationKitSpec to a

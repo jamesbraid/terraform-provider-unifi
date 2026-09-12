@@ -22,35 +22,12 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingSnmpModel is snmp's own section model, decoded out of
-// settingResourceModel.Snmp.
-type settingSnmpModel struct {
-	Community types.String `tfsdk:"community"`
-	Enabled   types.Bool   `tfsdk:"enabled"`
-	EnabledV3 types.Bool   `tfsdk:"enabled_v3"`
-	Password  types.String `tfsdk:"password"`
-	Username  types.String `tfsdk:"username"`
-}
-
-// snmpAttrTypes types snmp's own object in state; it must match the
-// generated schema exactly.
-var snmpAttrTypes = map[string]attr.Type{
-	"community":  types.StringType,
-	"enabled":    types.BoolType,
-	"enabled_v3": types.BoolType,
-	"password":   types.StringType,
-	"username":   types.StringType,
-}
 
 // snmpKitSpec maps every attribute of the generated snmp schema
 // (resource_setting/setting_resource_gen.go's "snmp" SingleNestedAttribute)
@@ -65,36 +42,7 @@ func snmpKitSpec() resourcekit.Spec[settingSnmpModel, settings.Snmp] {
 		TypeName: "setting_snmp",
 		Subject:  "Snmp Setting",
 		New:      func() *settings.Snmp { return &settings.Snmp{} },
-		Fields: []resourcekit.Field[settingSnmpModel, settings.Snmp]{
-			resourcekit.StringField[settingSnmpModel, settings.Snmp]{
-				Wire:  "community",
-				Model: func(m *settingSnmpModel) *types.String { return &m.Community },
-				SDK:   func(s *settings.Snmp) *string { return &s.Community },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[settingSnmpModel, settings.Snmp]{
-				Wire:  "enabled",
-				Model: func(m *settingSnmpModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.Snmp) *bool { return &s.Enabled },
-			},
-			resourcekit.BoolField[settingSnmpModel, settings.Snmp]{
-				Wire:  "enabledV3",
-				Model: func(m *settingSnmpModel) *types.Bool { return &m.EnabledV3 },
-				SDK:   func(s *settings.Snmp) *bool { return &s.EnabledV3 },
-			},
-			resourcekit.StringField[settingSnmpModel, settings.Snmp]{
-				Wire:  "x_password",
-				Model: func(m *settingSnmpModel) *types.String { return &m.Password },
-				SDK:   func(s *settings.Snmp) *string { return &s.Password },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[settingSnmpModel, settings.Snmp]{
-				Wire:  "username",
-				Model: func(m *settingSnmpModel) *types.String { return &m.Username },
-				SDK:   func(s *settings.Snmp) *string { return &s.Username },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		Fields:   settingSnmpGenFields(),
 	}
 }
 
@@ -116,16 +64,6 @@ func snmpAfterReceive(
 		model.Password = types.StringNull()
 	}
 	return nil
-}
-
-// snmpNestedSchema is the snmp SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built
-// for a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func snmpNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	snmp := built.Attributes["snmp"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // snmp is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: snmp.Attributes}
 }
 
 // snmpKitBackend binds snmpKitSpec to a client: Read is GetSetting[*Snmp],

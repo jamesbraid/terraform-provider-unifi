@@ -28,37 +28,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingRadiusModel is radius's own section model, decoded out of
-// settingResourceModel.Radius.
-type settingRadiusModel struct {
-	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
-	Enabled               types.Bool           `tfsdk:"enabled"`
-	AcctPort              types.Int64          `tfsdk:"acct_port"`
-	AuthPort              types.Int64          `tfsdk:"auth_port"`
-	InterimUpdateInterval timetypes.GoDuration `tfsdk:"interim_update_interval"`
-	Secret                types.String         `tfsdk:"secret"`
-}
-
-// radiusAttrTypes types radius's own object in state; it must match the
-// generated schema exactly.
-var radiusAttrTypes = map[string]attr.Type{
-	"accounting_enabled":      types.BoolType,
-	"enabled":                 types.BoolType,
-	"acct_port":               types.Int64Type,
-	"auth_port":               types.Int64Type,
-	"interim_update_interval": timetypes.GoDurationType{},
-	"secret":                  types.StringType,
-}
 
 // radiusKitSpec maps every attribute of the generated radius schema
 // (resource_setting/setting_resource_gen.go's "radius" SingleNestedAttribute)
@@ -77,12 +52,7 @@ func radiusKitSpec() resourcekit.Spec[settingRadiusModel, settings.Radius] {
 		TypeName: "setting_radius",
 		Subject:  "Radius Setting",
 		New:      func() *settings.Radius { return &settings.Radius{} },
-		Fields: []resourcekit.Field[settingRadiusModel, settings.Radius]{
-			resourcekit.BoolField[settingRadiusModel, settings.Radius]{
-				Wire:  "accounting_enabled",
-				Model: func(m *settingRadiusModel) *types.Bool { return &m.AccountingEnabled },
-				SDK:   func(s *settings.Radius) *bool { return &s.AccountingEnabled },
-			},
+		Fields: resourcekit.Override(settingRadiusGenFields(), []resourcekit.Field[settingRadiusModel, settings.Radius]{
 			resourcekit.Int64PtrField[settingRadiusModel, settings.Radius]{
 				Wire:  "acct_port",
 				Model: func(m *settingRadiusModel) *types.Int64 { return &m.AcctPort },
@@ -95,11 +65,6 @@ func radiusKitSpec() resourcekit.Spec[settingRadiusModel, settings.Radius] {
 				SDK:   func(s *settings.Radius) **int64 { return &s.AuthPort },
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.BoolField[settingRadiusModel, settings.Radius]{
-				Wire:  "enabled",
-				Model: func(m *settingRadiusModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.Radius) *bool { return &s.Enabled },
-			},
 			resourcekit.DurationPtrField[settingRadiusModel, settings.Radius]{
 				Wire:  "interim_update_interval",
 				Model: func(m *settingRadiusModel) *timetypes.GoDuration { return &m.InterimUpdateInterval },
@@ -107,13 +72,7 @@ func radiusKitSpec() resourcekit.Spec[settingRadiusModel, settings.Radius] {
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			resourcekit.StringField[settingRadiusModel, settings.Radius]{
-				Wire:  "x_secret",
-				Model: func(m *settingRadiusModel) *types.String { return &m.Secret },
-				SDK:   func(s *settings.Radius) *string { return &s.Secret },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		}),
 	}
 }
 
@@ -150,16 +109,6 @@ func radiusAfterReceive(
 		model.Secret = types.StringNull()
 	}
 	return nil
-}
-
-// radiusNestedSchema is the radius SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built
-// for a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func radiusNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	radius := built.Attributes["radius"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // radius is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: radius.Attributes}
 }
 
 // radiusKitBackend binds radiusKitSpec to a client: Read is

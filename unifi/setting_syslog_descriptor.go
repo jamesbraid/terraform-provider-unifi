@@ -19,46 +19,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingSyslogModel is syslog's own section model, decoded out of
-// settingResourceModel.Syslog.
-type settingSyslogModel struct {
-	Contents                    types.List   `tfsdk:"contents"`
-	Debug                       types.Bool   `tfsdk:"debug"`
-	Enabled                     types.Bool   `tfsdk:"enabled"`
-	IP                          types.String `tfsdk:"ip"`
-	LogAllContents              types.Bool   `tfsdk:"log_all_contents"`
-	NetconsoleEnabled           types.Bool   `tfsdk:"netconsole_enabled"`
-	NetconsoleHost              types.String `tfsdk:"netconsole_host"`
-	NetconsolePort              types.Int64  `tfsdk:"netconsole_port"`
-	Port                        types.Int64  `tfsdk:"port"`
-	ThisController              types.Bool   `tfsdk:"this_controller"`
-	ThisControllerEncryptedOnly types.Bool   `tfsdk:"this_controller_encrypted_only"`
-}
-
-// syslogAttrTypes types syslog's own object in state; it must match the
-// generated schema exactly.
-var syslogAttrTypes = map[string]attr.Type{
-	"contents":                       types.ListType{ElemType: types.StringType},
-	"debug":                          types.BoolType,
-	"enabled":                        types.BoolType,
-	"ip":                             types.StringType,
-	"log_all_contents":               types.BoolType,
-	"netconsole_enabled":             types.BoolType,
-	"netconsole_host":                types.StringType,
-	"netconsole_port":                types.Int64Type,
-	"port":                           types.Int64Type,
-	"this_controller":                types.BoolType,
-	"this_controller_encrypted_only": types.BoolType,
-}
 
 // syslogKitSpec maps every attribute of the generated syslog schema
 // (resource_setting/setting_resource_gen.go's "syslog" SingleNestedAttribute)
@@ -80,81 +45,8 @@ func syslogKitSpec() resourcekit.Spec[settingSyslogModel, settings.Rsyslogd] {
 		TypeName: "setting_syslog",
 		Subject:  "Syslog Setting",
 		New:      func() *settings.Rsyslogd { return &settings.Rsyslogd{} },
-		Fields: []resourcekit.Field[settingSyslogModel, settings.Rsyslogd]{
-			resourcekit.StringListField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "contents",
-				Model: func(m *settingSyslogModel) *types.List { return &m.Contents },
-				SDK:   func(s *settings.Rsyslogd) *[]string { return &s.Contents },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "debug",
-				Model: func(m *settingSyslogModel) *types.Bool { return &m.Debug },
-				SDK:   func(s *settings.Rsyslogd) *bool { return &s.Debug },
-			},
-			resourcekit.BoolField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "enabled",
-				Model: func(m *settingSyslogModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.Rsyslogd) *bool { return &s.Enabled },
-			},
-			resourcekit.StringField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "ip",
-				Model: func(m *settingSyslogModel) *types.String { return &m.IP },
-				SDK:   func(s *settings.Rsyslogd) *string { return &s.IP },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "log_all_contents",
-				Model: func(m *settingSyslogModel) *types.Bool { return &m.LogAllContents },
-				SDK:   func(s *settings.Rsyslogd) *bool { return &s.LogAllContents },
-			},
-			resourcekit.BoolField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "netconsole_enabled",
-				Model: func(m *settingSyslogModel) *types.Bool { return &m.NetconsoleEnabled },
-				SDK:   func(s *settings.Rsyslogd) *bool { return &s.NetconsoleEnabled },
-			},
-			resourcekit.StringField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "netconsole_host",
-				Model: func(m *settingSyslogModel) *types.String { return &m.NetconsoleHost },
-				SDK:   func(s *settings.Rsyslogd) *string { return &s.NetconsoleHost },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64PtrField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:     "netconsole_port",
-				Model:    func(m *settingSyslogModel) *types.Int64 { return &m.NetconsolePort },
-				SDK:      func(s *settings.Rsyslogd) **int64 { return &s.NetconsolePort },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:     "port",
-				Model:    func(m *settingSyslogModel) *types.Int64 { return &m.Port },
-				SDK:      func(s *settings.Rsyslogd) **int64 { return &s.Port },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.BoolField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "this_controller",
-				Model: func(m *settingSyslogModel) *types.Bool { return &m.ThisController },
-				SDK:   func(s *settings.Rsyslogd) *bool { return &s.ThisController },
-			},
-			resourcekit.BoolField[settingSyslogModel, settings.Rsyslogd]{
-				Wire:  "this_controller_encrypted_only",
-				Model: func(m *settingSyslogModel) *types.Bool { return &m.ThisControllerEncryptedOnly },
-				SDK:   func(s *settings.Rsyslogd) *bool { return &s.ThisControllerEncryptedOnly },
-			},
-		},
+		Fields:   settingSyslogGenFields(),
 	}
-}
-
-// syslogNestedSchema is the syslog SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built
-// for a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func syslogNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	syslog := built.Attributes["syslog"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // syslog is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: syslog.Attributes}
 }
 
 // syslogKitBackend binds syslogKitSpec to a client: Read is

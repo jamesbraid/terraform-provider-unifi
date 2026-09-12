@@ -12,26 +12,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingCountryModel is country's own section model, decoded out of
-// settingResourceModel.Country.
-type settingCountryModel struct {
-	Code types.Int64 `tfsdk:"code"`
-}
-
-// countryAttrTypes types country's own object in state; it must match the
-// generated schema exactly.
-var countryAttrTypes = map[string]attr.Type{
-	"code": types.Int64Type,
-}
 
 // countryKitSpec maps every attribute of the generated country schema
 // (resource_setting/setting_resource_gen.go's "country" SingleNestedAttribute)
@@ -44,25 +29,8 @@ func countryKitSpec() resourcekit.Spec[settingCountryModel, settings.Country] {
 		TypeName: "setting_country",
 		Subject:  "Country Setting",
 		New:      func() *settings.Country { return &settings.Country{} },
-		Fields: []resourcekit.Field[settingCountryModel, settings.Country]{
-			resourcekit.Int64PtrField[settingCountryModel, settings.Country]{
-				Wire:  "code",
-				Model: func(m *settingCountryModel) *types.Int64 { return &m.Code },
-				SDK:   func(s *settings.Country) **int64 { return &s.Code },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   settingCountryGenFields(),
 	}
-}
-
-// countryNestedSchema is the country SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built for
-// a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func countryNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	country := built.Attributes["country"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // country is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: country.Attributes}
 }
 
 // countryKitBackend binds countryKitSpec to a client: Read is

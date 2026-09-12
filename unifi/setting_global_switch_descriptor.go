@@ -64,7 +64,7 @@ type settingGlobalSwitchModel struct {
 	JumboframeEnabled              types.Bool   `tfsdk:"jumboframe_enabled"`
 	LinkDebounce                   types.Int64  `tfsdk:"link_debounce"`
 	PoeStagingDelayMsec            types.Int64  `tfsdk:"poe_staging_delay_msec"`
-	RADIUSProfileID                types.String `tfsdk:"radiusprofile_id"`
+	RadiusprofileID                types.String `tfsdk:"radiusprofile_id"`
 	StpVersion                     types.String `tfsdk:"stp_version"`
 	SwitchExclusions               types.List   `tfsdk:"switch_exclusions"`
 }
@@ -182,7 +182,7 @@ func globalSwitchKitSpec() resourcekit.Spec[settingGlobalSwitchModel, settings.G
 			},
 			resourcekit.StringField[settingGlobalSwitchModel, settings.GlobalSwitch]{
 				Wire:  "radiusprofile_id",
-				Model: func(m *settingGlobalSwitchModel) *types.String { return &m.RADIUSProfileID },
+				Model: func(m *settingGlobalSwitchModel) *types.String { return &m.RadiusprofileID },
 				SDK:   func(s *settings.GlobalSwitch) *string { return &s.RADIUSProfileID },
 				Elide: resourcekit.KeepZero,
 			},

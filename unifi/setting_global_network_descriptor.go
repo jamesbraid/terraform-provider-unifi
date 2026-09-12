@@ -13,26 +13,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingGlobalNetworkModel is global_network's own section model, decoded
-// out of settingResourceModel.GlobalNetwork.
-type settingGlobalNetworkModel struct {
-	DefaultSecurityPosture types.String `tfsdk:"default_security_posture"`
-}
-
-// globalNetworkAttrTypes types global_network's own object in state; it must
-// match the generated schema exactly.
-var globalNetworkAttrTypes = map[string]attr.Type{
-	"default_security_posture": types.StringType,
-}
 
 // globalNetworkKitSpec maps the one attribute of the generated
 // global_network schema (resource_setting/setting_resource_gen.go's
@@ -46,25 +31,8 @@ func globalNetworkKitSpec() resourcekit.Spec[settingGlobalNetworkModel, settings
 		TypeName: "setting_global_network",
 		Subject:  "Global Network Setting",
 		New:      func() *settings.GlobalNetwork { return &settings.GlobalNetwork{} },
-		Fields: []resourcekit.Field[settingGlobalNetworkModel, settings.GlobalNetwork]{
-			resourcekit.StringField[settingGlobalNetworkModel, settings.GlobalNetwork]{
-				Wire:  "default_security_posture",
-				Model: func(m *settingGlobalNetworkModel) *types.String { return &m.DefaultSecurityPosture },
-				SDK:   func(s *settings.GlobalNetwork) *string { return &s.DefaultSecurityPosture },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   settingGlobalNetworkGenFields(),
 	}
-}
-
-// globalNetworkNestedSchema is the global_network SingleNestedAttribute's
-// own Attributes, wrapped as a schema.Schema so resourcekit's conformance
-// checks -- built for a whole resource's top-level schema -- can run
-// against one section of unifi_setting instead.
-func globalNetworkNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	globalNetwork := built.Attributes["global_network"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // global_network is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: globalNetwork.Attributes}
 }
 
 // globalNetworkKitBackend binds globalNetworkKitSpec to a client: Read is

@@ -25,7 +25,7 @@ func TestNtpSettingRoundTrip(t *testing.T) {
 	spec := ntpKitSpec()
 
 	in := &settingNtpModel{
-		NtpServer1:        types.StringValue("pool.ntp.org"),
+		NTPServer1:        types.StringValue("pool.ntp.org"),
 		SettingPreference: types.StringValue("manual"),
 	}
 	sdk, diags := spec.ToSDK(ctx, in)
@@ -36,7 +36,7 @@ func TestNtpSettingRoundTrip(t *testing.T) {
 	if diags := spec.ToModel(ctx, sdk, &out, ""); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
-	if out.NtpServer1.ValueString() != "pool.ntp.org" || out.SettingPreference.ValueString() != "manual" {
+	if out.NTPServer1.ValueString() != "pool.ntp.org" || out.SettingPreference.ValueString() != "manual" {
 		t.Errorf("ntp round-trip mismatch: %+v", out)
 	}
 }
@@ -50,10 +50,10 @@ func TestNtpSettingRoundTripStateNormalization(t *testing.T) {
 	spec := ntpKitSpec()
 
 	in := &settingNtpModel{
-		NtpServer1:        types.StringValue("pool.ntp.org"),
-		NtpServer2:        types.StringValue(""),
-		NtpServer3:        types.StringNull(),
-		NtpServer4:        types.StringNull(),
+		NTPServer1:        types.StringValue("pool.ntp.org"),
+		NTPServer2:        types.StringValue(""),
+		NTPServer3:        types.StringNull(),
+		NTPServer4:        types.StringNull(),
 		SettingPreference: types.StringValue("manual"),
 	}
 	sdk, diags := spec.ToSDK(ctx, in)
@@ -65,13 +65,13 @@ func TestNtpSettingRoundTripStateNormalization(t *testing.T) {
 	if diags := spec.ToModel(ctx, sdk, &state, ""); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
-	if state.NtpServer1.ValueString() != "pool.ntp.org" {
-		t.Errorf("ntp_server_1 = %q, want pool.ntp.org", state.NtpServer1.ValueString())
+	if state.NTPServer1.ValueString() != "pool.ntp.org" {
+		t.Errorf("ntp_server_1 = %q, want pool.ntp.org", state.NTPServer1.ValueString())
 	}
 	for key, value := range map[string]types.String{
-		"ntp_server_2": state.NtpServer2,
-		"ntp_server_3": state.NtpServer3,
-		"ntp_server_4": state.NtpServer4,
+		"ntp_server_2": state.NTPServer2,
+		"ntp_server_3": state.NTPServer3,
+		"ntp_server_4": state.NTPServer4,
 	} {
 		if value.IsNull() || value.IsUnknown() || value.ValueString() != "" {
 			t.Errorf("%s = %v, want known empty string", key, value)

@@ -17,34 +17,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingConnectivityModel is connectivity's own section model, decoded out
-// of settingResourceModel.Connectivity.
-type settingConnectivityModel struct {
-	EnableIsolatedWLAN types.Bool   `tfsdk:"enable_isolated_wlan"`
-	Enabled            types.Bool   `tfsdk:"enabled"`
-	MloMeshEnabled     types.Bool   `tfsdk:"mlo_mesh_enabled"`
-	UplinkHost         types.String `tfsdk:"uplink_host"`
-	UplinkType         types.String `tfsdk:"uplink_type"`
-}
-
-// connectivityAttrTypes types connectivity's own object in state; it must
-// match the generated schema exactly.
-var connectivityAttrTypes = map[string]attr.Type{
-	"enable_isolated_wlan": types.BoolType,
-	"enabled":              types.BoolType,
-	"mlo_mesh_enabled":     types.BoolType,
-	"uplink_host":          types.StringType,
-	"uplink_type":          types.StringType,
-}
 
 // connectivityKitSpec maps every modelled attribute of the generated
 // connectivity schema (resource_setting/setting_resource_gen.go's
@@ -57,46 +34,8 @@ func connectivityKitSpec() resourcekit.Spec[settingConnectivityModel, settings.C
 		TypeName: "setting_connectivity",
 		Subject:  "Connectivity Setting",
 		New:      func() *settings.Connectivity { return &settings.Connectivity{} },
-		Fields: []resourcekit.Field[settingConnectivityModel, settings.Connectivity]{
-			resourcekit.BoolField[settingConnectivityModel, settings.Connectivity]{
-				Wire:  "enable_isolated_wlan",
-				Model: func(m *settingConnectivityModel) *types.Bool { return &m.EnableIsolatedWLAN },
-				SDK:   func(s *settings.Connectivity) *bool { return &s.EnableIsolatedWLAN },
-			},
-			resourcekit.BoolField[settingConnectivityModel, settings.Connectivity]{
-				Wire:  "enabled",
-				Model: func(m *settingConnectivityModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.Connectivity) *bool { return &s.Enabled },
-			},
-			resourcekit.BoolField[settingConnectivityModel, settings.Connectivity]{
-				Wire:  "mlo_mesh_enabled",
-				Model: func(m *settingConnectivityModel) *types.Bool { return &m.MloMeshEnabled },
-				SDK:   func(s *settings.Connectivity) *bool { return &s.MloMeshEnabled },
-			},
-			resourcekit.StringField[settingConnectivityModel, settings.Connectivity]{
-				Wire:  "uplink_host",
-				Model: func(m *settingConnectivityModel) *types.String { return &m.UplinkHost },
-				SDK:   func(s *settings.Connectivity) *string { return &s.UplinkHost },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingConnectivityModel, settings.Connectivity]{
-				Wire:  "uplink_type",
-				Model: func(m *settingConnectivityModel) *types.String { return &m.UplinkType },
-				SDK:   func(s *settings.Connectivity) *string { return &s.UplinkType },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   settingConnectivityGenFields(),
 	}
-}
-
-// connectivityNestedSchema is the connectivity SingleNestedAttribute's own
-// Attributes, wrapped as a schema.Schema so resourcekit's conformance
-// checks -- built for a whole resource's top-level schema -- can run
-// against one section of unifi_setting instead.
-func connectivityNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	connectivity := built.Attributes["connectivity"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // connectivity is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: connectivity.Attributes}
 }
 
 // connectivityKitBackend binds connectivityKitSpec to a client: Read is
