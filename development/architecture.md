@@ -16,21 +16,26 @@ way they are.
 
 Before the kit, every managed resource was a hand-written Go file implementing
 `resource.Resource` directly: read the plan, resolve a timeout, resolve the
-site, call the SDK client, write the state back, handle import. `dns_record`'s
-version of that was 717 lines, most of it the same boilerplate every other
-resource also wrote, once per resource.
+site, call the SDK client, write the state back, handle import. Most of each
+file was the same boilerplate every other resource also wrote, once per
+resource.
 
 `internal/resourcekit` holds that boilerplate once. A managed resource is now
 a `Spec[M, S]` — model type `M`, SDK struct type `S` — plus a `Backend[S]`
 bound to a real client, wired into `resourcekit.Resource[M, S]`, which
 implements `resource.Resource` generically. What a surface author writes is
 the list of `Field`s that map `M`'s attributes onto `S`'s, plus whatever hooks
-and backend closures that surface actually needs. Twenty-one of the
-provider's managed resources are served this way today (one of them,
-`unifi_account`, by embedding another surface's kit resource rather than
-declaring its own); the rest — settings, BGP, dynamic DNS, and a handful
-of others — are still hand-written, each for a reason recorded in its own
-file.
+and backend closures that surface actually needs.
+
+**Every one of the provider's 34 managed resources is kit-served.** Thirty-three
+embed `resourcekit.Resource[M, S]` — one of them, `unifi_account`, by embedding
+`radius_user`'s kit resource rather than declaring its own. The thirty-fourth,
+`unifi_setting`, embeds `resourcekit.Composite[M]` instead, because it is one
+Terraform resource over many controller documents rather than one: each of its
+sections is a `Section[M]` — in practice a `SpecSection` wrapping that
+section's own `Spec`/`Backend` pair — and `Composite` drives every section
+through that interface on one apply. There is no hand-written
+`resource.Resource` implementation left in the provider.
 
 ## Spec and Backend: the two halves of a resource
 
@@ -59,15 +64,20 @@ A kit-served resource is composed from two generic structs, both in
   same way the fields are.
 
 **Create has two shapes, and exactly one applies per surface.** `Backend.Create`
-POSTs a whole new object — correct for every surface except one, because the
-controller holds nothing yet, so an attribute the plan left unset takes a
-controller default rather than overwriting a live value. `unifi_device` is the
-exception: a device is not created by the provider, it is *adopted* — the
-object already exists, fully configured, before Terraform ever names it — so
-its create is `Backend.CreateFields`, a masked PATCH built the same way an
-update is. Exactly one of the two may be set; the kit refuses at build time
-(via a panic-safe error, not a compile error, since the choice is per-instance)
-if a descriptor supplies both or neither.
+POSTs a whole new object — correct wherever the controller holds nothing yet,
+so an attribute the plan left unset takes a controller default rather than
+overwriting a live value. `Backend.CreateFields` is a masked PATCH built the
+same way an update is, for a surface whose object the controller already
+holds. Two surfaces take the second shape. `unifi_device` always does: a
+device is not created by the provider, it is *adopted* — the hardware exists,
+fully configured, before Terraform ever names it. `unifi_wan` does because its
+create can turn into an adoption mid-flight: the POST goes out first, and on a
+`WanConfigurationForNetworkGroupAlreadyExists` conflict it overlays the
+existing WAN, where only a mask keeps the plan's unset fields from zeroing an
+interface's live config. Exactly one of the two may be set; the kit refuses at
+build time (via a panic-safe error, not a compile error, since the choice is
+per-instance) if a descriptor supplies both or neither, and
+`TestEveryKitWritePathIsClassified` pins the two patching creates by name.
 
 **Update has only one shape.** `Backend.UpdateFields` is a field-masked
 write — the model this provider is built around, see below — and every
@@ -76,17 +86,17 @@ kit descriptor sets it. The kit once had a whole-object alternative,
 fields onto *that* so the same safety a field-masked write gives was
 achieved by fetch-then-patch instead of by the wire encoding; no
 registered surface ever set it, so it was removed rather than kept as
-capability nothing used. Seven surfaces implement `resource.Resource` by
-hand, entirely outside `Backend`: five of them (`BGPConfig`,
-`PowerSupervisor`, `Setting`, `Site`, `WireGuardPeer`) have no
-`Update<T>Fields` method on their SDK type at all, so a masked write
-isn't an option. `DynamicDNS` does have `UpdateDynamicDNSFields` — its
-hand-written resource just doesn't call it, calling the whole-object
-`UpdateDynamicDNS` instead. `WAN` is the seventh, and the odd one out: it
-shares `unifi.Network` with four kit-served surfaces, and its
-hand-written `Update` does call `UpdateNetworkFields` against its own
-hand-rolled field mask — a masked write built outside the kit's generic
-machinery, not a whole-object one. See "The masked write model" below.
+capability nothing used. There is no second update path left to describe: the
+surfaces that once wrote whole objects by hand — BGP, dynamic DNS, power
+supervisor, site, WireGuard peer, WAN and every `unifi_setting` section — all
+set `UpdateFields` now, and `Update<T>Fields` exists on the pinned SDK for
+every one of their types. One `UpdateFields` closure still ends in a
+whole-object PUT, and for a reason the mask cannot solve: `setting_usg`'s
+`ip_filtering` lives *inside* the `usg_geo` document, and a mask names
+top-level keys only, so it fetches `usg_geo`, applies the masked fields onto
+that document's `IPFiltering`, and sends the parent back. That is
+fetch-then-patch — the safety the removed `Backend.Update` offered — kept in
+the one place it is the only option.
 
 ## Field: the mapping unit
 
@@ -147,11 +157,17 @@ by the others. They live in `internal/resourcekit/field.go`,
 scalar to a plain Go scalar. `BoolField` deliberately has no `Elide`: a `false`
 read back from the controller is a value, not an absence, so nulling it on
 zero would fight a configuration that legitimately set it. `StringField` and
-`Int64Field` accept a `WriteWhen` predicate that suppresses both the write and
+`BoolField` accept a `WriteWhen` predicate that suppresses both the write and
 the field's presence in the update mask — a field can be silenced entirely
 under some other attribute's condition, and the predicate gates the mask as
 well as the write so a suppressed field can never be named on the wire
-carrying a stale value.
+carrying a stale value. `Int64Field` has neither: it is `Wire`, `Model`, `SDK`
+and `Elide`, and an integer wire needing a condition takes `Int64PtrField`'s
+three states or a hook instead. `StringField` also carries
+`ReadDefault`, the value the model takes when the controller reports the
+attribute empty — on the field rather than in a hook because `List` builds its
+models from `ToModel` without running any hook, and a hook-based default would
+read one way through the resource and another through the list.
 
 **Pointer scalars** — `Int64PtrField` and `BoolPtrField` map to `*int64` /
 `*bool` on the SDK side, for a field where the SDK itself distinguishes three
@@ -168,7 +184,9 @@ typically), via the shared conversion in `unifi/util`. The unit is the one
 fact no generated or policy artifact carries, so it is declared per field.
 
 **Collections** — `StringListField` and `StringSetField` map a Terraform list
-or set of strings to a `[]string`. The choice between them is not
+or set of strings to a `[]string`; `Int64ListField` is the same thing over
+`[]int64`, for the handful of wires that carry a list of numbers. The choice
+between a list and a set is not
 interchangeable: a set is compared by membership, so a controller returning
 group members in a different order than the practitioner wrote produces no
 diff; rendering the same data as a list makes reordering a permanent,
@@ -323,19 +341,22 @@ as a descriptor defect rather than sending it.
 `Spec.UnwritableWires` exists because one SDK type, `unifi.Network`, carries
 all seven of the controller's network purposes across five surfaces (`wan`,
 `vpn_client`, `vpn_server`, `site_to_site_vpn`, and plain networks), and
-which of its 263 exported fields the encoder will actually emit depends on
+which of its 275 exported fields the encoder will actually emit depends on
 which purpose is set. A field a descriptor declares but the *current*
 object's encoder will not emit is not a "send zero" situation (which is what
 an omitted mask name would normally mean) — go-unifi hard-errors on a masked
 name it never emits at all. This
 hook reports what to drop before the mask reaches the wire, and the kit
 subtracts, so a purpose-mismatched field never reaches the controller as an
-error the practitioner cannot act on.
+error the practitioner cannot act on. `network`, `vpn_client` and
+`port_profile` each declare one; the last for a different reason — a slot the
+practitioner never configured stays off the wire instead of going out as an
+empty string.
 
-Six of the seven hand-written surfaces don't go through this path at all:
-each builds and sends its own whole object in its own `Update` method,
-with no mask and no kit involved. `WAN` is the exception — its `Update`
-does mask, but by its own hand-rolled logic rather than the kit's.
+Every surface goes through this path. There is no longer a set of
+hand-written resources building and sending whole objects outside it, and no
+hand-rolled mask beside the kit's own: the masked write is the only update
+shape the provider has.
 
 **Plan wins over response, for anything the plan set.** After a create or
 update returns, `Spec.ApplyPlanToState` copies every `Field`-covered attribute
@@ -370,22 +391,24 @@ accepts three forms:
   the handle on an attribute nothing reads.
 - **Import blocks with an identity** (Terraform 1.12+, `import { identity =
   {...} }`) — core hands the handle through `req.Identity` instead of
-  `req.ID`. Every managed surface but two declares a one-attribute identity
+  `req.ID`. Every managed surface but one declares a one-attribute identity
   schema (`id`, `RequiredForImport`), and `ImportState` reads it as a
-  fallback when `req.ID` is empty; `unifi_bgp` and `unifi_setting` don't
-  implement `resource.ResourceWithIdentity` at all, so those two import by
-  `site:id`/`id` only. The identity is also *set* on the import response itself,
+  fallback when `req.ID` is empty; `unifi_setting` does not implement
+  `resource.ResourceWithIdentity` at all, so it imports by `site:id`/`id`
+  only. The identity is also *set* on the import response itself,
   not only in the following `Read` — leaving it null there produces a
   confusing "Missing Resource Identity After Read" instead of a clean
   not-found when the imported handle names nothing.
 
 ## List resources
 
-25 of the provider's 28 managed resources also serve a list resource
-(`list.ListResource`). Only the 20 kit-served surfaces configure theirs
-through `ListSpec[S]` in `list.go`; the other five (`dynamic_dns`, `wan`,
-`power_supervisor`, `site`, `wireguard_peer`) implement `list.ListResource`
-by hand, the same way they implement `resource.Resource`. Because every
+31 of the provider's 34 managed resources also serve a list resource
+(`list.ListResource`), and every one of them configures it through
+`ListSpec[S]` in `list.go` — there is no hand-written list resource left,
+just as there is no hand-written `resource.Resource`. The three that serve
+none are `unifi_account`, a deprecated alias over `radius_user`'s kit
+resource, and `unifi_bgp` and `unifi_setting`, whose objects are site-singular
+and so have nothing to enumerate. Because every
 list surface in the estate declares the same shape — an optional site, and
 a repeated `filter { name = ...; value = ... }` block — `ListConfig`/
 `ListFilter` are shared types rather than generated per surface.
@@ -399,9 +422,9 @@ attribute's type).
 
 ## The generated-schema relationship
 
-A descriptor's `Fields` list is hand-written, but the schema those fields are
-checked against, and the Go model type they're bound to, come from a
-generator. The pipeline, per surface:
+A descriptor's judgment entries are hand-written, but the schema they are
+checked against, the Go model type they bind to, and the mechanical entries
+they lay over all come from generators. The pipeline, per surface:
 
 1. **`cmd/sdk-bootstrap`** derives a *bootstrap*: which fields a resource's
    go-unifi SDK struct carries and what shape each one is, read directly from
@@ -438,12 +461,66 @@ generator. The pipeline, per surface:
    a plain `types.Object`, never the generator's own `<X>Value` type — see
    `ObjectField`'s doc comment for why that door is closed); `cmd/metadata-contract-gen`
    freezes the practitioner-visible type name for each generated surface.
+5. **`cmd/descriptor-emitter`** writes the mechanical half of the descriptor
+   itself, into `<surface>_descriptor_gen.go`: the Terraform model struct, the
+   nested element models and their attr-type maps, and every `Field` entry the
+   artifacts already determine — wire name and field kind from the mapping,
+   SDK identifier and pointer-ness from the SDK structs through
+   `internal/sdkshape`, `Elide` from `resourcekit.DerivedElide` over the
+   generated schema, `OmitZero` from the SDK's constraint table. It invents
+   nothing: a wire the artifacts cannot fully determine is skipped for the
+   hand descriptor to supply, and so is anything the hand file has already
+   claimed — a `Wire` it names, an `AlwaysWire` or `MappedElsewhere` entry, a
+   nested model it declares its own `AttributeTypes()` for. The hand
+   descriptor lays its judgment entries over the generated list with
+   `resourcekit.Override`.
 
 A descriptor then binds one generated schema function and one generated model
 struct into a `Spec` (see `dns_record_descriptor.go` for the shortest
 complete example) — the model's `tfsdk` tags are what the framework reflects
 on to move data in and out, and the schema function is what `Resource.Schema`
 serves.
+
+### Why the front half of the pipeline is ours
+
+Step 3 hands off to the official generator, and that is deliberate: all 45
+generated surfaces — 33 resources and 12 data sources — go through
+`tfplugingen-framework`, consuming the `provider-code-spec.json` our compiler
+produces. What this repo replaced is only the *front* half, the part that
+decides what the spec says. Nobody should later "simplify" that back into
+consuming someone else's spec, so here is why it exists.
+
+This provider's correctness model is keyed on **wire names** and is
+**pointer-aware**. A masked write names wire keys, not attribute names. The
+conformance censuses compare a descriptor's declared `Wire` against the SDK
+struct's own JSON tag. The SDK's behaviour artifact and its `FieldConstraints`
+table are both keyed by wire name too. And `*int64` versus `int64` is the fact
+that decides `OmitZero` — whether a field that is legitimately zero goes out
+as a zero or stays off the wire entirely.
+
+The provider-code-spec format carries neither. It has a `name` — the Terraform
+attribute name — and no slot for a wire name distinct from it, and nothing
+anywhere that records pointer-ness. That is not a defect in the format: it is
+built to describe a *Terraform schema*, and it describes one well. It is
+simply unfit to describe a *controller wire contract*, which is the thing this
+provider has to get right.
+
+So `cmd/sdk-bootstrap` walks the SDK structs with `go/types` and records, per
+field, its wire name, its Go name, its type and whether it is a pointer —
+`unifi.Network` alone comes back as 275 fields, 174 of them pointers. Every
+downstream instrument keys off that record.
+
+The missing piece was never a schema spec, then; it was a wire-contract
+artifact. That now exists on the SDK side, as `schemas/behavior.json` and the
+generated `FieldConstraints` tables, and the compiler reads both. The SDK also
+ships a `specification.json`, which is being retired and which nothing here
+has ever consumed.
+
+One naming wart to know about: a bootstrap's `source.specification_sha256`
+does not digest any specification file. It digests the **SDK struct source
+bytes** the bootstrap was derived from, and the policy's matching
+`source_specification_sha256` pins that same digest. The name predates the
+struct walk; `source_sha256` would say what it means.
 
 `go generate ./...` re-runs this whole pipeline and is expected to reproduce
 `internal/generated/*` exactly; CI's `generate` job runs it and fails the
@@ -486,10 +563,12 @@ layers:
   failing test.
 - **Write-path classification** (`unifi/write_paths_test.go`) reads every
   kit surface's `Backend` and asserts, per surface, that exactly one of
-  `Create`/`CreateFields` is set — and records which. This is what pins
-  "only `unifi_device`'s create is unmasked" as a checked fact rather than
-  a claim a reader has to take on faith. Update needs no such check: every
-  kit surface's `Backend` has only `UpdateFields` to set.
+  `Create`/`CreateFields` is set — and records which, by name, against the
+  set of kit-served surfaces. This is what pins "`unifi_device` and
+  `unifi_wan` are the only creates that patch" as a checked fact rather than
+  a claim a reader has to take on faith; a third surface joining that list is
+  a decision someone has to state. Update needs no such check: every kit
+  surface's `Backend` has only `UpdateFields` to set.
 - **The unfailable-test inventory** (`internal/testaudit`) parses every `_test.go`
   file in the module and flags a test that structurally cannot fail: an empty
   table-driven case, an unconditional `t.Skip`, or a populated table whose
