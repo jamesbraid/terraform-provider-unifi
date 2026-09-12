@@ -15,7 +15,7 @@ import (
 )
 
 type dynamicDNSKitResource struct {
-	resourcekit.Resource[dynamicDNSKitModel, ui.DynamicDNS]
+	resourcekit.Resource[dynamicDnsKitModel, ui.DynamicDNS]
 }
 
 var (

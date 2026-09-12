@@ -11,15 +11,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type hotspotOpKitModel struct {
-	ID       types.String   `tfsdk:"id"`
-	Site     types.String   `tfsdk:"site"`
-	Name     types.String   `tfsdk:"name"`
-	Password types.String   `tfsdk:"password"`
-	Note     types.String   `tfsdk:"note"`
-	Timeouts timeouts.Value `tfsdk:"timeouts"`
-}
-
 // hotspotOpKitSpec: a hotspot operator is a guest-portal login account. name
 // and the password are required; note is optional. The controller calls the
 // password x_password on the wire, which only the wire-name check would catch
@@ -34,31 +25,7 @@ func hotspotOpKitSpec() resourcekit.Spec[hotspotOpKitModel, ui.HotspotOp] {
 		ID:       func(m *hotspotOpKitModel) *types.String { return &m.ID },
 		Site:     func(m *hotspotOpKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *hotspotOpKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[hotspotOpKitModel, ui.HotspotOp]{
-			resourcekit.StringField[hotspotOpKitModel, ui.HotspotOp]{
-				Wire:  "name",
-				Model: func(m *hotspotOpKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.HotspotOp) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			// The controller calls it x_password. The Terraform name is
-			// password, and nothing but the wire-name check would catch a
-			// descriptor that used the Terraform spelling here -- the mask
-			// would name an attribute the controller does not have and the
-			// password would never change.
-			resourcekit.StringField[hotspotOpKitModel, ui.HotspotOp]{
-				Wire:  "x_password",
-				Model: func(m *hotspotOpKitModel) *types.String { return &m.Password },
-				SDK:   func(s *ui.HotspotOp) *string { return &s.Password },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[hotspotOpKitModel, ui.HotspotOp]{
-				Wire:  "note",
-				Model: func(m *hotspotOpKitModel) *types.String { return &m.Note },
-				SDK:   func(s *ui.HotspotOp) *string { return &s.Note },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		Fields:   hotspotOpGenFields(),
 		// Seeded here as well as in hotspotOpKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.

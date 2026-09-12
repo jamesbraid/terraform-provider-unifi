@@ -11,20 +11,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type dpiAppKitModel struct {
-	ID             types.String   `tfsdk:"id"`
-	Site           types.String   `tfsdk:"site"`
-	Name           types.String   `tfsdk:"name"`
-	Apps           types.List     `tfsdk:"apps"`
-	Cats           types.List     `tfsdk:"cats"`
-	Blocked        types.Bool     `tfsdk:"blocked"`
-	Enabled        types.Bool     `tfsdk:"enabled"`
-	Log            types.Bool     `tfsdk:"log"`
-	QOSRateMaxDown types.Int64    `tfsdk:"qos_rate_max_down"`
-	QOSRateMaxUp   types.Int64    `tfsdk:"qos_rate_max_up"`
-	Timeouts       timeouts.Value `tfsdk:"timeouts"`
-}
-
 // dpiAppKitSpec: a DPI application rule matches DPI apps or whole categories
 // and blocks or logs them. The three bools are non-omitempty on the wire, so
 // their schema defaults keep the mask always naming them; the two qos rate
@@ -40,55 +26,7 @@ func dpiAppKitSpec() resourcekit.Spec[dpiAppKitModel, ui.DpiApp] {
 		ID:       func(m *dpiAppKitModel) *types.String { return &m.ID },
 		Site:     func(m *dpiAppKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *dpiAppKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[dpiAppKitModel, ui.DpiApp]{
-			resourcekit.StringField[dpiAppKitModel, ui.DpiApp]{
-				Wire:  "name",
-				Model: func(m *dpiAppKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.DpiApp) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64ListField[dpiAppKitModel, ui.DpiApp]{
-				Wire:  "apps",
-				Model: func(m *dpiAppKitModel) *types.List { return &m.Apps },
-				SDK:   func(s *ui.DpiApp) *[]int64 { return &s.Apps },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.Int64ListField[dpiAppKitModel, ui.DpiApp]{
-				Wire:  "cats",
-				Model: func(m *dpiAppKitModel) *types.List { return &m.Cats },
-				SDK:   func(s *ui.DpiApp) *[]int64 { return &s.Cats },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[dpiAppKitModel, ui.DpiApp]{
-				Wire:  "blocked",
-				Model: func(m *dpiAppKitModel) *types.Bool { return &m.Blocked },
-				SDK:   func(s *ui.DpiApp) *bool { return &s.Blocked },
-			},
-			resourcekit.BoolField[dpiAppKitModel, ui.DpiApp]{
-				Wire:  "enabled",
-				Model: func(m *dpiAppKitModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *ui.DpiApp) *bool { return &s.Enabled },
-			},
-			resourcekit.BoolField[dpiAppKitModel, ui.DpiApp]{
-				Wire:  "log",
-				Model: func(m *dpiAppKitModel) *types.Bool { return &m.Log },
-				SDK:   func(s *ui.DpiApp) *bool { return &s.Log },
-			},
-			resourcekit.Int64PtrField[dpiAppKitModel, ui.DpiApp]{
-				Wire:     "qos_rate_max_down",
-				Model:    func(m *dpiAppKitModel) *types.Int64 { return &m.QOSRateMaxDown },
-				SDK:      func(s *ui.DpiApp) **int64 { return &s.QOSRateMaxDown },
-				Elide:    resourcekit.NullZero,
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[dpiAppKitModel, ui.DpiApp]{
-				Wire:     "qos_rate_max_up",
-				Model:    func(m *dpiAppKitModel) *types.Int64 { return &m.QOSRateMaxUp },
-				SDK:      func(s *ui.DpiApp) **int64 { return &s.QOSRateMaxUp },
-				Elide:    resourcekit.NullZero,
-				OmitZero: true,
-			},
-		},
+		Fields:   dpiAppGenFields(),
 		// Seeded here as well as in dpiAppKitBackend, because Configure binds
 		// the real Backend and a unit test calling ToModel on an unconfigured
 		// spec would otherwise dereference nil.
