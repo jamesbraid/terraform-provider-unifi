@@ -166,7 +166,7 @@ func render(
 	}
 
 	if !s.handNested {
-		renderNested(ctx, &b, s, built, imports)
+		renderNested(ctx, &b, s, built, doc, hand, imports)
 	}
 
 	fmt.Fprintf(&b, "// %s is every %s attribute whose mapping the pipeline's\n", lowerCamelNaive(s.name)+"GenFields", surfaceLabel(s))

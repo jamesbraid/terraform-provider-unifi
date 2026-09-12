@@ -67,13 +67,24 @@ type handFacts struct {
 	// int64): every such wire is hand-claimed, so no generated accessor
 	// asserts the primitive type the struct does not have.
 	Claimed map[string]bool
+	// AttributeTypesMethods is every model type the hand file declares an
+	// AttributeTypes() method on. That method already is the attr-type map
+	// and every caller reaches for it, so emitting a var of the same
+	// contents leaves a declaration nothing can name.
+	AttributeTypesMethods map[string]bool
+	// Mentions is every identifier the hand file names anywhere, and it is
+	// the guard on skipping: a generated declaration the hand descriptor
+	// uses is emitted whatever else that file does.
+	Mentions map[string]bool
 }
 
 func scanHandDescriptor(path string) (handFacts, error) {
 	facts := handFacts{
-		AlwaysWire:      map[string]bool{},
-		MappedElsewhere: map[string]bool{},
-		Claimed:         map[string]bool{},
+		AlwaysWire:            map[string]bool{},
+		MappedElsewhere:       map[string]bool{},
+		Claimed:               map[string]bool{},
+		AttributeTypesMethods: map[string]bool{},
+		Mentions:              map[string]bool{},
 	}
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
@@ -88,6 +99,16 @@ func scanHandDescriptor(path string) (handFacts, error) {
 	helperWireArg := helperWirePositions(file)
 	var bad error
 	ast.Inspect(file, func(n ast.Node) bool {
+		if id, ok := n.(*ast.Ident); ok {
+			facts.Mentions[id.Name] = true
+			return true
+		}
+		if fn, ok := n.(*ast.FuncDecl); ok && fn.Name.Name == "AttributeTypes" && fn.Recv != nil {
+			if receiver := receiverTypeName(fn.Recv); receiver != "" {
+				facts.AttributeTypesMethods[receiver] = true
+			}
+			return true
+		}
 		if call, ok := n.(*ast.CallExpr); ok {
 			name := ""
 			if id, ok := call.Fun.(*ast.Ident); ok {
@@ -153,6 +174,22 @@ func scanHandDescriptor(path string) (handFacts, error) {
 		return true
 	})
 	return facts, bad
+}
+
+// receiverTypeName names the type a method hangs off, through a pointer
+// receiver where there is one.
+func receiverTypeName(recv *ast.FieldList) string {
+	if len(recv.List) == 0 {
+		return ""
+	}
+	expr := recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	if id, ok := expr.(*ast.Ident); ok {
+		return id.Name
+	}
+	return ""
 }
 
 // helperWirePositions finds the per-file field constructors -- functions or
