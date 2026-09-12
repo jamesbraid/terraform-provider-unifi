@@ -11,13 +11,6 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-type wlanGroupKitModel struct {
-	ID       types.String   `tfsdk:"id"`
-	Site     types.String   `tfsdk:"site"`
-	Name     types.String   `tfsdk:"name"`
-	Timeouts timeouts.Value `tfsdk:"timeouts"`
-}
-
 // wlanGroupKitSpec: the smallest descriptor in the tree. The SDK struct
 // carries one practitioner-facing field -- name -- and the four attr_*
 // controller internals stay unmapped, so the derived mask can never offer
@@ -31,14 +24,7 @@ func wlanGroupKitSpec() resourcekit.Spec[wlanGroupKitModel, ui.WLANGroup] {
 		ID:       func(m *wlanGroupKitModel) *types.String { return &m.ID },
 		Site:     func(m *wlanGroupKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *wlanGroupKitModel) *timeouts.Value { return &m.Timeouts },
-		Fields: []resourcekit.Field[wlanGroupKitModel, ui.WLANGroup]{
-			resourcekit.StringField[wlanGroupKitModel, ui.WLANGroup]{
-				Wire:  "name",
-				Model: func(m *wlanGroupKitModel) *types.String { return &m.Name },
-				SDK:   func(s *ui.WLANGroup) *string { return &s.Name },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   wlanGroupGenFields(),
 		// Seeded here as well as in wlanGroupKitBackend, because Configure
 		// binds the real Backend and a unit test calling ToModel on an
 		// unconfigured spec would otherwise dereference nil.

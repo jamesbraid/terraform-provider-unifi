@@ -372,11 +372,55 @@ func loadMapping(t *testing.T, surface string) []mappingField {
 // Fields entries keyed by the Spec's TypeName. It fails on an element shape
 // it doesn't recognize rather than skipping it: a skipped entry would read
 // as a missing field rather than a reader bug.
+//
+// A descriptor since the emitter spans two files: *_descriptor_gen.go holds
+// the model struct and the generated field list, and the hand file lays its
+// judgment entries over that list with resourcekit.Override. The generated
+// files are parsed first -- model tags and every GenFields function -- so the
+// hand Spec's Fields expression can be resolved to the same flat list the
+// runtime composes, and every assertion below runs over it unchanged.
 func loadDescriptors(t *testing.T) map[string]descriptor {
 	t.Helper()
 	paths, err := filepath.Glob("*_descriptor.go")
 	if err != nil {
 		t.Fatal(err)
+	}
+	genPaths, err := filepath.Glob("*_descriptor_gen.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Model structs and GenFields functions from the generated halves,
+	// keyed by name; package-level uniqueness makes the flat maps safe.
+	modelTags := map[string]map[string]string{}
+	genFields := map[string][]descriptorField{}
+	for _, path := range genPaths {
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parsing %s: %v", path, err)
+		}
+		for name, tags := range modelTagsIn(file) {
+			modelTags[name] = tags
+		}
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || !strings.HasSuffix(fn.Name.Name, "GenFields") || fn.Body == nil || len(fn.Body.List) != 1 {
+				continue
+			}
+			ret, ok := fn.Body.List[0].(*ast.ReturnStmt)
+			if !ok || len(ret.Results) != 1 {
+				t.Fatalf("%s: %s does not return a single field slice", path, fn.Name.Name)
+			}
+			slice, ok := ret.Results[0].(*ast.CompositeLit)
+			if !ok {
+				t.Fatalf("%s: %s returns %T, not a composite literal", path, fn.Name.Name, ret.Results[0])
+			}
+			var fields []descriptorField
+			for _, item := range slice.Elts {
+				fields = append(fields, parseField(t, path, item, nil))
+			}
+			genFields[fn.Name.Name] = fields
+		}
 	}
 	out := map[string]descriptor{}
 	for _, path := range paths {
@@ -385,7 +429,9 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 		if err != nil {
 			t.Fatalf("parsing %s: %v", path, err)
 		}
-		modelTags := modelTagsIn(file)
+		for name, tags := range modelTagsIn(file) {
+			modelTags[name] = tags
+		}
 		helpers := helpersIn(file)
 		aliases := aliasesIn(file)
 		ast.Inspect(file, func(n ast.Node) bool {
@@ -450,13 +496,7 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 						desc.MappedElsewhere[wire] = true
 					}
 				case "Fields":
-					slice, ok := kv.Value.(*ast.CompositeLit)
-					if !ok {
-						t.Fatalf("%s: Fields is %T, not a composite literal", path, kv.Value)
-					}
-					for _, item := range slice.Elts {
-						desc.Fields = append(desc.Fields, parseField(t, path, item, helpers))
-					}
+					desc.Fields = fieldsEntries(t, path, kv.Value, helpers, genFields)
 				}
 			}
 			if desc.TypeName != "" {
@@ -469,6 +509,57 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 		})
 	}
 	return out
+}
+
+// fieldsEntries resolves a Spec's Fields expression to the flat entry list
+// the runtime would build: a plain composite literal as before, a bare
+// <name>GenFields() call as the generated list, and
+// resourcekit.Override(gen, overrides) with Override's own semantics -- a
+// generated entry naming a wire an override also names is dropped, the
+// overrides appended. Any other shape fails, for the same reason parseField
+// fails on an unknown element: a skipped entry reads as a missing field.
+func fieldsEntries(
+	t *testing.T, path string, value ast.Expr,
+	helpers map[string]helperSpec, genFields map[string][]descriptorField,
+) []descriptorField {
+	t.Helper()
+	switch v := value.(type) {
+	case *ast.CompositeLit:
+		var fields []descriptorField
+		for _, item := range v.Elts {
+			fields = append(fields, parseField(t, path, item, helpers))
+		}
+		return fields
+	case *ast.CallExpr:
+		name := exprName(v.Fun)
+		if strings.HasSuffix(name, "GenFields") && len(v.Args) == 0 {
+			fields, ok := genFields[name]
+			if !ok {
+				t.Fatalf("%s: Fields calls %s, and no *_descriptor_gen.go declares it", path, name)
+			}
+			return fields
+		}
+		if name == "Override" && len(v.Args) == 2 {
+			generated := fieldsEntries(t, path, v.Args[0], helpers, genFields)
+			overrides := fieldsEntries(t, path, v.Args[1], helpers, genFields)
+			claimed := map[string]bool{}
+			for _, field := range overrides {
+				for _, wire := range field.wires() {
+					claimed[wire] = true
+				}
+			}
+			var fields []descriptorField
+			for _, field := range generated {
+				if !claimed[field.Wire] {
+					fields = append(fields, field)
+				}
+			}
+			return append(fields, overrides...)
+		}
+		t.Fatalf("%s: Fields is a call to %s, which this reader does not understand", path, name)
+	}
+	t.Fatalf("%s: Fields is %T, which this reader does not understand", path, value)
+	return nil
 }
 
 // modelTagsIn maps each struct type in the file to its Go field -> tfsdk tag.
