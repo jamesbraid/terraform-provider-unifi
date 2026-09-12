@@ -274,7 +274,9 @@ func TestAccNetworkFramework_thirdPartyGateway(t *testing.T) {
 				ImportStateVerifyIgnore: []string{
 					"subnet",
 					"auto_scale",
-					"gateway_type",
+					// setting_preference: the plan modifier stores "manual"
+					// while a vlan-only live document omits the key entirely,
+					// so import legitimately reads null.
 					"setting_preference",
 					"multicast_dns",
 					"ipv6_interface_type",
@@ -512,8 +514,6 @@ func TestAccNetworkFramework_dhcpRelay(t *testing.T) {
 				ImportStateId:     "name=Test DHCP Relay",
 				ImportStateVerifyIgnore: []string{
 					"auto_scale",
-					"gateway_type",
-					"setting_preference",
 					"multicast_dns",
 					"ipv6_interface_type",
 					"ipv6_static_subnet",
