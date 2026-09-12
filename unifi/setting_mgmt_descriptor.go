@@ -11,67 +11,12 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
-)
-
-// sshKeyModel is one element of mgmt's ssh_keys list.
-type sshKeyModel struct {
-	Name    types.String `tfsdk:"name"`
-	Type    types.String `tfsdk:"type"`
-	Key     types.String `tfsdk:"key"`
-	Comment types.String `tfsdk:"comment"`
-}
-
-// settingMgmtModel is mgmt's own section model, decoded out of
-// settingResourceModel.Mgmt.
-type settingMgmtModel struct {
-	AutoUpgrade            types.Bool   `tfsdk:"auto_upgrade"`
-	AutoUpgradeHour        types.Int64  `tfsdk:"auto_upgrade_hour"`
-	SSHEnabled             types.Bool   `tfsdk:"ssh_enabled"`
-	SSHKeys                types.List   `tfsdk:"ssh_keys"`
-	AdvancedFeatureEnabled types.Bool   `tfsdk:"advanced_feature_enabled"`
-	DebugToolsEnabled      types.Bool   `tfsdk:"debug_tools_enabled"`
-	DirectConnectEnabled   types.Bool   `tfsdk:"direct_connect_enabled"`
-	UnifiIdpEnabled        types.Bool   `tfsdk:"unifi_idp_enabled"`
-	WifimanEnabled         types.Bool   `tfsdk:"wifiman_enabled"`
-	SSHUsername            types.String `tfsdk:"ssh_username"`
-	SSHPassword            types.String `tfsdk:"ssh_password"`
-	SSHAuthPasswordEnabled types.Bool   `tfsdk:"ssh_auth_password_enabled"`
-}
-
-// mgmtSSHKeyAttrTypes and mgmtAttrTypes type mgmt's ssh_keys elements and
-// mgmt's own object in state; both must match the generated schema exactly.
-var (
-	mgmtSSHKeyAttrTypes = map[string]attr.Type{
-		"name":    types.StringType,
-		"type":    types.StringType,
-		"key":     types.StringType,
-		"comment": types.StringType,
-	}
-	mgmtAttrTypes = map[string]attr.Type{
-		"auto_upgrade":      types.BoolType,
-		"auto_upgrade_hour": types.Int64Type,
-		"ssh_enabled":       types.BoolType,
-		"ssh_keys": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes},
-		},
-		"advanced_feature_enabled":  types.BoolType,
-		"debug_tools_enabled":       types.BoolType,
-		"direct_connect_enabled":    types.BoolType,
-		"unifi_idp_enabled":         types.BoolType,
-		"wifiman_enabled":           types.BoolType,
-		"ssh_username":              types.StringType,
-		"ssh_password":              types.StringType,
-		"ssh_auth_password_enabled": types.BoolType,
-	}
 )
 
 // mgmtKitSpec maps every attribute of the generated mgmt schema
@@ -94,48 +39,12 @@ func mgmtKitSpec() resourcekit.Spec[settingMgmtModel, settings.Mgmt] {
 		TypeName: "setting_mgmt",
 		Subject:  "Mgmt Setting",
 		New:      func() *settings.Mgmt { return &settings.Mgmt{} },
-		Fields: []resourcekit.Field[settingMgmtModel, settings.Mgmt]{
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "advanced_feature_enabled",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.AdvancedFeatureEnabled },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.AdvancedFeatureEnabled },
-			},
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "auto_upgrade",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.AutoUpgrade },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.AutoUpgrade },
-			},
-			resourcekit.Int64PtrField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "auto_upgrade_hour",
-				Model: func(m *settingMgmtModel) *types.Int64 { return &m.AutoUpgradeHour },
-				SDK:   func(s *settings.Mgmt) **int64 { return &s.AutoUpgradeHour },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "debug_tools_enabled",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.DebugToolsEnabled },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.DebugToolsEnabled },
-			},
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "direct_connect_enabled",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.DirectConnectEnabled },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.DirectConnectEnabled },
-			},
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "x_ssh_auth_password_enabled",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.SSHAuthPasswordEnabled },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.SSHAuthPasswordEnabled },
-			},
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "x_ssh_enabled",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.SSHEnabled },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.SSHEnabled },
-			},
+		Fields: resourcekit.Override(settingMgmtGenFields(), []resourcekit.Field[settingMgmtModel, settings.Mgmt]{
 			resourcekit.ObjectListField[settingMgmtModel, settings.Mgmt, settings.SettingMgmtSSHKeys]{
 				Wire:      "x_ssh_keys",
 				Model:     func(m *settingMgmtModel) *types.List { return &m.SSHKeys },
 				SDK:       func(s *settings.Mgmt) *[]settings.SettingMgmtSSHKeys { return &s.SSHKeys },
-				AttrTypes: mgmtSSHKeyAttrTypes,
+				AttrTypes: mgmtSshKeysAttrTypes,
 				Encode:    mgmtSSHKeyEncode,
 				Decode:    mgmtSSHKeyDecode,
 				// date and fingerprint are controller-assigned (a key's
@@ -146,36 +55,14 @@ func mgmtKitSpec() resourcekit.Spec[settingMgmtModel, settings.Mgmt] {
 				Unmodelled: []string{"date", "fingerprint"},
 				Elide:      resourcekit.KeepZero,
 			},
-			resourcekit.StringField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "x_ssh_password",
-				Model: func(m *settingMgmtModel) *types.String { return &m.SSHPassword },
-				SDK:   func(s *settings.Mgmt) *string { return &s.SSHPassword },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.StringField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "x_ssh_username",
-				Model: func(m *settingMgmtModel) *types.String { return &m.SSHUsername },
-				SDK:   func(s *settings.Mgmt) *string { return &s.SSHUsername },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "unifi_idp_enabled",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.UnifiIdpEnabled },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.UniFiIdentityProviderEnabled },
-			},
-			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
-				Wire:  "wifiman_enabled",
-				Model: func(m *settingMgmtModel) *types.Bool { return &m.WifimanEnabled },
-				SDK:   func(s *settings.Mgmt) *bool { return &s.WifimanEnabled },
-			},
-		},
+		}),
 	}
 }
 
 func mgmtSSHKeyEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingMgmtSSHKeys, diag.Diagnostics) {
-	var model sshKeyModel
+	var model mgmtSshKeysModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingMgmtSSHKeys{
 		Name:    model.Name.ValueString(),
@@ -188,7 +75,7 @@ func mgmtSSHKeyEncode(
 func mgmtSSHKeyDecode(
 	ctx context.Context, element settings.SettingMgmtSSHKeys,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, mgmtSSHKeyAttrTypes, sshKeyModel{
+	return types.ObjectValueFrom(ctx, mgmtSshKeysAttrTypes, mgmtSshKeysModel{
 		Name:    types.StringValue(element.Name),
 		Type:    types.StringValue(element.KeyType),
 		Key:     types.StringValue(element.Key),
@@ -231,7 +118,7 @@ func mgmtAfterReceive(
 	// always restores whatever the plan/prior held -- configured or not.
 	model.SSHPassword = prior.SSHPassword
 
-	sshKeysType := types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes}
+	sshKeysType := types.ObjectType{AttrTypes: mgmtSshKeysAttrTypes}
 	switch {
 	case prior.SSHKeys.IsNull() || prior.SSHKeys.IsUnknown():
 		model.SSHKeys = types.ListNull(sshKeysType)
@@ -240,16 +127,6 @@ func mgmtAfterReceive(
 	}
 
 	return nil
-}
-
-// mgmtNestedSchema is the mgmt SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built
-// for a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func mgmtNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	mgmt := built.Attributes["mgmt"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // mgmt is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: mgmt.Attributes}
 }
 
 // mgmtKitBackend binds mgmtKitSpec to a client: Read is GetSetting[*Mgmt],

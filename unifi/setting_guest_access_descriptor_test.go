@@ -44,11 +44,11 @@ func TestGuestAccessSettingRoundTrip(t *testing.T) {
 		RADIUSDisconnectEnabled: types.BoolValue(true),
 		RADIUSDisconnectPort:    types.Int64Value(3799),
 		RADIUSEnabled:           types.BoolValue(true),
-		RADIUSProfileID:         types.StringValue("radius-profile-id"),
+		RadiusprofileID:         types.StringValue("radius-profile-id"),
 		RedirectEnabled:         types.BoolValue(true),
-		RedirectHttps:           types.BoolValue(true),
-		RedirectToHttps:         types.BoolValue(false),
-		RedirectUrl:             types.StringValue("https://example.com/welcome"),
+		RedirectHTTPS:           types.BoolValue(true),
+		RedirectToHTTPS:         types.BoolValue(false),
+		RedirectURL:             types.StringValue("https://example.com/welcome"),
 		VoucherEnabled:          types.BoolValue(true),
 	}
 	sdk, diags := spec.ToSDK(ctx, in)
@@ -105,9 +105,9 @@ func TestGuestAccessSettingRoundTrip(t *testing.T) {
 		out.PortalHostname != in.PortalHostname || out.PortalUseHostname != in.PortalUseHostname ||
 		out.RADIUSAuthType != in.RADIUSAuthType || out.RADIUSDisconnectEnabled != in.RADIUSDisconnectEnabled ||
 		out.RADIUSDisconnectPort != in.RADIUSDisconnectPort || out.RADIUSEnabled != in.RADIUSEnabled ||
-		out.RADIUSProfileID != in.RADIUSProfileID || out.RedirectEnabled != in.RedirectEnabled ||
-		out.RedirectHttps != in.RedirectHttps || out.RedirectToHttps != in.RedirectToHttps ||
-		out.RedirectUrl != in.RedirectUrl || out.VoucherEnabled != in.VoucherEnabled {
+		out.RadiusprofileID != in.RadiusprofileID || out.RedirectEnabled != in.RedirectEnabled ||
+		out.RedirectHTTPS != in.RedirectHTTPS || out.RedirectToHTTPS != in.RedirectToHTTPS ||
+		out.RedirectURL != in.RedirectURL || out.VoucherEnabled != in.VoucherEnabled {
 		t.Errorf("guest_access round-trip mismatch: %+v", out)
 	}
 }
@@ -427,7 +427,7 @@ func TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip(t *te
 	}
 
 	in := &settingGuestAccessModel{
-		AuthUrl:                   types.StringValue("https://auth.example.com/login"),
+		AuthURL:                   types.StringValue("https://auth.example.com/login"),
 		AuthorizeUseSandbox:       types.BoolValue(true),
 		CustomIP:                  types.StringValue("203.0.113.5"),
 		FacebookAppID:             types.StringValue("fb-app-id"),
@@ -437,7 +437,7 @@ func TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip(t *te
 		GoogleDomain:              types.StringValue("example.com"),
 		GoogleEnabled:             types.BoolValue(true),
 		GoogleScopeEmail:          types.BoolValue(true),
-		IPpayUseSandbox:           types.BoolValue(true),
+		IppayUseSandbox:           types.BoolValue(true),
 		MerchantwarriorUseSandbox: types.BoolValue(true),
 		PaypalUseSandbox:          types.BoolValue(true),
 		QuickpayTestmode:          types.BoolValue(true),
@@ -495,12 +495,12 @@ func TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip(t *te
 	if diags := spec.ToModel(ctx, sdk, &out, ""); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
-	if out.AuthUrl != in.AuthUrl ||
+	if out.AuthURL != in.AuthURL ||
 		out.AuthorizeUseSandbox != in.AuthorizeUseSandbox || out.CustomIP != in.CustomIP ||
 		out.FacebookAppID != in.FacebookAppID || out.FacebookEnabled != in.FacebookEnabled ||
 		out.FacebookScopeEmail != in.FacebookScopeEmail || out.GoogleClientID != in.GoogleClientID ||
 		out.GoogleDomain != in.GoogleDomain || out.GoogleEnabled != in.GoogleEnabled ||
-		out.GoogleScopeEmail != in.GoogleScopeEmail || out.IPpayUseSandbox != in.IPpayUseSandbox ||
+		out.GoogleScopeEmail != in.GoogleScopeEmail || out.IppayUseSandbox != in.IppayUseSandbox ||
 		out.MerchantwarriorUseSandbox != in.MerchantwarriorUseSandbox ||
 		out.PaypalUseSandbox != in.PaypalUseSandbox || out.QuickpayTestmode != in.QuickpayTestmode ||
 		out.RestrictedDNSEnabled != in.RestrictedDNSEnabled ||

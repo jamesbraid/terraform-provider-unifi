@@ -61,88 +61,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
-)
-
-// settingRadioAiChannelsBlacklistModel is one element of radio_ai's
-// channels_blacklist list.
-type settingRadioAiChannelsBlacklistModel struct {
-	Channel      types.Int64  `tfsdk:"channel"`
-	ChannelWidth types.Int64  `tfsdk:"channel_width"`
-	Radio        types.String `tfsdk:"radio"`
-}
-
-// settingRadioAiRadiosConfigurationModel is one element of radio_ai's
-// radios_configuration list.
-type settingRadioAiRadiosConfigurationModel struct {
-	ChannelWidth types.Int64  `tfsdk:"channel_width"`
-	Dfs          types.Bool   `tfsdk:"dfs"`
-	Radio        types.String `tfsdk:"radio"`
-}
-
-// settingRadioAiModel is radio_ai's own section model, decoded out of
-// settingResourceModel.RadioAi.
-type settingRadioAiModel struct {
-	AutoAdjustChannelsToCountry types.Bool   `tfsdk:"auto_adjust_channels_to_country"`
-	AutoChannelPresetsType      types.String `tfsdk:"auto_channel_presets_type"`
-	Channels6E                  types.List   `tfsdk:"channels_6e"`
-	ChannelsBlacklist           types.List   `tfsdk:"channels_blacklist"`
-	ChannelsNa                  types.List   `tfsdk:"channels_na"`
-	ChannelsNg                  types.List   `tfsdk:"channels_ng"`
-	CronExpr                    types.String `tfsdk:"cron_expr"`
-	Enabled                     types.Bool   `tfsdk:"enabled"`
-	ExcludeDevices              types.List   `tfsdk:"exclude_devices"`
-	HighPriorityDevices         types.List   `tfsdk:"high_priority_devices"`
-	HtModesNa                   types.List   `tfsdk:"ht_modes_na"`
-	HtModesNg                   types.List   `tfsdk:"ht_modes_ng"`
-	Optimize                    types.List   `tfsdk:"optimize"`
-	Radios                      types.List   `tfsdk:"radios"`
-	RadiosConfiguration         types.List   `tfsdk:"radios_configuration"`
-	SettingPreference           types.String `tfsdk:"setting_preference"`
-}
-
-// radioAiChannelsBlacklistAttrTypes, radioAiRadiosConfigurationAttrTypes and
-// radioAiAttrTypes type radio_ai's two nested lists' elements and radio_ai's
-// own object in state; all three must match the generated schema exactly.
-var (
-	radioAiChannelsBlacklistAttrTypes = map[string]attr.Type{
-		"channel":       types.Int64Type,
-		"channel_width": types.Int64Type,
-		"radio":         types.StringType,
-	}
-	radioAiRadiosConfigurationAttrTypes = map[string]attr.Type{
-		"channel_width": types.Int64Type,
-		"dfs":           types.BoolType,
-		"radio":         types.StringType,
-	}
-	radioAiAttrTypes = map[string]attr.Type{
-		"auto_adjust_channels_to_country": types.BoolType,
-		"auto_channel_presets_type":       types.StringType,
-		"channels_6e":                     types.ListType{ElemType: types.Int64Type},
-		"channels_blacklist": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: radioAiChannelsBlacklistAttrTypes},
-		},
-		"channels_na":           types.ListType{ElemType: types.Int64Type},
-		"channels_ng":           types.ListType{ElemType: types.Int64Type},
-		"cron_expr":             types.StringType,
-		"enabled":               types.BoolType,
-		"exclude_devices":       types.ListType{ElemType: types.StringType},
-		"high_priority_devices": types.ListType{ElemType: types.StringType},
-		"ht_modes_na":           types.ListType{ElemType: types.Int64Type},
-		"ht_modes_ng":           types.ListType{ElemType: types.Int64Type},
-		"optimize":              types.ListType{ElemType: types.StringType},
-		"radios":                types.ListType{ElemType: types.StringType},
-		"radios_configuration": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: radioAiRadiosConfigurationAttrTypes},
-		},
-		"setting_preference": types.StringType,
-	}
 )
 
 // radioAiOmitZeroInt64 returns nil -- omitted from the wire by the SDK's
@@ -172,24 +95,7 @@ func radioAiKitSpec() resourcekit.Spec[settingRadioAiModel, settings.RadioAi] {
 		TypeName: "setting_radio_ai",
 		Subject:  "Radio AI Setting",
 		New:      func() *settings.RadioAi { return &settings.RadioAi{} },
-		Fields: []resourcekit.Field[settingRadioAiModel, settings.RadioAi]{
-			resourcekit.BoolField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "auto_adjust_channels_to_country",
-				Model: func(m *settingRadioAiModel) *types.Bool { return &m.AutoAdjustChannelsToCountry },
-				SDK:   func(s *settings.RadioAi) *bool { return &s.AutoAdjustChannelsToCountry },
-			},
-			resourcekit.StringField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "auto_channel_presets_type",
-				Model: func(m *settingRadioAiModel) *types.String { return &m.AutoChannelPresetsType },
-				SDK:   func(s *settings.RadioAi) *string { return &s.AutoChannelPresetsType },
-				Elide: resourcekit.NullZero,
-			},
-			resourcekit.Int64ListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "channels_6e",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.Channels6E },
-				SDK:   func(s *settings.RadioAi) *[]int64 { return &s.Channels6E },
-				Elide: resourcekit.KeepZero,
-			},
+		Fields: resourcekit.Override(settingRadioAiGenFields(), []resourcekit.Field[settingRadioAiModel, settings.RadioAi]{
 			resourcekit.ObjectListField[
 				settingRadioAiModel, settings.RadioAi, settings.SettingRadioAiChannelsBlacklist,
 			]{
@@ -202,65 +108,6 @@ func radioAiKitSpec() resourcekit.Spec[settingRadioAiModel, settings.RadioAi] {
 				Encode:    radioAiChannelsBlacklistEncode,
 				Decode:    radioAiChannelsBlacklistDecode,
 				Elide:     resourcekit.KeepZero,
-			},
-			resourcekit.Int64ListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "channels_na",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.ChannelsNa },
-				SDK:   func(s *settings.RadioAi) *[]int64 { return &s.ChannelsNa },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64ListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "channels_ng",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.ChannelsNg },
-				SDK:   func(s *settings.RadioAi) *[]int64 { return &s.ChannelsNg },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "cron_expr",
-				Model: func(m *settingRadioAiModel) *types.String { return &m.CronExpr },
-				SDK:   func(s *settings.RadioAi) *string { return &s.CronExpr },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "enabled",
-				Model: func(m *settingRadioAiModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.RadioAi) *bool { return &s.Enabled },
-			},
-			resourcekit.StringListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "exclude_devices",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.ExcludeDevices },
-				SDK:   func(s *settings.RadioAi) *[]string { return &s.ExcludeDevices },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "high_priority_devices",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.HighPriorityDevices },
-				SDK:   func(s *settings.RadioAi) *[]string { return &s.HighPriorityDevices },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64ListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "ht_modes_na",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.HtModesNa },
-				SDK:   func(s *settings.RadioAi) *[]int64 { return &s.HtModesNa },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.Int64ListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "ht_modes_ng",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.HtModesNg },
-				SDK:   func(s *settings.RadioAi) *[]int64 { return &s.HtModesNg },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "optimize",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.Optimize },
-				SDK:   func(s *settings.RadioAi) *[]string { return &s.Optimize },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringListField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "radios",
-				Model: func(m *settingRadioAiModel) *types.List { return &m.Radios },
-				SDK:   func(s *settings.RadioAi) *[]string { return &s.Radios },
-				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.ObjectListField[
 				settingRadioAiModel, settings.RadioAi, settings.SettingRadioAiRadiosConfiguration,
@@ -275,20 +122,14 @@ func radioAiKitSpec() resourcekit.Spec[settingRadioAiModel, settings.RadioAi] {
 				Decode:    radioAiRadiosConfigurationDecode,
 				Elide:     resourcekit.KeepZero,
 			},
-			resourcekit.StringField[settingRadioAiModel, settings.RadioAi]{
-				Wire:  "setting_preference",
-				Model: func(m *settingRadioAiModel) *types.String { return &m.SettingPreference },
-				SDK:   func(s *settings.RadioAi) *string { return &s.SettingPreference },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		}),
 	}
 }
 
 func radioAiChannelsBlacklistEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingRadioAiChannelsBlacklist, diag.Diagnostics) {
-	var model settingRadioAiChannelsBlacklistModel
+	var model radioAiChannelsBlacklistModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingRadioAiChannelsBlacklist{
 		Channel:      radioAiOmitZeroInt64(model.Channel),
@@ -300,7 +141,7 @@ func radioAiChannelsBlacklistEncode(
 func radioAiChannelsBlacklistDecode(
 	ctx context.Context, element settings.SettingRadioAiChannelsBlacklist,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, radioAiChannelsBlacklistAttrTypes, settingRadioAiChannelsBlacklistModel{
+	return types.ObjectValueFrom(ctx, radioAiChannelsBlacklistAttrTypes, radioAiChannelsBlacklistModel{
 		Channel:      types.Int64PointerValue(element.Channel),
 		ChannelWidth: types.Int64PointerValue(element.ChannelWidth),
 		Radio:        types.StringValue(element.Radio),
@@ -310,7 +151,7 @@ func radioAiChannelsBlacklistDecode(
 func radioAiRadiosConfigurationEncode(
 	ctx context.Context, object types.Object,
 ) (settings.SettingRadioAiRadiosConfiguration, diag.Diagnostics) {
-	var model settingRadioAiRadiosConfigurationModel
+	var model radioAiRadiosConfigurationModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	return settings.SettingRadioAiRadiosConfiguration{
 		ChannelWidth: radioAiOmitZeroInt64(model.ChannelWidth),
@@ -322,7 +163,7 @@ func radioAiRadiosConfigurationEncode(
 func radioAiRadiosConfigurationDecode(
 	ctx context.Context, element settings.SettingRadioAiRadiosConfiguration,
 ) (types.Object, diag.Diagnostics) {
-	return types.ObjectValueFrom(ctx, radioAiRadiosConfigurationAttrTypes, settingRadioAiRadiosConfigurationModel{
+	return types.ObjectValueFrom(ctx, radioAiRadiosConfigurationAttrTypes, radioAiRadiosConfigurationModel{
 		ChannelWidth: types.Int64PointerValue(element.ChannelWidth),
 		Dfs:          types.BoolValue(element.Dfs),
 		Radio:        types.StringValue(element.Radio),
@@ -394,16 +235,6 @@ func radioAiAfterReceive(
 	model.RadiosConfiguration = listOrNull(radiosConfigurationType, prior.RadiosConfiguration, model.RadiosConfiguration)
 
 	return nil
-}
-
-// radioAiNestedSchema is the radio_ai SingleNestedAttribute's own
-// Attributes, wrapped as a schema.Schema so resourcekit's conformance
-// checks -- built for a whole resource's top-level schema -- can run
-// against one section of unifi_setting instead.
-func radioAiNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	radioAi := built.Attributes["radio_ai"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // radio_ai is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: radioAi.Attributes}
 }
 
 // radioAiKitBackend binds radioAiKitSpec to a client: Read is

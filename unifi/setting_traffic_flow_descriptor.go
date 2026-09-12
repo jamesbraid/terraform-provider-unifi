@@ -11,32 +11,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingTrafficFlowModel is traffic_flow's own section model, decoded out
-// of settingResourceModel.TrafficFlow.
-type settingTrafficFlowModel struct {
-	EnabledAllowedTraffic        types.Bool `tfsdk:"enabled_allowed_traffic"`
-	GatewayDNSEnabled            types.Bool `tfsdk:"gateway_dns_enabled"`
-	UnifiDeviceManagementEnabled types.Bool `tfsdk:"unifi_device_management_enabled"`
-	UnifiServicesEnabled         types.Bool `tfsdk:"unifi_services_enabled"`
-}
-
-// trafficFlowAttrTypes types traffic_flow's own object in state; it must
-// match the generated schema exactly.
-var trafficFlowAttrTypes = map[string]attr.Type{
-	"enabled_allowed_traffic":         types.BoolType,
-	"gateway_dns_enabled":             types.BoolType,
-	"unifi_device_management_enabled": types.BoolType,
-	"unifi_services_enabled":          types.BoolType,
-}
 
 // trafficFlowKitSpec maps every attribute of the generated traffic_flow
 // schema (resource_setting/setting_resource_gen.go's "traffic_flow"
@@ -46,39 +25,8 @@ func trafficFlowKitSpec() resourcekit.Spec[settingTrafficFlowModel, settings.Tra
 		TypeName: "setting_traffic_flow",
 		Subject:  "Traffic Flow Setting",
 		New:      func() *settings.TrafficFlow { return &settings.TrafficFlow{} },
-		Fields: []resourcekit.Field[settingTrafficFlowModel, settings.TrafficFlow]{
-			resourcekit.BoolField[settingTrafficFlowModel, settings.TrafficFlow]{
-				Wire:  "enabled_allowed_traffic",
-				Model: func(m *settingTrafficFlowModel) *types.Bool { return &m.EnabledAllowedTraffic },
-				SDK:   func(s *settings.TrafficFlow) *bool { return &s.EnabledAllowedTraffic },
-			},
-			resourcekit.BoolField[settingTrafficFlowModel, settings.TrafficFlow]{
-				Wire:  "gateway_dns_enabled",
-				Model: func(m *settingTrafficFlowModel) *types.Bool { return &m.GatewayDNSEnabled },
-				SDK:   func(s *settings.TrafficFlow) *bool { return &s.GatewayDNSEnabled },
-			},
-			resourcekit.BoolField[settingTrafficFlowModel, settings.TrafficFlow]{
-				Wire:  "unifi_device_management_enabled",
-				Model: func(m *settingTrafficFlowModel) *types.Bool { return &m.UnifiDeviceManagementEnabled },
-				SDK:   func(s *settings.TrafficFlow) *bool { return &s.UnifiDeviceManagementEnabled },
-			},
-			resourcekit.BoolField[settingTrafficFlowModel, settings.TrafficFlow]{
-				Wire:  "unifi_services_enabled",
-				Model: func(m *settingTrafficFlowModel) *types.Bool { return &m.UnifiServicesEnabled },
-				SDK:   func(s *settings.TrafficFlow) *bool { return &s.UnifiServicesEnabled },
-			},
-		},
+		Fields:   settingTrafficFlowGenFields(),
 	}
-}
-
-// trafficFlowNestedSchema is the traffic_flow SingleNestedAttribute's own
-// Attributes, wrapped as a schema.Schema so resourcekit's conformance
-// checks -- built for a whole resource's top-level schema -- can run
-// against one section of unifi_setting instead.
-func trafficFlowNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	trafficFlow := built.Attributes["traffic_flow"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // traffic_flow is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: trafficFlow.Attributes}
 }
 
 // trafficFlowKitBackend binds trafficFlowKitSpec to a client: Read is

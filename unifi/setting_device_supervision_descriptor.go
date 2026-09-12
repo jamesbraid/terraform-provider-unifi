@@ -18,32 +18,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingDeviceSupervisionModel is device_supervision's own section model,
-// decoded out of settingResourceModel.DeviceSupervision.
-type settingDeviceSupervisionModel struct {
-	GlobalSupervisionEnabled types.Bool  `tfsdk:"global_supervision_enabled"`
-	HeartbeatIntervalSeconds types.Int64 `tfsdk:"heartbeat_interval_seconds"`
-	PowerOffDurationSeconds  types.Int64 `tfsdk:"power_off_duration_seconds"`
-	SilenceThresholdSeconds  types.Int64 `tfsdk:"silence_threshold_seconds"`
-}
-
-// deviceSupervisionAttrTypes types device_supervision's own object in
-// state; it must match the generated schema exactly.
-var deviceSupervisionAttrTypes = map[string]attr.Type{
-	"global_supervision_enabled": types.BoolType,
-	"heartbeat_interval_seconds": types.Int64Type,
-	"power_off_duration_seconds": types.Int64Type,
-	"silence_threshold_seconds":  types.Int64Type,
-}
 
 // deviceSupervisionKitSpec maps every attribute of the generated
 // device_supervision schema (resource_setting/setting_resource_gen.go's
@@ -57,54 +36,8 @@ func deviceSupervisionKitSpec() resourcekit.Spec[settingDeviceSupervisionModel, 
 		TypeName: "setting_device_supervision",
 		Subject:  "Device Supervision Setting",
 		New:      func() *settings.DeviceSupervision { return &settings.DeviceSupervision{} },
-		Fields: []resourcekit.Field[settingDeviceSupervisionModel, settings.DeviceSupervision]{
-			resourcekit.BoolField[settingDeviceSupervisionModel, settings.DeviceSupervision]{
-				Wire: "global_supervision_enabled",
-				Model: func(m *settingDeviceSupervisionModel) *types.Bool {
-					return &m.GlobalSupervisionEnabled
-				},
-				SDK: func(s *settings.DeviceSupervision) *bool { return &s.GlobalSupervisionEnabled },
-			},
-			resourcekit.Int64PtrField[settingDeviceSupervisionModel, settings.DeviceSupervision]{
-				Wire: "heartbeat_interval_seconds",
-				Model: func(m *settingDeviceSupervisionModel) *types.Int64 {
-					return &m.HeartbeatIntervalSeconds
-				},
-				SDK:      func(s *settings.DeviceSupervision) **int64 { return &s.HeartbeatIntervalSeconds },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[settingDeviceSupervisionModel, settings.DeviceSupervision]{
-				Wire: "power_off_duration_seconds",
-				Model: func(m *settingDeviceSupervisionModel) *types.Int64 {
-					return &m.PowerOffDurationSeconds
-				},
-				SDK:      func(s *settings.DeviceSupervision) **int64 { return &s.PowerOffDurationSeconds },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-			resourcekit.Int64PtrField[settingDeviceSupervisionModel, settings.DeviceSupervision]{
-				Wire: "silence_threshold_seconds",
-				Model: func(m *settingDeviceSupervisionModel) *types.Int64 {
-					return &m.SilenceThresholdSeconds
-				},
-				SDK:      func(s *settings.DeviceSupervision) **int64 { return &s.SilenceThresholdSeconds },
-				Elide:    resourcekit.KeepZero,
-				OmitZero: true,
-			},
-		},
+		Fields:   settingDeviceSupervisionGenFields(),
 	}
-}
-
-// deviceSupervisionNestedSchema is the device_supervision
-// SingleNestedAttribute's own Attributes, wrapped as a schema.Schema so
-// resourcekit's conformance checks -- built for a whole resource's
-// top-level schema -- can run against one section of unifi_setting
-// instead.
-func deviceSupervisionNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	deviceSupervision := built.Attributes["device_supervision"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // device_supervision is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: deviceSupervision.Attributes}
 }
 
 // deviceSupervisionKitBackend binds deviceSupervisionKitSpec to a client:

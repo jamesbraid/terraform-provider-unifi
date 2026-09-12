@@ -8,26 +8,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingLocaleModel is locale's own section model, decoded out of
-// settingResourceModel.Locale.
-type settingLocaleModel struct {
-	Timezone types.String `tfsdk:"timezone"`
-}
-
-// localeAttrTypes types locale's own object in state; it must match the
-// generated schema exactly.
-var localeAttrTypes = map[string]attr.Type{
-	"timezone": types.StringType,
-}
 
 // localeKitSpec maps the one attribute of the generated locale schema
 // (resource_setting/setting_resource_gen.go's "locale" SingleNestedAttribute)
@@ -39,25 +24,8 @@ func localeKitSpec() resourcekit.Spec[settingLocaleModel, settings.Locale] {
 		TypeName: "setting_locale",
 		Subject:  "Locale Setting",
 		New:      func() *settings.Locale { return &settings.Locale{} },
-		Fields: []resourcekit.Field[settingLocaleModel, settings.Locale]{
-			resourcekit.StringField[settingLocaleModel, settings.Locale]{
-				Wire:  "timezone",
-				Model: func(m *settingLocaleModel) *types.String { return &m.Timezone },
-				SDK:   func(s *settings.Locale) *string { return &s.Timezone },
-				Elide: resourcekit.KeepZero,
-			},
-		},
+		Fields:   settingLocaleGenFields(),
 	}
-}
-
-// localeNestedSchema is the locale SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built for
-// a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func localeNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	locale := built.Attributes["locale"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // locale is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: locale.Attributes}
 }
 
 // localeKitBackend binds localeKitSpec to a client: Read is

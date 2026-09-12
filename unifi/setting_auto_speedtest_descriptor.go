@@ -13,28 +13,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingAutoSpeedtestModel is auto_speedtest's own section model, decoded
-// out of settingResourceModel.AutoSpeedtest.
-type settingAutoSpeedtestModel struct {
-	CronExpr types.String `tfsdk:"cron_expr"`
-	Enabled  types.Bool   `tfsdk:"enabled"`
-}
-
-// autoSpeedtestAttrTypes types auto_speedtest's own object in state; it must
-// match the generated schema exactly.
-var autoSpeedtestAttrTypes = map[string]attr.Type{
-	"cron_expr": types.StringType,
-	"enabled":   types.BoolType,
-}
 
 // autoSpeedtestKitSpec maps every attribute of the generated auto_speedtest
 // schema (resource_setting/setting_resource_gen.go's "auto_speedtest"
@@ -52,30 +35,8 @@ func autoSpeedtestKitSpec() resourcekit.Spec[settingAutoSpeedtestModel, settings
 		TypeName: "setting_auto_speedtest",
 		Subject:  "Auto Speedtest Setting",
 		New:      func() *settings.AutoSpeedtest { return &settings.AutoSpeedtest{} },
-		Fields: []resourcekit.Field[settingAutoSpeedtestModel, settings.AutoSpeedtest]{
-			resourcekit.StringField[settingAutoSpeedtestModel, settings.AutoSpeedtest]{
-				Wire:  "cron_expr",
-				Model: func(m *settingAutoSpeedtestModel) *types.String { return &m.CronExpr },
-				SDK:   func(s *settings.AutoSpeedtest) *string { return &s.CronExpr },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.BoolField[settingAutoSpeedtestModel, settings.AutoSpeedtest]{
-				Wire:  "enabled",
-				Model: func(m *settingAutoSpeedtestModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.AutoSpeedtest) *bool { return &s.Enabled },
-			},
-		},
+		Fields:   settingAutoSpeedtestGenFields(),
 	}
-}
-
-// autoSpeedtestNestedSchema is the auto_speedtest SingleNestedAttribute's own
-// Attributes, wrapped as a schema.Schema so resourcekit's conformance checks
-// -- built for a whole resource's top-level schema -- can run against one
-// section of unifi_setting instead.
-func autoSpeedtestNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	autoSpeedtest := built.Attributes["auto_speedtest"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // auto_speedtest is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: autoSpeedtest.Attributes}
 }
 
 // autoSpeedtestKitBackend binds autoSpeedtestKitSpec to a client: Read is

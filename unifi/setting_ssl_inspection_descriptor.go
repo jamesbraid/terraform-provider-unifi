@@ -8,26 +8,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingSslInspectionModel is ssl_inspection's own section model, decoded
-// out of settingResourceModel.SslInspection.
-type settingSslInspectionModel struct {
-	State types.String `tfsdk:"state"`
-}
-
-// sslInspectionAttrTypes types ssl_inspection's own object in state; it
-// must match the generated schema exactly.
-var sslInspectionAttrTypes = map[string]attr.Type{
-	"state": types.StringType,
-}
 
 // sslInspectionKitSpec maps the one attribute of the generated
 // ssl_inspection schema (resource_setting/setting_resource_gen.go's
@@ -40,25 +25,8 @@ func sslInspectionKitSpec() resourcekit.Spec[settingSslInspectionModel, settings
 		TypeName: "setting_ssl_inspection",
 		Subject:  "SSL Inspection Setting",
 		New:      func() *settings.SslInspection { return &settings.SslInspection{} },
-		Fields: []resourcekit.Field[settingSslInspectionModel, settings.SslInspection]{
-			resourcekit.StringField[settingSslInspectionModel, settings.SslInspection]{
-				Wire:  "state",
-				Model: func(m *settingSslInspectionModel) *types.String { return &m.State },
-				SDK:   func(s *settings.SslInspection) *string { return &s.State },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		Fields:   settingSslInspectionGenFields(),
 	}
-}
-
-// sslInspectionNestedSchema is the ssl_inspection SingleNestedAttribute's
-// own Attributes, wrapped as a schema.Schema so resourcekit's conformance
-// checks -- built for a whole resource's top-level schema -- can run
-// against one section of unifi_setting instead.
-func sslInspectionNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	sslInspection := built.Attributes["ssl_inspection"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // ssl_inspection is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: sslInspection.Attributes}
 }
 
 // sslInspectionKitBackend binds sslInspectionKitSpec to a client: Read is

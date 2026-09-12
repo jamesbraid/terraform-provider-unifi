@@ -37,7 +37,7 @@ type settingResource struct {
 	resourcekit.Composite[settingResourceModel]
 }
 
-// sshKeyModel and settingMgmtModel moved to setting_mgmt_descriptor.go,
+// mgmtSshKeysModel and settingMgmtModel moved to setting_mgmt_descriptor.go,
 // alongside the Spec that now owns them: descriptor_mapping_test.go's
 // loadDescriptors reads a descriptor's model tags from the same file, so a
 // model declared elsewhere reads as undeclared.
@@ -102,7 +102,7 @@ type settingResourceModel struct {
 // alongside the Spec that now owns it.
 
 // autoSpeedtestAttrTypes, countryAttrTypes, dpiAttrTypes,
-// networkOptimizationAttrTypes, mgmtSSHKeyAttrTypes/mgmtAttrTypes,
+// networkOptimizationAttrTypes, mgmtSshKeysAttrTypes/mgmtAttrTypes,
 // lcmAttrTypes, ntpAttrTypes, syslogAttrTypes,
 // dohCustomServerAttrTypes/dohAttrTypes, the ips*AttrTypes and
 // igmpSnoopingAttrTypes all moved to their own *_descriptor.go files,

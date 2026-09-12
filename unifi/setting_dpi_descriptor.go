@@ -12,28 +12,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingDpiModel is dpi's own section model, decoded out of
-// settingResourceModel.Dpi.
-type settingDpiModel struct {
-	Enabled               types.Bool `tfsdk:"enabled"`
-	FingerprintingEnabled types.Bool `tfsdk:"fingerprinting_enabled"`
-}
-
-// dpiAttrTypes types dpi's own object in state; it must match the generated
-// schema exactly.
-var dpiAttrTypes = map[string]attr.Type{
-	"enabled":                types.BoolType,
-	"fingerprinting_enabled": types.BoolType,
-}
 
 // dpiKitSpec maps every attribute of the generated dpi schema
 // (resource_setting/setting_resource_gen.go's "dpi" SingleNestedAttribute)
@@ -46,29 +29,8 @@ func dpiKitSpec() resourcekit.Spec[settingDpiModel, settings.Dpi] {
 		TypeName: "setting_dpi",
 		Subject:  "DPI Setting",
 		New:      func() *settings.Dpi { return &settings.Dpi{} },
-		Fields: []resourcekit.Field[settingDpiModel, settings.Dpi]{
-			resourcekit.BoolField[settingDpiModel, settings.Dpi]{
-				Wire:  "enabled",
-				Model: func(m *settingDpiModel) *types.Bool { return &m.Enabled },
-				SDK:   func(s *settings.Dpi) *bool { return &s.Enabled },
-			},
-			resourcekit.BoolField[settingDpiModel, settings.Dpi]{
-				Wire:  "fingerprintingEnabled",
-				Model: func(m *settingDpiModel) *types.Bool { return &m.FingerprintingEnabled },
-				SDK:   func(s *settings.Dpi) *bool { return &s.FingerprintingEnabled },
-			},
-		},
+		Fields:   settingDpiGenFields(),
 	}
-}
-
-// dpiNestedSchema is the dpi SingleNestedAttribute's own Attributes, wrapped
-// as a schema.Schema so resourcekit's conformance checks -- built for a whole
-// resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func dpiNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	dpi := built.Attributes["dpi"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // dpi is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: dpi.Attributes}
 }
 
 // dpiKitBackend binds dpiKitSpec to a client: Read is GetSetting[*Dpi],

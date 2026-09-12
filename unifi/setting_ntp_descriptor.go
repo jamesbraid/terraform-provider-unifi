@@ -14,34 +14,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingNtpModel is ntp's own section model, decoded out of
-// settingResourceModel.Ntp.
-type settingNtpModel struct {
-	NtpServer1        types.String `tfsdk:"ntp_server_1"`
-	NtpServer2        types.String `tfsdk:"ntp_server_2"`
-	NtpServer3        types.String `tfsdk:"ntp_server_3"`
-	NtpServer4        types.String `tfsdk:"ntp_server_4"`
-	SettingPreference types.String `tfsdk:"setting_preference"`
-}
-
-// ntpAttrTypes types ntp's own object in state; it must match the generated
-// schema exactly.
-var ntpAttrTypes = map[string]attr.Type{
-	"ntp_server_1":       types.StringType,
-	"ntp_server_2":       types.StringType,
-	"ntp_server_3":       types.StringType,
-	"ntp_server_4":       types.StringType,
-	"setting_preference": types.StringType,
-}
 
 // ntpKitSpec maps every attribute of the generated ntp schema
 // (resource_setting/setting_resource_gen.go's "ntp" SingleNestedAttribute)
@@ -59,49 +36,8 @@ func ntpKitSpec() resourcekit.Spec[settingNtpModel, settings.Ntp] {
 		TypeName: "setting_ntp",
 		Subject:  "NTP Setting",
 		New:      func() *settings.Ntp { return &settings.Ntp{} },
-		Fields: []resourcekit.Field[settingNtpModel, settings.Ntp]{
-			resourcekit.StringField[settingNtpModel, settings.Ntp]{
-				Wire:  "ntp_server_1",
-				Model: func(m *settingNtpModel) *types.String { return &m.NtpServer1 },
-				SDK:   func(s *settings.Ntp) *string { return &s.NtpServer1 },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingNtpModel, settings.Ntp]{
-				Wire:  "ntp_server_2",
-				Model: func(m *settingNtpModel) *types.String { return &m.NtpServer2 },
-				SDK:   func(s *settings.Ntp) *string { return &s.NtpServer2 },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingNtpModel, settings.Ntp]{
-				Wire:  "ntp_server_3",
-				Model: func(m *settingNtpModel) *types.String { return &m.NtpServer3 },
-				SDK:   func(s *settings.Ntp) *string { return &s.NtpServer3 },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingNtpModel, settings.Ntp]{
-				Wire:  "ntp_server_4",
-				Model: func(m *settingNtpModel) *types.String { return &m.NtpServer4 },
-				SDK:   func(s *settings.Ntp) *string { return &s.NtpServer4 },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.StringField[settingNtpModel, settings.Ntp]{
-				Wire:  "setting_preference",
-				Model: func(m *settingNtpModel) *types.String { return &m.SettingPreference },
-				SDK:   func(s *settings.Ntp) *string { return &s.SettingPreference },
-				Elide: resourcekit.NullZero,
-			},
-		},
+		Fields:   settingNtpGenFields(),
 	}
-}
-
-// ntpNestedSchema is the ntp SingleNestedAttribute's own Attributes, wrapped
-// as a schema.Schema so resourcekit's conformance checks -- built for a
-// whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func ntpNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	ntp := built.Attributes["ntp"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // ntp is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: ntp.Attributes}
 }
 
 // ntpKitBackend binds ntpKitSpec to a client: Read is GetSetting[*Ntp],

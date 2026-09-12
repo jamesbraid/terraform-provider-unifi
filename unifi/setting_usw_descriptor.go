@@ -15,26 +15,11 @@ package unifi
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
-	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
-
-// settingUswModel is usw's own section model, decoded out of
-// settingResourceModel.Usw.
-type settingUswModel struct {
-	DHCPSnoop types.Bool `tfsdk:"dhcp_snoop"`
-}
-
-// uswAttrTypes types usw's own object in state; it must match the
-// generated schema exactly.
-var uswAttrTypes = map[string]attr.Type{
-	"dhcp_snoop": types.BoolType,
-}
 
 // uswKitSpec maps the one attribute of the generated usw schema
 // (resource_setting/setting_resource_gen.go's "usw" SingleNestedAttribute)
@@ -45,24 +30,8 @@ func uswKitSpec() resourcekit.Spec[settingUswModel, settings.Usw] {
 		TypeName: "setting_usw",
 		Subject:  "USW Setting",
 		New:      func() *settings.Usw { return &settings.Usw{} },
-		Fields: []resourcekit.Field[settingUswModel, settings.Usw]{
-			resourcekit.BoolField[settingUswModel, settings.Usw]{
-				Wire:  "dhcp_snoop",
-				Model: func(m *settingUswModel) *types.Bool { return &m.DHCPSnoop },
-				SDK:   func(s *settings.Usw) *bool { return &s.DHCPSnoop },
-			},
-		},
+		Fields:   settingUswGenFields(),
 	}
-}
-
-// uswNestedSchema is the usw SingleNestedAttribute's own Attributes,
-// wrapped as a schema.Schema so resourcekit's conformance checks -- built for
-// a whole resource's top-level schema -- can run against one section of
-// unifi_setting instead.
-func uswNestedSchema(ctx context.Context) schema.Schema {
-	built := resource_setting.SettingResourceSchema(ctx)
-	usw := built.Attributes["usw"].(schema.SingleNestedAttribute) //nolint:forcetypeassert // usw is declared as SingleNestedAttribute in the generated schema; a mismatch here is a generator regression this is meant to catch loudly.
-	return schema.Schema{Attributes: usw.Attributes}
 }
 
 // uswKitBackend binds uswKitSpec to a client: Read is GetSetting[*Usw],
