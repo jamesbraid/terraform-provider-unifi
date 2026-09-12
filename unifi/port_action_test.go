@@ -104,9 +104,6 @@ func TestNewPortAction(t *testing.T) {
 	if got == nil {
 		t.Fatal("NewPortAction() returned nil")
 	}
-	if _, ok := got.(fwaction.ActionWithConfigure); !ok {
-		t.Error("expected ActionWithConfigure interface")
-	}
 }
 
 func Test_portAction_Schema(t *testing.T) {

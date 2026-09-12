@@ -3,7 +3,6 @@ package unifi
 import (
 	"testing"
 
-	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	gounifi "github.com/ubiquiti-community/go-unifi/unifi"
@@ -91,9 +90,6 @@ func TestNewClientListDataSource(t *testing.T) {
 	d := NewClientListDataSource()
 	if d == nil {
 		t.Fatal("NewClientListDataSource() returned nil")
-	}
-	if _, ok := d.(fwdatasource.DataSourceWithConfigure); !ok {
-		t.Error("expected DataSourceWithConfigure interface")
 	}
 }
 

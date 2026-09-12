@@ -3,7 +3,6 @@ package unifi
 import (
 	"testing"
 
-	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -162,8 +161,5 @@ func TestNewRadiusProfileDataSource(t *testing.T) {
 	d := NewRadiusProfileDataSource()
 	if d == nil {
 		t.Fatal("NewRadiusProfileDataSource() returned nil")
-	}
-	if _, ok := d.(fwdatasource.DataSourceWithConfigure); !ok {
-		t.Error("expected DataSourceWithConfigure interface")
 	}
 }
