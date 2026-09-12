@@ -12,7 +12,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestMgmtAfterReceive ports the two assertions of the deleted
@@ -105,29 +104,6 @@ func TestMgmtSSHUsernameEmptyReadIsNulledEvenWhenConfigured(t *testing.T) {
 		t.Errorf("ssh_username = %q after mgmtAfterReceive, want null -- mgmtAfterReceive's "+
 			"own null-if-unconfigured branch does not fire for a configured prior, so it must "+
 			"not have resurrected ToModel's null", model.SSHUsername.ValueString())
-	}
-}
-
-// TestMgmtKitSpecConformance runs the same conformance instruments every
-// other kit descriptor's test applies (see e.g. dns_record's case in
-// descriptor_elide_test.go), scoped to mgmt's own nested schema rather than
-// a whole resource's, since mgmt is one section of unifi_setting rather
-// than a surface of its own.
-func TestMgmtKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := mgmtKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := mgmtNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 

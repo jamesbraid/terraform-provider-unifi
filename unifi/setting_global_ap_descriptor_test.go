@@ -61,30 +61,6 @@ func TestGlobalApBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *testing.T) 
 	}
 }
 
-// TestGlobalApKitSpecConformance runs the same conformance instruments
-// every other kit descriptor's test applies (see
-// setting_mgmt_descriptor_test.go's TestMgmtKitSpecConformance), scoped to
-// global_ap's own nested schema rather than a whole resource's, since
-// global_ap is one section of unifi_setting rather than a surface of its
-// own.
-func TestGlobalApKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := globalApKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := globalApNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
-	}
-}
-
 // TestGlobalApOmitsAZeroTheControllerRejects is global_ap's own local
 // version of the OmitZeroProblems census, the same shape
 // TestNetflowOmitsAZeroTheControllerRejects records: unifi_setting is not

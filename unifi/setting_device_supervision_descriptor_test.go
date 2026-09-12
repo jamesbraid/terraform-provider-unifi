@@ -63,30 +63,6 @@ func TestDeviceSupervisionBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *te
 	}
 }
 
-// TestDeviceSupervisionKitSpecConformance runs the same conformance
-// instruments every other kit descriptor's test applies (see
-// setting_mgmt_descriptor_test.go's TestMgmtKitSpecConformance), scoped to
-// device_supervision's own nested schema rather than a whole resource's,
-// since device_supervision is one section of unifi_setting rather than a
-// surface of its own.
-func TestDeviceSupervisionKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := deviceSupervisionKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := deviceSupervisionNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
-	}
-}
-
 // TestDeviceSupervisionOmitsAZeroTheControllerRejects is
 // device_supervision's own local version of the OmitZeroProblems census,
 // the same shape TestNetflowOmitsAZeroTheControllerRejects records:

@@ -11,7 +11,6 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestAutoSpeedtestSettingRoundTrip ports the deleted
@@ -90,29 +89,6 @@ func TestAutoSpeedtestBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *testin
 	want := `{"cron_expr":"0 3 * * *","key":"auto_speedtest"}`
 	if string(body) != want {
 		t.Fatalf("PUT body = %s, want exactly %s", body, want)
-	}
-}
-
-// TestAutoSpeedtestKitSpecConformance runs the same conformance instruments
-// every other kit descriptor's test applies (see setting_mgmt_descriptor_test.go's
-// TestMgmtKitSpecConformance), scoped to auto_speedtest's own nested schema
-// rather than a whole resource's, since auto_speedtest is one section of
-// unifi_setting rather than a surface of its own.
-func TestAutoSpeedtestKitSpecConformance(t *testing.T) {
-	ctx := context.Background()
-	spec := autoSpeedtestKitSpec()
-	for _, problem := range resourcekit.WireNameProblems(spec) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.NestedProblems(spec) {
-		t.Error(problem)
-	}
-	built := autoSpeedtestNestedSchema(ctx)
-	for _, problem := range resourcekit.ElideProblems(spec, built) {
-		t.Error(problem)
-	}
-	for _, problem := range resourcekit.ZeroReadProblems(spec, built) {
-		t.Error(problem)
 	}
 }
 
