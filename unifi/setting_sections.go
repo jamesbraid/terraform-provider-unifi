@@ -79,13 +79,14 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 
 // auto_speedtest, country, dpi, lcm, network_optimization, ntp, syslog, doh,
 // ips, mgmt, radius, usg and igmp_snooping all moved onto
-// resourcekit.SpecSection -- see setting_auto_speedtest_descriptor.go,
-// setting_country_descriptor.go, setting_dpi_descriptor.go,
-// setting_lcm_descriptor.go, setting_network_optimization_descriptor.go,
-// setting_ntp_descriptor.go, setting_syslog_descriptor.go,
+// resourcekit.SpecSection -- see setting_auto_speedtest_descriptor_gen.go,
+// setting_country_descriptor_gen.go, setting_dpi_descriptor_gen.go,
+// setting_lcm_descriptor_gen.go,
+// setting_network_optimization_descriptor_gen.go,
+// setting_ntp_descriptor_gen.go, setting_syslog_descriptor_gen.go,
 // setting_doh_descriptor.go, setting_ips_descriptor.go,
 // setting_mgmt_descriptor.go, setting_radius_descriptor.go,
-// setting_usg_descriptor.go and setting_igmp_snooping_descriptor.go.
+// setting_usg_descriptor.go and setting_igmp_snooping_descriptor_gen.go.
 // ips_suppression (ips's own Extra) and usg_geo (usg's own Extra) moved the
 // same way -- see setting_ips_descriptor.go's ipsSuppressionKitSpec/
 // ipsSuppressionKitBackend and setting_usg_descriptor.go's usgGeoKitSpec/
@@ -96,13 +97,16 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // global_switch, netflow and radio_ai moved the same way too, each from
 // the controller's own
 // Locale/GlobalNat/SslInspection/Ipsec/Dashboard/EtherLighting/GlobalNetwork/TrafficFlow/Mdns/Teleport/MagicSiteToSiteVpn/GlobalSwitch/Netflow/RadioAi
-// definition -- see setting_locale_descriptor.go,
-// setting_global_nat_descriptor.go, setting_ssl_inspection_descriptor.go,
-// setting_ipsec_descriptor.go, setting_dashboard_descriptor.go,
-// setting_ether_lighting_descriptor.go, setting_global_network_descriptor.go,
-// setting_traffic_flow_descriptor.go, setting_mdns_descriptor.go,
-// setting_teleport_descriptor.go, setting_magic_site_to_site_vpn_descriptor.go,
-// setting_global_switch_descriptor.go, setting_netflow_descriptor.go and
+// definition -- see setting_locale_descriptor_gen.go,
+// setting_global_nat_descriptor_gen.go,
+// setting_ssl_inspection_descriptor_gen.go,
+// setting_ipsec_descriptor_gen.go, setting_dashboard_descriptor.go,
+// setting_ether_lighting_descriptor.go,
+// setting_global_network_descriptor_gen.go,
+// setting_traffic_flow_descriptor_gen.go, setting_mdns_descriptor.go,
+// setting_teleport_descriptor_gen.go,
+// setting_magic_site_to_site_vpn_descriptor_gen.go,
+// setting_global_switch_descriptor.go, setting_netflow_descriptor_gen.go and
 // setting_radio_ai_descriptor.go. radio_ai is the one section whose
 // AfterReceive is NOT a plain unconditional mirror -- see
 // setting_radio_ai_descriptor.go's own comment.
@@ -124,6 +128,6 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // usw, global_ap, connectivity and device_supervision are new too, not
 // migrated -- each exposed straight from the controller's own
 // Usw/GlobalAp/Connectivity/DeviceSupervision definition; see
-// setting_usw_descriptor.go, setting_global_ap_descriptor.go,
-// setting_connectivity_descriptor.go and
-// setting_device_supervision_descriptor.go.
+// setting_usw_descriptor_gen.go, setting_global_ap_descriptor_gen.go,
+// setting_connectivity_descriptor_gen.go and
+// setting_device_supervision_descriptor_gen.go.

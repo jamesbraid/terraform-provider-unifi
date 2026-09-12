@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -117,5 +118,53 @@ func settingSyslogGenFields() []resourcekit.Field[settingSyslogModel, settings.R
 			Model: func(m *settingSyslogModel) *types.Bool { return &m.ThisControllerEncryptedOnly },
 			SDK:   func(s *settings.Rsyslogd) *bool { return &s.ThisControllerEncryptedOnly },
 		},
+	}
+}
+
+// syslogKitSpec is the syslog section's Spec: the generated field
+// list over settings.Rsyslogd, with no hook and no conditional write.
+func syslogKitSpec() resourcekit.Spec[settingSyslogModel, settings.Rsyslogd] {
+	return resourcekit.Spec[settingSyslogModel, settings.Rsyslogd]{
+		TypeName: "setting_syslog",
+		Subject:  "Syslog Setting",
+		New:      func() *settings.Rsyslogd { return &settings.Rsyslogd{} },
+		Fields:   settingSyslogGenFields(),
+	}
+}
+
+// syslogKitBackend binds syslogKitSpec to a client: Read is
+// GetSetting[*settings.Rsyslogd], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func syslogKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Rsyslogd] {
+	return resourcekit.Backend[settings.Rsyslogd]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Rsyslogd, error) {
+			_, doc, err := ui.GetSetting[*settings.Rsyslogd](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Rsyslogd, fields ...string,
+		) (*settings.Rsyslogd, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// syslogKitSection builds the syslog entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func syslogKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := syslogKitSpec()
+	spec.Backend = syslogKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingSyslogModel, settings.Rsyslogd]{
+		SectionName: "syslog",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Syslog },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Syslog = o },
+		AttrTypes:   syslogAttrTypes,
+		Spec:        spec,
 	}
 }

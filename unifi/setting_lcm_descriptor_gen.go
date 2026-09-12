@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -72,5 +73,53 @@ func settingLcmGenFields() []resourcekit.Field[settingLcmModel, settings.Lcm] {
 			Model: func(m *settingLcmModel) *types.Bool { return &m.TouchEvent },
 			SDK:   func(s *settings.Lcm) *bool { return &s.TouchEvent },
 		},
+	}
+}
+
+// lcmKitSpec is the lcm section's Spec: the generated field
+// list over settings.Lcm, with no hook and no conditional write.
+func lcmKitSpec() resourcekit.Spec[settingLcmModel, settings.Lcm] {
+	return resourcekit.Spec[settingLcmModel, settings.Lcm]{
+		TypeName: "setting_lcm",
+		Subject:  "LCM Setting",
+		New:      func() *settings.Lcm { return &settings.Lcm{} },
+		Fields:   settingLcmGenFields(),
+	}
+}
+
+// lcmKitBackend binds lcmKitSpec to a client: Read is
+// GetSetting[*settings.Lcm], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func lcmKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Lcm] {
+	return resourcekit.Backend[settings.Lcm]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Lcm, error) {
+			_, doc, err := ui.GetSetting[*settings.Lcm](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Lcm, fields ...string,
+		) (*settings.Lcm, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// lcmKitSection builds the lcm entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func lcmKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := lcmKitSpec()
+	spec.Backend = lcmKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingLcmModel, settings.Lcm]{
+		SectionName: "lcm",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Lcm },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Lcm = o },
+		AttrTypes:   lcmAttrTypes,
+		Spec:        spec,
 	}
 }

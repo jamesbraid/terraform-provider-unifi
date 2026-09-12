@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -40,5 +41,53 @@ func settingNetworkOptimizationGenFields() []resourcekit.Field[settingNetworkOpt
 			Model: func(m *settingNetworkOptimizationModel) *types.Bool { return &m.Enabled },
 			SDK:   func(s *settings.NetworkOptimization) *bool { return &s.Enabled },
 		},
+	}
+}
+
+// networkOptimizationKitSpec is the network_optimization section's Spec: the generated field
+// list over settings.NetworkOptimization, with no hook and no conditional write.
+func networkOptimizationKitSpec() resourcekit.Spec[settingNetworkOptimizationModel, settings.NetworkOptimization] {
+	return resourcekit.Spec[settingNetworkOptimizationModel, settings.NetworkOptimization]{
+		TypeName: "setting_network_optimization",
+		Subject:  "Network Optimization Setting",
+		New:      func() *settings.NetworkOptimization { return &settings.NetworkOptimization{} },
+		Fields:   settingNetworkOptimizationGenFields(),
+	}
+}
+
+// networkOptimizationKitBackend binds networkOptimizationKitSpec to a client: Read is
+// GetSetting[*settings.NetworkOptimization], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func networkOptimizationKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.NetworkOptimization] {
+	return resourcekit.Backend[settings.NetworkOptimization]{
+		Read: func(ctx context.Context, site, _ string) (*settings.NetworkOptimization, error) {
+			_, doc, err := ui.GetSetting[*settings.NetworkOptimization](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.NetworkOptimization, fields ...string,
+		) (*settings.NetworkOptimization, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// networkOptimizationKitSection builds the network_optimization entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func networkOptimizationKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := networkOptimizationKitSpec()
+	spec.Backend = networkOptimizationKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingNetworkOptimizationModel, settings.NetworkOptimization]{
+		SectionName: "network_optimization",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.NetworkOptimization },
+		Set:         func(m *settingResourceModel, o types.Object) { m.NetworkOptimization = o },
+		AttrTypes:   networkOptimizationAttrTypes,
+		Spec:        spec,
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -41,5 +42,53 @@ func settingLocaleGenFields() []resourcekit.Field[settingLocaleModel, settings.L
 			SDK:   func(s *settings.Locale) *string { return &s.Timezone },
 			Elide: resourcekit.KeepZero,
 		},
+	}
+}
+
+// localeKitSpec is the locale section's Spec: the generated field
+// list over settings.Locale, with no hook and no conditional write.
+func localeKitSpec() resourcekit.Spec[settingLocaleModel, settings.Locale] {
+	return resourcekit.Spec[settingLocaleModel, settings.Locale]{
+		TypeName: "setting_locale",
+		Subject:  "Locale Setting",
+		New:      func() *settings.Locale { return &settings.Locale{} },
+		Fields:   settingLocaleGenFields(),
+	}
+}
+
+// localeKitBackend binds localeKitSpec to a client: Read is
+// GetSetting[*settings.Locale], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func localeKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Locale] {
+	return resourcekit.Backend[settings.Locale]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Locale, error) {
+			_, doc, err := ui.GetSetting[*settings.Locale](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Locale, fields ...string,
+		) (*settings.Locale, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// localeKitSection builds the locale entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func localeKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := localeKitSpec()
+	spec.Backend = localeKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingLocaleModel, settings.Locale]{
+		SectionName: "locale",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Locale },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Locale = o },
+		AttrTypes:   localeAttrTypes,
+		Spec:        spec,
 	}
 }

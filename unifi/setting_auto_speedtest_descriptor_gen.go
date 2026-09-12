@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -48,5 +49,53 @@ func settingAutoSpeedtestGenFields() []resourcekit.Field[settingAutoSpeedtestMod
 			Model: func(m *settingAutoSpeedtestModel) *types.Bool { return &m.Enabled },
 			SDK:   func(s *settings.AutoSpeedtest) *bool { return &s.Enabled },
 		},
+	}
+}
+
+// autoSpeedtestKitSpec is the auto_speedtest section's Spec: the generated field
+// list over settings.AutoSpeedtest, with no hook and no conditional write.
+func autoSpeedtestKitSpec() resourcekit.Spec[settingAutoSpeedtestModel, settings.AutoSpeedtest] {
+	return resourcekit.Spec[settingAutoSpeedtestModel, settings.AutoSpeedtest]{
+		TypeName: "setting_auto_speedtest",
+		Subject:  "Auto Speedtest Setting",
+		New:      func() *settings.AutoSpeedtest { return &settings.AutoSpeedtest{} },
+		Fields:   settingAutoSpeedtestGenFields(),
+	}
+}
+
+// autoSpeedtestKitBackend binds autoSpeedtestKitSpec to a client: Read is
+// GetSetting[*settings.AutoSpeedtest], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func autoSpeedtestKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.AutoSpeedtest] {
+	return resourcekit.Backend[settings.AutoSpeedtest]{
+		Read: func(ctx context.Context, site, _ string) (*settings.AutoSpeedtest, error) {
+			_, doc, err := ui.GetSetting[*settings.AutoSpeedtest](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.AutoSpeedtest, fields ...string,
+		) (*settings.AutoSpeedtest, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// autoSpeedtestKitSection builds the auto_speedtest entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func autoSpeedtestKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := autoSpeedtestKitSpec()
+	spec.Backend = autoSpeedtestKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingAutoSpeedtestModel, settings.AutoSpeedtest]{
+		SectionName: "auto_speedtest",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.AutoSpeedtest },
+		Set:         func(m *settingResourceModel, o types.Object) { m.AutoSpeedtest = o },
+		AttrTypes:   autoSpeedtestAttrTypes,
+		Spec:        spec,
 	}
 }

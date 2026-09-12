@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -41,5 +42,53 @@ func settingIpsecGenFields() []resourcekit.Field[settingIpsecModel, settings.Ips
 			SDK:   func(s *settings.Ipsec) *string { return &s.Ikev2ReauthenticationMethod },
 			Elide: resourcekit.KeepZero,
 		},
+	}
+}
+
+// ipsecKitSpec is the ipsec section's Spec: the generated field
+// list over settings.Ipsec, with no hook and no conditional write.
+func ipsecKitSpec() resourcekit.Spec[settingIpsecModel, settings.Ipsec] {
+	return resourcekit.Spec[settingIpsecModel, settings.Ipsec]{
+		TypeName: "setting_ipsec",
+		Subject:  "IPsec Setting",
+		New:      func() *settings.Ipsec { return &settings.Ipsec{} },
+		Fields:   settingIpsecGenFields(),
+	}
+}
+
+// ipsecKitBackend binds ipsecKitSpec to a client: Read is
+// GetSetting[*settings.Ipsec], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func ipsecKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Ipsec] {
+	return resourcekit.Backend[settings.Ipsec]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Ipsec, error) {
+			_, doc, err := ui.GetSetting[*settings.Ipsec](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Ipsec, fields ...string,
+		) (*settings.Ipsec, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// ipsecKitSection builds the ipsec entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func ipsecKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := ipsecKitSpec()
+	spec.Backend = ipsecKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingIpsecModel, settings.Ipsec]{
+		SectionName: "ipsec",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Ipsec },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Ipsec = o },
+		AttrTypes:   ipsecAttrTypes,
+		Spec:        spec,
 	}
 }

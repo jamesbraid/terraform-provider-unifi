@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -91,5 +92,53 @@ func settingGlobalApGenFields() []resourcekit.Field[settingGlobalApModel, settin
 			SDK:   func(s *settings.GlobalAp) *string { return &s.NgTxPowerMode },
 			Elide: resourcekit.NullZero,
 		},
+	}
+}
+
+// globalApKitSpec is the global_ap section's Spec: the generated field
+// list over settings.GlobalAp, with no hook and no conditional write.
+func globalApKitSpec() resourcekit.Spec[settingGlobalApModel, settings.GlobalAp] {
+	return resourcekit.Spec[settingGlobalApModel, settings.GlobalAp]{
+		TypeName: "setting_global_ap",
+		Subject:  "Global AP Setting",
+		New:      func() *settings.GlobalAp { return &settings.GlobalAp{} },
+		Fields:   settingGlobalApGenFields(),
+	}
+}
+
+// globalApKitBackend binds globalApKitSpec to a client: Read is
+// GetSetting[*settings.GlobalAp], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func globalApKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.GlobalAp] {
+	return resourcekit.Backend[settings.GlobalAp]{
+		Read: func(ctx context.Context, site, _ string) (*settings.GlobalAp, error) {
+			_, doc, err := ui.GetSetting[*settings.GlobalAp](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.GlobalAp, fields ...string,
+		) (*settings.GlobalAp, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// globalApKitSection builds the global_ap entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func globalApKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := globalApKitSpec()
+	spec.Backend = globalApKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingGlobalApModel, settings.GlobalAp]{
+		SectionName: "global_ap",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.GlobalAp },
+		Set:         func(m *settingResourceModel, o types.Object) { m.GlobalAp = o },
+		AttrTypes:   globalApAttrTypes,
+		Spec:        spec,
 	}
 }

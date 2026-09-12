@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -76,6 +77,11 @@ func scanHandDescriptor(path string) (handFacts, error) {
 	}
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
+	// A surface the emitter serves whole keeps no hand descriptor: an absent
+	// file claims nothing, which is what the zero facts already say.
+	if errors.Is(err, os.ErrNotExist) {
+		return facts, nil
+	}
 	if err != nil {
 		return facts, err
 	}

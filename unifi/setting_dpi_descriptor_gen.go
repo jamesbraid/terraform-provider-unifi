@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -47,5 +48,53 @@ func settingDpiGenFields() []resourcekit.Field[settingDpiModel, settings.Dpi] {
 			Model: func(m *settingDpiModel) *types.Bool { return &m.FingerprintingEnabled },
 			SDK:   func(s *settings.Dpi) *bool { return &s.FingerprintingEnabled },
 		},
+	}
+}
+
+// dpiKitSpec is the dpi section's Spec: the generated field
+// list over settings.Dpi, with no hook and no conditional write.
+func dpiKitSpec() resourcekit.Spec[settingDpiModel, settings.Dpi] {
+	return resourcekit.Spec[settingDpiModel, settings.Dpi]{
+		TypeName: "setting_dpi",
+		Subject:  "DPI Setting",
+		New:      func() *settings.Dpi { return &settings.Dpi{} },
+		Fields:   settingDpiGenFields(),
+	}
+}
+
+// dpiKitBackend binds dpiKitSpec to a client: Read is
+// GetSetting[*settings.Dpi], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func dpiKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Dpi] {
+	return resourcekit.Backend[settings.Dpi]{
+		Read: func(ctx context.Context, site, _ string) (*settings.Dpi, error) {
+			_, doc, err := ui.GetSetting[*settings.Dpi](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.Dpi, fields ...string,
+		) (*settings.Dpi, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// dpiKitSection builds the dpi entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func dpiKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := dpiKitSpec()
+	spec.Backend = dpiKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingDpiModel, settings.Dpi]{
+		SectionName: "dpi",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.Dpi },
+		Set:         func(m *settingResourceModel, o types.Object) { m.Dpi = o },
+		AttrTypes:   dpiAttrTypes,
+		Spec:        spec,
 	}
 }

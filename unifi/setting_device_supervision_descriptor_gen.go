@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -67,5 +68,53 @@ func settingDeviceSupervisionGenFields() []resourcekit.Field[settingDeviceSuperv
 			Elide:    resourcekit.KeepZero,
 			OmitZero: true,
 		},
+	}
+}
+
+// deviceSupervisionKitSpec is the device_supervision section's Spec: the generated field
+// list over settings.DeviceSupervision, with no hook and no conditional write.
+func deviceSupervisionKitSpec() resourcekit.Spec[settingDeviceSupervisionModel, settings.DeviceSupervision] {
+	return resourcekit.Spec[settingDeviceSupervisionModel, settings.DeviceSupervision]{
+		TypeName: "setting_device_supervision",
+		Subject:  "Device Supervision Setting",
+		New:      func() *settings.DeviceSupervision { return &settings.DeviceSupervision{} },
+		Fields:   settingDeviceSupervisionGenFields(),
+	}
+}
+
+// deviceSupervisionKitBackend binds deviceSupervisionKitSpec to a client: Read is
+// GetSetting[*settings.DeviceSupervision], UpdateFields is the masked UpdateSettingFields --
+// naming only the fields the plan set.
+func deviceSupervisionKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.DeviceSupervision] {
+	return resourcekit.Backend[settings.DeviceSupervision]{
+		Read: func(ctx context.Context, site, _ string) (*settings.DeviceSupervision, error) {
+			_, doc, err := ui.GetSetting[*settings.DeviceSupervision](client, ctx, site)
+			if err != nil {
+				return nil, err
+			}
+			return doc, nil
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *settings.DeviceSupervision, fields ...string,
+		) (*settings.DeviceSupervision, error) {
+			if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+				return nil, err
+			}
+			return in, nil
+		},
+	}
+}
+
+// deviceSupervisionKitSection builds the device_supervision entry for settingResource's
+// Sections, bound to client via settingKitSections.
+func deviceSupervisionKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
+	spec := deviceSupervisionKitSpec()
+	spec.Backend = deviceSupervisionKitBackend(client)
+	return resourcekit.SpecSection[settingResourceModel, settingDeviceSupervisionModel, settings.DeviceSupervision]{
+		SectionName: "device_supervision",
+		Get:         func(m *settingResourceModel) *types.Object { return &m.DeviceSupervision },
+		Set:         func(m *settingResourceModel, o types.Object) { m.DeviceSupervision = o },
+		AttrTypes:   deviceSupervisionAttrTypes,
+		Spec:        spec,
 	}
 }
