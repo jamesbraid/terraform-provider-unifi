@@ -4,6 +4,13 @@
 // custom types, nested-object encodings -- stays in the hand descriptor,
 // which lays its entries over the generated list with resourcekit.Override.
 //
+// Where a surface has no judgment half at all the emitter writes the whole
+// descriptor and there is no hand file: a settings section that mirrors its
+// document (registry flag mirror), and a resource whose life is the SDK's
+// five site-scoped methods over the generated field list (flag crud).
+// Membership is a registry decision, not a derivation -- the emitter checks
+// only that the SDK has what the emitted source names.
+//
 // Everything emitted is derived, never invented:
 //
 //   - the wire name, field kind and attribute pairing come from the surface's
@@ -19,7 +26,8 @@
 // the hand descriptor supplies it. A wire the hand Spec routes around the
 // field list -- AlwaysWire or MappedElsewhere -- is skipped too, read off
 // the hand file so a hook-carried secret can never surface as a plain
-// generated field.
+// generated field. A surface with no hand file claims no such wire, which is
+// what a whole-emitted surface means.
 package main
 
 import (
