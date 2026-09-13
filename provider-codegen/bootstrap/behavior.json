@@ -2,13 +2,16 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.113.1-0.20260904035309-7d5c1431100a",
-    "commit": "7d5c1431100a8b9de18858a6258e06e82c1ac175",
-    "specification_sha256": "10bdc0ab4542420176c4517f4aa12f458c3193bb5f81717df41de64e7361453b"
+    "version": "v1.113.1-0.20260913175936-ae6c3f1109b2",
+    "commit": "ae6c3f1109b2519dc69cba7c216e146100b4e796",
+    "specification_sha256": "007150ff2caecd91b855e0fef37335c1d8f7a6847268216227aef3ef0e22e1d6"
   },
   "behavior": {
     "controller_version": "10.6.101",
     "ownership": {
+      "Device": {
+        "port_overrides.setting_preference": []
+      },
       "FirewallRule": {
         "setting_preference": [
           "state_established",
@@ -119,7 +122,48 @@
         ]
       }
     },
+    "uos_pins": {
+      "FirewallRule": {
+        "setting_preference": []
+      },
+      "Nat": {
+        "setting_preference": []
+      },
+      "Network": {
+        "ipv6_setting_preference": [],
+        "setting_preference": [],
+        "wan_dns_preference": [],
+        "wan_ipv6_dns_preference": []
+      },
+      "PortProfile": {
+        "setting_preference": []
+      },
+      "SettingDashboard": {
+        "layout_preference": []
+      },
+      "SettingNtp": {
+        "setting_preference": []
+      },
+      "SettingRadioAi": {
+        "setting_preference": []
+      },
+      "SettingSuperMgmt": {
+        "data_retention_setting_preference": [
+          "data_retention_time_in_hours_for_5minutes_scale",
+          "data_retention_time_in_hours_for_hourly_scale"
+        ]
+      },
+      "SettingUsg": {
+        "dns_verification.setting_preference": [],
+        "timeout_setting_preference": []
+      },
+      "WLAN": {
+        "minrate_setting_preference": [],
+        "setting_preference": []
+      }
+    },
     "discarded": {
+      "DevicePortOverrides": [],
       "Network": [
         "dhcpd_dns_enabled",
         "dhcpd_gateway_enabled",
@@ -132,6 +176,20 @@
       ]
     },
     "empty": {
+      "nat": {
+        "description": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "in_interface": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "ip_address": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        }
+      },
       "networkconf": {
         "dhcpd_boot_filename": {
           "empty": "EMPTY-REJECTED",
@@ -305,6 +363,16 @@
         "update_verb": "",
         "update_path": ""
       },
+      "FirewallPolicy": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/firewall-policies",
+        "update_verb": "",
+        "update_path": "",
+        "required_on_create": [
+          "destination.zone_id",
+          "source.zone_id"
+        ]
+      },
       "Nat": {
         "create_verb": "POST",
         "create_path": "v2/api/site/{site}/nat",
@@ -315,6 +383,46 @@
           "protocol",
           "source_filter"
         ]
+      },
+      "OSPFRouter": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/ospf/router",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/ospf/router/{id}",
+        "required_on_create": [
+          "areas",
+          "areas[].network_ids",
+          "router_id"
+        ],
+        "min_items": {
+          "areas[].network_ids": 1
+        }
+      }
+    },
+    "rejected_creates": {
+      "FirewallZone": {
+        "status": 404,
+        "stored": true
+      },
+      "Nat": {
+        "status": 500,
+        "stored": false
+      },
+      "Network": {
+        "status": 400,
+        "stored": false
+      }
+    },
+    "replays": {
+      "Nat": {
+        "create": "REJECTED-400"
+      },
+      "Network": {
+        "create": "REJECTED-400",
+        "update": "IDEMPOTENT"
+      },
+      "WLAN": {
+        "create": "DUPLICATES"
       }
     }
   }
