@@ -3957,6 +3957,380 @@
         }
       }
     },
+    "unifi_nat": {
+      "version": 0,
+      "description": "Manages a source NAT rule: the controller rewrites the address of traffic leaving a WAN interface, most commonly masquerading a network behind the WAN's own address.",
+      "description_kind": "markdown",
+      "attributes": {
+        "description": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "A human-readable description of the NAT rule.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to "
+        },
+        "destination_filter": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "required": true,
+          "description": "Which traffic the rule matches on its destination address and port. Leave `filter_type` at `NONE` to match any destination.",
+          "description_kind": "markdown"
+        },
+        "destination_filter.address": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The destination address or CIDR to match when `filter_type` is `ADDRESS_AND_PORT`.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to "
+        },
+        "destination_filter.filter_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "How the destination is matched: `NONE`, `ADDRESS_AND_PORT`, `FIREWALL_GROUPS` or `NETWORK_CONF`.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to NONE",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"NONE\" \"ADDRESS_AND_PORT\" \"FIREWALL_GROUPS\" \"NETWORK_CONF\" \"IID_AND_PORT\"]"
+          ]
+        },
+        "destination_filter.firewall_group_ids": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "IDs of the `unifi_firewall_group`s to match when `filter_type` is `FIREWALL_GROUPS`.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "destination_filter.invert_address": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Match every destination except the one described, rather than only it.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "destination_filter.invert_port": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Match every destination port except the one described, rather than only it.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "destination_filter.network_conf_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "ID of the `unifi_network` to match when `filter_type` is `NETWORK_CONF`.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to "
+        },
+        "destination_filter.port": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "description": "The destination port to match when `filter_type` is `ADDRESS_AND_PORT`.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 1 and 99999"
+          ]
+        },
+        "enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the rule is enabled.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to true"
+        },
+        "exclude": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "computed": true,
+          "description": "Whether the rule excludes rather than includes the matched traffic. Controller-managed.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "computed": true,
+          "description": "The ID of the NAT rule.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "in_interface": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The inbound interface the rule matches on. Usually left unset for a source NAT rule.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to "
+        },
+        "ip_address": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The address traffic is translated to. Empty for `MASQUERADE`, which uses the outbound interface's own address.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to "
+        },
+        "ip_version": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The IP version the rule applies to: `IPV4` or `IPV6`.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to IPV4",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"IPV4\" \"IPV6\"]"
+          ]
+        },
+        "is_predefined": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "computed": true,
+          "description": "Whether the rule is one the controller ships. Controller-managed.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "logging": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether traffic the rule matches is logged.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "out_interface": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The outbound interface the rule masquerades on: the `_id` of a WAN `unifi_network`, not the literal `wan`.",
+          "description_kind": "markdown"
+        },
+        "port": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "description": "The translated port, for a `DNAT` rule that also rewrites the port.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 1 and 99999"
+          ]
+        },
+        "pppoe_use_base_interface": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "computed": true,
+          "description": "Whether a PPPoE outbound interface masquerades on its base interface. Controller-managed.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "protocol": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The protocol the rule matches: `all`, `tcp`, `udp` or `tcp_udp`. The controller requires this on every write.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"all\" \"tcp\" \"udp\" \"tcp_udp\"]"
+          ]
+        },
+        "rule_index": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "computed": true,
+          "description": "The rule's position in the controller's evaluation order. Controller-assigned.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "int64planmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "setting_preference": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the controller orders the rule automatically (`auto`) or honours `rule_index` (`manual`).",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to auto",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"manual\"]"
+          ]
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The name of the site the NAT rule belongs to.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource.",
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "source_filter": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "required": true,
+          "description": "Which traffic the rule matches on its source address and port. Leave `filter_type` at `NONE` to match any source.",
+          "description_kind": "markdown"
+        },
+        "source_filter.address": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The source address or CIDR to match when `filter_type` is `ADDRESS_AND_PORT`.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to "
+        },
+        "source_filter.filter_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "How the source is matched: `NONE`, `ADDRESS_AND_PORT`, `FIREWALL_GROUPS` or `NETWORK_CONF`.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to NONE",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"NONE\" \"ADDRESS_AND_PORT\" \"FIREWALL_GROUPS\" \"NETWORK_CONF\" \"IID_AND_PORT\"]"
+          ]
+        },
+        "source_filter.firewall_group_ids": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "IDs of the `unifi_firewall_group`s to match when `filter_type` is `FIREWALL_GROUPS`.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "source_filter.invert_address": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Match every source except the one described, rather than only it.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "source_filter.invert_port": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Match every source port except the one described, rather than only it.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to false"
+        },
+        "source_filter.network_conf_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "ID of the `unifi_network` to match when `filter_type` is `NETWORK_CONF`.",
+          "description_kind": "markdown",
+          "default": "stringdefault.staticStringDefault: value defaults to "
+        },
+        "source_filter.port": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "description": "The source port to match when `filter_type` is `ADDRESS_AND_PORT`.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 1 and 99999"
+          ]
+        },
+        "timeouts": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "description_kind": "plain",
+          "custom_type": "timeouts.Type: \u003ccarries no description\u003e"
+        },
+        "timeouts.create": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.delete": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.read": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.update": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The kind of NAT the rule performs: `DNAT`, `SNAT` or `MASQUERADE`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"DNAT\" \"SNAT\" \"MASQUERADE\"]"
+          ]
+        }
+      }
+    },
     "unifi_network": {
       "version": 1,
       "description": "`unifi_network` manages networks (VLANs) in the UniFi controller.",

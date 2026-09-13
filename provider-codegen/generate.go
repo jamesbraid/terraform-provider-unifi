@@ -264,6 +264,11 @@ package providercodegen
 //go:generate speccompile -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-op.json -policy policy/hotspot_op_list.json -artifact-prefix hotspot_op_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/hotspot_op_list.provider-code-spec.json --output ../internal/generated/listresource_hotspot_op --package listresource_hotspot_op
 
+//go:generate sdkbootstrap -struct Nat -resource unifi_nat -output bootstrap/go-unifi-v1.103.0-nat.json
+//go:generate speccompile -bootstrap bootstrap/go-unifi-v1.103.0-nat.json -policy policy/nat.json -artifact-prefix nat -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/nat.provider-code-spec.json --output ../internal/generated/resource_nat --package resource_nat
+//go:generate gofmt -w ../internal/generated/resource_nat/nat_resource_gen.go
+
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated

@@ -19,6 +19,7 @@ import (
 	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	resource_hotspot_op "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_op"
+	resource_nat "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_nat"
 	resource_network "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_network"
 	resource_port_forward "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_forward"
 	resource_port_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
@@ -92,6 +93,10 @@ var surfaces = []surface{
 	{name: "client", schema: resource_client.ClientResourceSchema, handNested: true},
 	{name: "device", schema: resource_device.DeviceResourceSchema, handNested: true},
 	{name: "firewall_policy", schema: resource_firewall_policy.FirewallPolicyResourceSchema, handNested: true},
+	// nat: source_filter and destination_filter are one shared shape over two
+	// distinct SDK structs, kept hand as one natFilterModel like
+	// firewall_policy's endpoint.
+	{name: "nat", schema: resource_nat.NatResourceSchema, handNested: true},
 	{name: "firewall_rule", schema: resource_firewall_rule.FirewallRuleResourceSchema},
 	{name: "network", schema: resource_network.NetworkResourceSchema, handNested: true},
 	{name: "port_forward", schema: resource_port_forward.PortForwardResourceSchema},

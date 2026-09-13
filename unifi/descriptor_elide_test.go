@@ -23,6 +23,7 @@ import (
 	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	resource_hotspot_op "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_op"
+	resource_nat "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_nat"
 	resource_network "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_network"
 	resource_port_forward "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_forward"
 	resource_port_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
@@ -308,6 +309,19 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 		// nat carries source_filter and destination_filter, whose invert_address
 		// and invert_port members the SDK emits without omitempty: NestedProblems
 		// is what checks they are declared rather than sent as a silent zero.
+		"nat": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(natKitSpec()) {
+				t.Error(problem)
+			}
+			for _, problem := range resourcekit.NestedProblems(natKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				natKitSpec(), resource_nat.NatResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
 		"radius_profile": func(t *testing.T) {
 			for _, problem := range resourcekit.WireNameProblems(radiusProfileKitSpec()) {
 				t.Error(problem)
