@@ -146,6 +146,12 @@ func run(args []string, stderr io.Writer) int {
 	}
 
 	fset := token.NewFileSet()
+	// The source importer can return a package whose transitively-reached
+	// imports have incomplete scopes, so a lookup of a symbol defined in one
+	// of those would silently miss. That does not bite here: we import the
+	// target package directly as the root and only Lookup in its own
+	// Scope() below -- never a symbol from a package reached through it.
+	// Checked deliberately; do not "simplify" the lookups to cross packages.
 	pkg, err := importer.ForCompiler(fset, "source", nil).Import(*pkgPath)
 	if err != nil {
 		fmt.Fprintf(stderr, "import %s: %v\n", *pkgPath, err)
