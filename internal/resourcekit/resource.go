@@ -129,6 +129,19 @@ type Spec[M any, S any] struct {
 	// round-trip -- this field only silences a false positive here.
 	MappedElsewhere []string
 
+	// HookOwned names model attributes an AfterReceive hook is the sole
+	// authority for. copyUncoveredPlanValues must leave these to the hook: the
+	// value the hook reconciled from the controller's answer would otherwise be
+	// overwritten by the raw plan on every create and update (on a pure Read
+	// there is no ApplyPlanToState, so the reconcile survives regardless).
+	// Each accessor returns a POINTER to the attribute -- exactly what ID and
+	// Site return -- so its address joins the covered set the same way theirs
+	// do. unifi_device's port_override is the case this exists for: it is not a
+	// Field (it round-trips through UpdateDevicePortOverrides, see
+	// MappedElsewhere) yet deviceReconcilePortOverrides rebuilds it from the
+	// response, and without this the plan copy would clobber that reconcile.
+	HookOwned []func(*M) any
+
 	// ID, Site and Timeouts reach the three attributes every managed surface
 	// has and no policy declares as a field -- they are provider_owned in the
 	// mapping, which is why they are here rather than in Fields.
@@ -271,6 +284,15 @@ func (s Spec[M, S]) copyUncoveredPlanValues(plan, state *M) {
 	}
 	if s.Timeouts != nil {
 		covered[reflect.ValueOf(s.Timeouts(state)).Pointer()] = struct{}{}
+	}
+	// An attribute a hook reconciles is not the plan's to overwrite either --
+	// the accessor hands back a pointer to it, the same shape ID/Site/Timeouts
+	// use above.
+	for _, accessor := range s.HookOwned {
+		ptr := reflect.ValueOf(accessor(state))
+		if ptr.Kind() == reflect.Ptr {
+			covered[ptr.Pointer()] = struct{}{}
+		}
 	}
 	for _, field := range s.Fields {
 		if wrapper, ok := field.(interface{ Unwrap() Field[M, S] }); ok {
