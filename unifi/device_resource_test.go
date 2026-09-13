@@ -880,10 +880,10 @@ func Test_devicePortOverrideDeclaredFields_matchesEveryModeledMember(t *testing.
 // attribute set, so this is what catches a member added to the model but not
 // to the reconcile.
 //
-// index is the match key (prior == api by construction);
-// tagged_networkconf_ids is declarable-but-inert and has no round-trip;
-// op_mode is Computed with a "switch" default and is read back unconditionally
-// in its own step. Those three are the only exclusions.
+// index is the match key (prior == api by construction) and
+// tagged_networkconf_ids is declarable-but-inert with no round-trip; those
+// two are the only exclusions. op_mode is reconciled too (unconditionally --
+// see the dedicated test), so it must read back changed like the rest.
 func Test_deviceReconcilePortOverrides_reconcilesEveryDeclaredMember(t *testing.T) {
 	ctx := context.Background()
 	p := func(n int64) *int64 { return &n }
@@ -1011,7 +1011,6 @@ func Test_deviceReconcilePortOverrides_reconcilesEveryDeclaredMember(t *testing.
 	skip := map[string]bool{
 		"index":                  true,
 		"tagged_networkconf_ids": true,
-		"op_mode":                true,
 	}
 	for name := range portOverrideAttrTypes() {
 		if skip[name] {
@@ -1028,6 +1027,65 @@ func Test_deviceReconcilePortOverrides_reconcilesEveryDeclaredMember(t *testing.
 	if !reconciled.Attributes()["tagged_networkconf_ids"].Equal(priorObj.Attributes()["tagged_networkconf_ids"]) {
 		t.Errorf("tagged_networkconf_ids was reconciled (%v); it is declarable-but-inert and must keep prior",
 			reconciled.Attributes()["tagged_networkconf_ids"])
+	}
+}
+
+// Test_deviceReconcilePortOverrides_opModeReadBackUnconditionally pins R-2:
+// op_mode is read back from the controller even for a port the practitioner
+// never declared it on (a guarded pass would leave it null), and a switch
+// port -- which the controller reports with op_mode off the wire -- normalises
+// to the schema default rather than a null that would diff against it.
+func Test_deviceReconcilePortOverrides_opModeReadBackUnconditionally(t *testing.T) {
+	ctx := context.Background()
+
+	// Prior declares only the port index; op_mode is null, standing in for a
+	// port the practitioner never set op_mode on.
+	prior := portOverrideModel{
+		Index:                         types.Int64Value(1),
+		OpMode:                        types.StringNull(),
+		AggregateMembers:              types.ListNull(types.Int64Type),
+		ExcludedNetworkIDs:            types.SetNull(types.StringType),
+		MulticastRouterNetworkconfIDs: types.SetNull(types.StringType),
+		PortSecurityMACAddress:        types.ListNull(types.StringType),
+		TaggedNetworkIDs:              types.SetNull(types.StringType),
+		Dot1XIDleTimeout:              timetypes.NewGoDurationNull(),
+	}
+	priorObj, d := types.ObjectValueFrom(ctx, portOverrideAttrTypes(), prior)
+	if d.HasError() {
+		t.Fatalf("building prior object: %v", d)
+	}
+	priorSet, d := types.SetValue(types.ObjectType{AttrTypes: portOverrideAttrTypes()}, []attr.Value{priorObj})
+	if d.HasError() {
+		t.Fatalf("building prior set: %v", d)
+	}
+
+	readBack := func(t *testing.T, apiOpMode string) string {
+		idx := int64(1)
+		got, diags := deviceReconcilePortOverrides(ctx, priorSet, []unifi.DevicePortOverrides{{
+			PortIDX: &idx,
+			OpMode:  apiOpMode,
+		}})
+		if diags.HasError() {
+			t.Fatalf("reconcile: %v", diags)
+		}
+		obj, ok := got.Elements()[0].(types.Object)
+		if !ok {
+			t.Fatalf("reconciled element is %T, want types.Object", got.Elements()[0])
+		}
+		v, ok := obj.Attributes()["op_mode"].(types.String)
+		if !ok {
+			t.Fatalf("op_mode is %T, want types.String", obj.Attributes()["op_mode"])
+		}
+		return v.ValueString()
+	}
+
+	if got := readBack(t, "aggregate"); got != "aggregate" {
+		t.Errorf("op_mode = %q, want aggregate; a controller-side aggregate port must reach "+
+			"state even though the practitioner never declared op_mode", got)
+	}
+	if got := readBack(t, ""); got != "switch" {
+		t.Errorf("op_mode = %q, want switch; a plain switch port (op_mode off the wire) must "+
+			"normalise to the default, not a null that diffs against it", got)
 	}
 }
 

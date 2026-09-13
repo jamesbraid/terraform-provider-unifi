@@ -735,9 +735,21 @@ func deviceReconcilePortOverrides(
 			updated.AggregateMembers = list
 		}
 
-		// op_mode and tagged_networkconf_ids are deliberately left out of this
-		// declared-guarded pass. op_mode is Computed with a "switch" default
-		// and needs its own unconditional read-back; tagged_networkconf_ids is
+		// op_mode is Optional+Computed with a "switch" default (schema), so
+		// state always carries a value and there is no null to guard on: read
+		// it back unconditionally, unlike the declared members above. An
+		// aggregate/mirror/routed port then becomes visible instead of state
+		// permanently asserting the default. A plain switch port reports op_mode
+		// off the wire (it is only sent when non-default -- see
+		// devicePortOverrideEncode), so an empty read is normalised to the
+		// default "switch" rather than a null that would diff against it.
+		if apiPO.OpMode == "" {
+			updated.OpMode = types.StringValue("switch")
+		} else {
+			updated.OpMode = types.StringValue(apiPO.OpMode)
+		}
+
+		// tagged_networkconf_ids stays out of the reconcile: it is
 		// declarable-but-inert -- never written, so it has no round-trip.
 
 		objVal, objDiags := types.ObjectValueFrom(ctx, updated.AttributeTypes(), updated)
