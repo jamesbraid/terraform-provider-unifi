@@ -2137,7 +2137,7 @@
           "description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"A\" \"AAAA\" \"CNAME\" \"MX\" \"NS\" \"PTR\" \"SOA\" \"SRV\" \"TXT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"A\" \"AAAA\" \"CNAME\" \"MX\" \"NS\" \"SRV\" \"TXT\"]"
           ]
         },
         "site": {
@@ -2768,7 +2768,7 @@
             "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "listvalidator.valueStringsAreValidator: element value must satisfy all validations: value must be one of: [\"NEW\" \"ESTABLISHED\" \"RELATED\" \"INVALID\"]"
+            "listvalidator.valueStringsAreValidator: element value must satisfy all validations: value must be one of: [\"NEW\" \"INVALID\" \"ESTABLISHED\" \"RELATED\"]"
           ]
         },
         "create_allow_respond": {
@@ -2878,7 +2878,7 @@
           "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"DEVICE\" \"IP\" \"NETWORK\" \"CLIENT\" \"MAC\" \"WEB\" \"APP\" \"APP_CATEGORY\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"APP\" \"APP_CATEGORY\" \"IID\" \"IP\" \"NETWORK\" \"REGION\" \"WEB\"]"
           ]
         },
         "destination.matching_target_type": {
@@ -2891,7 +2891,7 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"LIST\" \"OBJECT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"SPECIFIC\" \"OBJECT\"]"
           ]
         },
         "destination.network_ids": {
@@ -2937,7 +2937,7 @@
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to ANY",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"LIST\" \"OBJECT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"OBJECT\"]"
           ]
         },
         "destination.web_domains": {
@@ -2977,7 +2977,7 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"LIST\" \"OBJECT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"ADDRESS_MASK_REPLY\" \"ADDRESS_MASK_REQUEST\" \"COMMUNICATION_PROHIBITED\" \"DESTINATION_UNREACHABLE\" \"ECHO_REPLY\" \"ECHO_REQUEST\" \"FRAGMENTATION_NEEDED\" \"HOST_PRECEDENCE_VIOLATION\" \"HOST_PROHIBITED\" \"HOST_REDIRECT\" \"HOST_UNKNOWN\" \"HOST_UNREACHABLE\" \"IP_HEADER_BAD\" \"NETWORK_PROHIBITED\" \"NETWORK_REDIRECT\" \"NETWORK_UNKNOWN\" \"NETWORK_UNREACHABLE\" \"PARAMETER_PROBLEM\" \"PORT_UNREACHABLE\" \"PRECEDENCE_CUTOFF\" \"PROTOCOL_UNREACHABLE\" \"REDIRECT\" \"REQUIRED_OPTION_MISSING\" \"ROUTER_ADVERTISEMENT\" \"ROUTER_SOLICITATION\" \"SOURCE_QUENCH\" \"SOURCE_ROUTE_FAILED\" \"TIME_EXCEEDED\" \"TIMESTAMP_REPLY\" \"TIMESTAMP_REQUEST\" \"TOS_HOST_REDIRECT\" \"TOS_HOST_UNREACHABLE\" \"TOS_NETWORK_REDIRECT\" \"TOS_NETWORK_UNREACHABLE\" \"TTL_ZERO_DURING_REASSEMBLY\" \"TTL_ZERO_DURING_TRANSIT\" \"ANY\"]"
           ]
         },
         "icmp_v6_typename": {
@@ -2990,7 +2990,7 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"LIST\" \"OBJECT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"ADDRESS_UNREACHABLE\" \"BAD_HEADER\" \"BEYOND_SCOPE\" \"COMMUNICATION_PROHIBITED\" \"DESTINATION_UNREACHABLE\" \"ECHO_REPLY\" \"ECHO_REQUEST\" \"FAILED_POLICY\" \"NEIGHBOR_ADVERTISEMENT\" \"NEIGHBOR_SOLICITATION\" \"NO_ROUTE\" \"PACKET_TOO_BIG\" \"PARAMETER_PROBLEM\" \"PORT_UNREACHABLE\" \"REDIRECT\" \"REJECT_ROUTE\" \"ROUTER_ADVERTISEMENT\" \"ROUTER_SOLICITATION\" \"TIME_EXCEEDED\" \"TTL_ZERO_DURING_REASSEMBLY\" \"TTL_ZERO_DURING_TRANSIT\" \"UNKNOWN_HEADER_TYPE\" \"UNKNOWN_OPTION\" \"ANY\"]"
           ]
         },
         "id": {
@@ -3258,7 +3258,7 @@
           "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"DEVICE\" \"IP\" \"NETWORK\" \"CLIENT\" \"MAC\" \"WEB\" \"APP\" \"APP_CATEGORY\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"CLIENT\" \"EXTERNAL_SOURCE\" \"IID\" \"IP\" \"MAC\" \"NETWORK\" \"REGION\" \"USER_IDENTITY\" \"USER_IDENTITY_ONE_CLICK_VPN\" \"USER_IDENTITY_ONE_CLICK_WIFI\" \"VPN_USER\"]"
           ]
         },
         "source.matching_target_type": {
@@ -3271,7 +3271,7 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"LIST\" \"OBJECT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"SPECIFIC\" \"OBJECT\"]"
           ]
         },
         "source.network_ids": {
@@ -3317,7 +3317,7 @@
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to ANY",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"LIST\" \"OBJECT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"ANY\" \"SPECIFIC\" \"OBJECT\"]"
           ]
         },
         "source.web_domains": {
@@ -14712,7 +14712,7 @@
           "description": "The type of the DNS record.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"A\" \"AAAA\" \"CNAME\" \"MX\" \"NS\" \"PTR\" \"SOA\" \"SRV\" \"TXT\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"A\" \"AAAA\" \"CNAME\" \"MX\" \"NS\" \"SRV\" \"TXT\"]"
           ]
         },
         "value": {

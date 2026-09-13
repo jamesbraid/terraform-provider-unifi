@@ -57,7 +57,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 					listplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.List{
-					listvalidator.ValueStringsAre(stringvalidator.OneOf("NEW", "ESTABLISHED", "RELATED", "INVALID")),
+					listvalidator.ValueStringsAre(stringvalidator.OneOf("NEW", "INVALID", "ESTABLISHED", "RELATED")),
 				},
 			},
 			"create_allow_respond": schema.BoolAttribute{
@@ -144,7 +144,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "DEVICE", "IP", "NETWORK", "CLIENT", "MAC", "WEB", "APP", "APP_CATEGORY"),
+							stringvalidator.OneOf("ANY", "APP", "APP_CATEGORY", "IID", "IP", "NETWORK", "REGION", "WEB"),
 						},
 					},
 					"matching_target_type": schema.StringAttribute{
@@ -155,7 +155,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 							stringplanmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
+							stringvalidator.OneOf("SPECIFIC", "OBJECT"),
 						},
 					},
 					"network_ids": schema.ListAttribute{
@@ -193,7 +193,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						MarkdownDescription: "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
+							stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
 						},
 						Default: stringdefault.StaticString("ANY"),
 					},
@@ -232,7 +232,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
+					stringvalidator.OneOf("ADDRESS_MASK_REPLY", "ADDRESS_MASK_REQUEST", "COMMUNICATION_PROHIBITED", "DESTINATION_UNREACHABLE", "ECHO_REPLY", "ECHO_REQUEST", "FRAGMENTATION_NEEDED", "HOST_PRECEDENCE_VIOLATION", "HOST_PROHIBITED", "HOST_REDIRECT", "HOST_UNKNOWN", "HOST_UNREACHABLE", "IP_HEADER_BAD", "NETWORK_PROHIBITED", "NETWORK_REDIRECT", "NETWORK_UNKNOWN", "NETWORK_UNREACHABLE", "PARAMETER_PROBLEM", "PORT_UNREACHABLE", "PRECEDENCE_CUTOFF", "PROTOCOL_UNREACHABLE", "REDIRECT", "REQUIRED_OPTION_MISSING", "ROUTER_ADVERTISEMENT", "ROUTER_SOLICITATION", "SOURCE_QUENCH", "SOURCE_ROUTE_FAILED", "TIME_EXCEEDED", "TIMESTAMP_REPLY", "TIMESTAMP_REQUEST", "TOS_HOST_REDIRECT", "TOS_HOST_UNREACHABLE", "TOS_NETWORK_REDIRECT", "TOS_NETWORK_UNREACHABLE", "TTL_ZERO_DURING_REASSEMBLY", "TTL_ZERO_DURING_TRANSIT", "ANY"),
 				},
 			},
 			"icmp_v6_typename": schema.StringAttribute{
@@ -243,7 +243,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
+					stringvalidator.OneOf("ADDRESS_UNREACHABLE", "BAD_HEADER", "BEYOND_SCOPE", "COMMUNICATION_PROHIBITED", "DESTINATION_UNREACHABLE", "ECHO_REPLY", "ECHO_REQUEST", "FAILED_POLICY", "NEIGHBOR_ADVERTISEMENT", "NEIGHBOR_SOLICITATION", "NO_ROUTE", "PACKET_TOO_BIG", "PARAMETER_PROBLEM", "PORT_UNREACHABLE", "REDIRECT", "REJECT_ROUTE", "ROUTER_ADVERTISEMENT", "ROUTER_SOLICITATION", "TIME_EXCEEDED", "TTL_ZERO_DURING_REASSEMBLY", "TTL_ZERO_DURING_TRANSIT", "UNKNOWN_HEADER_TYPE", "UNKNOWN_OPTION", "ANY"),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -463,7 +463,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "DEVICE", "IP", "NETWORK", "CLIENT", "MAC", "WEB", "APP", "APP_CATEGORY"),
+							stringvalidator.OneOf("ANY", "CLIENT", "EXTERNAL_SOURCE", "IID", "IP", "MAC", "NETWORK", "REGION", "USER_IDENTITY", "USER_IDENTITY_ONE_CLICK_VPN", "USER_IDENTITY_ONE_CLICK_WIFI", "VPN_USER"),
 						},
 					},
 					"matching_target_type": schema.StringAttribute{
@@ -474,7 +474,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 							stringplanmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
+							stringvalidator.OneOf("SPECIFIC", "OBJECT"),
 						},
 					},
 					"network_ids": schema.ListAttribute{
@@ -512,7 +512,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						MarkdownDescription: "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
+							stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
 						},
 						Default: stringdefault.StaticString("ANY"),
 					},
