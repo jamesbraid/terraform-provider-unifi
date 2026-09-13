@@ -242,6 +242,212 @@ resource "unifi_device" "test" {
 `, mac, port1IDX, port2IDX)
 }
 
+// TestAccDeviceFramework_portOverrideNoClobberOnApply is the live counterpart
+// to the resourcekit hook-owned unit test: it proves the port_override state
+// deviceReconcilePortOverrides rebuilds survives Create/Update rather than
+// being overwritten by the raw plan. On create and update the kit copies every
+// plan value no Field claims onto the state AFTER the reconcile hook has run;
+// port_override is not a Field, so before it was marked hook-owned the raw
+// plan clobbered the reconcile on every apply, and a re-plan then still read
+// empty only because state happened to equal the plan. The reconcile now being
+// authoritative, an apply followed by a no-change plan must still be empty --
+// the second, plan-only step is that assertion, and the apply step's own
+// built-in post-apply plan check is another.
+func TestAccDeviceFramework_portOverrideNoClobberOnApply(t *testing.T) {
+	mac := os.Getenv(acctestenv.EnvAccDeviceMAC)
+	if mac == "" {
+		t.Skipf("%s not set; skipping device acceptance test", acctestenv.EnvAccDeviceMAC)
+	}
+	const portIDX = 1
+
+	client := testAccRawDeviceClient(t)
+	site := testAccDeviceSite()
+	ctx := context.Background()
+
+	// Seed the port with a matched mask so the apply's declared write has an
+	// existing entry to merge onto, matching the other live test's approach.
+	seed, err := client.GetDeviceByMAC(ctx, site, mac)
+	if err != nil {
+		t.Fatalf("reading the device to seed it: %v", err)
+	}
+	if _, err := client.UpdateDevicePortOverrides(ctx, site, seed, []unifi.DevicePortOverrides{
+		{PortIDX: ptrInt64(portIDX), Name: "seed", PoeMode: "auto"},
+	}, "name", "poe_mode"); err != nil {
+		t.Fatalf("seeding the port: %v", err)
+	}
+
+	cfg := testAccDeviceFrameworkConfig_onePortOverride(mac, portIDX)
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_device.test", "id"),
+					resource.TestCheckResourceAttr("unifi_device.test", "port_override.#", "1"),
+				),
+			},
+			// No config change: the reconciled state must match the config, so
+			// this plan is empty. It is the step that would fail if the raw
+			// plan were clobbering the reconcile.
+			{
+				Config:   cfg,
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
+// TestAccDeviceFramework_portOverrideDriftSeenOnRefresh proves R-1: a declared
+// member the controller changes out of band is brought back into state on
+// refresh, producing a non-empty plan. It covers all three reconcile types --
+// poe_mode (string), full_duplex (bool) and speed (*int64) -- none of which the
+// pre-R-1 six-member reconcile read back, so before the fix this drift was
+// invisible and the plan stayed empty.
+func TestAccDeviceFramework_portOverrideDriftSeenOnRefresh(t *testing.T) {
+	mac := os.Getenv(acctestenv.EnvAccDeviceMAC)
+	if mac == "" {
+		t.Skipf("%s not set; skipping device acceptance test", acctestenv.EnvAccDeviceMAC)
+	}
+	const portIDX = 1
+
+	client := testAccRawDeviceClient(t)
+	site := testAccDeviceSite()
+	ctx := context.Background()
+
+	cfg := testAccDeviceFrameworkConfig_driftMembers(mac, portIDX)
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_device.test", "port_override.#", "1"),
+				),
+			},
+			{
+				// Mutate all three members out of band, to values that are all
+				// non-zero on the wire so the masked write actually carries
+				// them, then plan against the unchanged config.
+				PreConfig: func() {
+					d, err := client.GetDeviceByMAC(ctx, site, mac)
+					if err != nil {
+						t.Fatalf("reading the device before out-of-band mutation: %v", err)
+					}
+					if _, err := client.UpdateDevicePortOverrides(ctx, site, d, []unifi.DevicePortOverrides{
+						{PortIDX: ptrInt64(portIDX), PoeMode: "off", FullDuplex: true, Speed: ptrInt64(1000)},
+					}, "poe_mode", "full_duplex", "speed"); err != nil {
+						t.Fatalf("mutating the port out of band: %v", err)
+					}
+				},
+				Config:             cfg,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
+// TestAccDeviceFramework_opModeSwitchRoundTrips proves the reachable half of
+// R-2 on the emulated fleet: op_mode is read back from the controller on every
+// apply (it is Optional+Computed with a "switch" default), and a port declared
+// as the default "switch" round-trips to an empty plan rather than churning.
+// The encoder omits op_mode when it is "switch" (gateway devices reject it on
+// update), so this specifically exercises the write-omit / unconditional
+// read-back pairing: the value is never sent yet must reconcile back to
+// "switch" and match the config.
+//
+// The other half of R-2 -- a controller-side aggregate/mirror/routed port
+// becoming visible in state -- cannot be exercised here: the emulated USM8P
+// has eight GE switch ports and the sim rejects every aggregate member
+// combination (api.err.InvalidAggregateMember) and every mirror
+// (api.err.TooManyMirror), and neither emulated device is a gateway. That case
+// is covered by the unit test
+// Test_deviceReconcilePortOverrides_opModeReadBackUnconditionally, which drives
+// a controller response reporting "aggregate" directly.
+func TestAccDeviceFramework_opModeSwitchRoundTrips(t *testing.T) {
+	mac := os.Getenv(acctestenv.EnvAccDeviceMAC)
+	if mac == "" {
+		t.Skipf("%s not set; skipping device acceptance test", acctestenv.EnvAccDeviceMAC)
+	}
+	const portIDX = 1
+
+	cfg := testAccDeviceFrameworkConfig_opModeSwitch(mac, portIDX)
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_device.test", "port_override.#", "1"),
+				),
+			},
+			// op_mode reconciled back to "switch" must equal the config, so the
+			// plan is empty. If op_mode reconciled to null or was left unread,
+			// this plan would not be empty.
+			{
+				Config:   cfg,
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
+func testAccDeviceFrameworkConfig_opModeSwitch(mac string, portIDX int) string {
+	return fmt.Sprintf(`
+resource "unifi_device" "test" {
+	mac  = %q
+	name = "Test Device"
+	allow_adoption = true
+	forget_on_destroy = false
+
+	port_override {
+		index   = %d
+		name    = "opmode-switch"
+		op_mode = "switch"
+	}
+}
+`, mac, portIDX)
+}
+
+func testAccDeviceFrameworkConfig_onePortOverride(mac string, portIDX int) string {
+	return fmt.Sprintf(`
+resource "unifi_device" "test" {
+	mac  = %q
+	name = "Test Device"
+	allow_adoption = true
+	forget_on_destroy = false
+
+	port_override {
+		index    = %d
+		name     = "no-clobber"
+		poe_mode = "auto"
+	}
+}
+`, mac, portIDX)
+}
+
+func testAccDeviceFrameworkConfig_driftMembers(mac string, portIDX int) string {
+	return fmt.Sprintf(`
+resource "unifi_device" "test" {
+	mac  = %q
+	name = "Test Device"
+	allow_adoption = true
+	forget_on_destroy = false
+
+	port_override {
+		index       = %d
+		poe_mode    = "auto"
+		full_duplex = false
+		speed       = 100
+	}
+}
+`, mac, portIDX)
+}
+
 func testAccDeviceFrameworkConfig_basic(mac string) string {
 	return fmt.Sprintf(`
 resource "unifi_device" "test" {
