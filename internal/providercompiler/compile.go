@@ -129,6 +129,14 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, err
 	}
 
+	// Wires the controller refuses an empty write on but clears on omission.
+	// Derived, never hand-transcribed: the descriptor a managed field of this
+	// kind emits carries a WriteWhen that omits "" rather than sending it.
+	suppressedEmptyWires, err := behaviorEmptySuppressedWires(input.Behavior, rules.SurfaceKind, source)
+	if err != nil {
+		return Result{}, err
+	}
+
 	claimedFields, claimedMembers, err := claimedStructuralFields(rules.SurfaceKind, rules.Claims)
 	if err != nil {
 		return Result{}, err
@@ -350,12 +358,14 @@ func Compile(input CompileInput) (Result, error) {
 				terraformType = structural.Type
 			}
 		}
+		_, suppressEmptyWrite := suppressedEmptyWires[name]
 		mapping.Fields = append(mapping.Fields, mappingField{
-			StructuralName: name,
-			TerraformName:  field.TerraformName,
-			StructuralType: structural.Type,
-			TerraformType:  terraformType,
-			Disposition:    field.Disposition,
+			StructuralName:     name,
+			TerraformName:      field.TerraformName,
+			StructuralType:     structural.Type,
+			TerraformType:      terraformType,
+			Disposition:        field.Disposition,
+			SuppressEmptyWrite: suppressEmptyWrite && field.Disposition == "managed",
 		})
 		if field.Disposition == "managed" || field.Disposition == "computed" {
 			if _, must := requiredWires[name]; must && field.Disposition == "managed" {

@@ -21,15 +21,17 @@ import (
 //   - exclude, is_predefined, pppoe_use_base_interface and rule_index are
 //     controller-managed (schema-computed); ReadOnly keeps them off the write
 //     mask, though a create's full-struct write still carries them.
-//   - in_interface and ip_address suppress an empty write: the behaviour
-//     artifact records both as EMPTY-REJECTED (the controller refuses a "" on
-//     the update PUT) but OMIT-CLEARS, so a rule that carries neither must omit
-//     rather than send "".
 //
 // protocol, source_filter and destination_filter are required on create; that
 // requiredness is not declared here but forced by the compiler from the
 // behaviour artifact's writes.Nat.required_on_create, cross-checked against the
 // SDK struct.
+//
+// in_interface and ip_address suppress an empty write -- the behaviour
+// artifact records both as EMPTY-REJECTED with OMIT-CLEARS, so a rule that
+// carries neither must omit rather than send "". That WriteWhen is no longer
+// hand-authored here: the compiler reads the artifact's empty family and the
+// descriptor emitter emits it into nat_descriptor_gen.go.
 
 // natFilterValues is the member set both SDK filter types share, converted
 // separately since Go cannot reach a struct field generically.
@@ -94,27 +96,6 @@ func natKitSpec() resourcekit.Spec[natKitModel, ui.Nat] {
 		Site:     func(m *natKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *natKitModel) *timeouts.Value { return &m.Timeouts },
 		Fields: resourcekit.Override(natGenFields(), []resourcekit.Field[natKitModel, ui.Nat]{
-			// The controller rejects an empty in_interface on the update PUT
-			// (EMPTY-REJECTED) though it tolerates its absence; a source NAT
-			// rule carries no inbound interface. Suppress the write when empty
-			// so the masked update never re-sends "".
-			resourcekit.StringField[natKitModel, ui.Nat]{
-				Wire:      "in_interface",
-				Model:     func(m *natKitModel) *types.String { return &m.InInterface },
-				SDK:       func(s *ui.Nat) *string { return &s.InInterface },
-				Elide:     resourcekit.KeepZero,
-				WriteWhen: func(m *natKitModel) bool { return !m.InInterface.IsNull() && m.InInterface.ValueString() != "" },
-			},
-			// Same as in_interface: an empty ip_address is EMPTY-REJECTED on
-			// the update PUT, and a MASQUERADE rule has none. Suppress the
-			// write when empty.
-			resourcekit.StringField[natKitModel, ui.Nat]{
-				Wire:      "ip_address",
-				Model:     func(m *natKitModel) *types.String { return &m.IPAddress },
-				SDK:       func(s *ui.Nat) *string { return &s.IPAddress },
-				Elide:     resourcekit.KeepZero,
-				WriteWhen: func(m *natKitModel) bool { return !m.IPAddress.IsNull() && m.IPAddress.ValueString() != "" },
-			},
 			// exclude, is_predefined and pppoe_use_base_interface are
 			// controller internals: read-only, so they never join the write
 			// mask; a create's full-struct write still sends them as false,

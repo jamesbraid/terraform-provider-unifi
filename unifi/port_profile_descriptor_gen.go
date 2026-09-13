@@ -123,10 +123,11 @@ func portProfileGenFields() []resourcekit.Field[portProfileKitModel, ui.PortProf
 			Elide: resourcekit.KeepZero,
 		},
 		resourcekit.StringField[portProfileKitModel, ui.PortProfile]{
-			Wire:  "poe_mode",
-			Model: func(m *portProfileKitModel) *types.String { return &m.PoeMode },
-			SDK:   func(s *ui.PortProfile) *string { return &s.PoeMode },
-			Elide: resourcekit.NullZero,
+			Wire:      "poe_mode",
+			Model:     func(m *portProfileKitModel) *types.String { return &m.PoeMode },
+			SDK:       func(s *ui.PortProfile) *string { return &s.PoeMode },
+			Elide:     resourcekit.NullZero,
+			WriteWhen: func(m *portProfileKitModel) bool { return !m.PoeMode.IsNull() && m.PoeMode.ValueString() != "" },
 		},
 		resourcekit.BoolField[portProfileKitModel, ui.PortProfile]{
 			Wire:  "port_keepalive_enabled",
@@ -173,6 +174,9 @@ func portProfileGenFields() []resourcekit.Field[portProfileKitModel, ui.PortProf
 			Model: func(m *portProfileKitModel) *types.String { return &m.SettingPreference },
 			SDK:   func(s *ui.PortProfile) *string { return &s.SettingPreference },
 			Elide: resourcekit.NullZero,
+			WriteWhen: func(m *portProfileKitModel) bool {
+				return !m.SettingPreference.IsNull() && m.SettingPreference.ValueString() != ""
+			},
 		},
 		resourcekit.Int64PtrField[portProfileKitModel, ui.PortProfile]{
 			Wire:     "speed",
@@ -220,6 +224,9 @@ func portProfileGenFields() []resourcekit.Field[portProfileKitModel, ui.PortProf
 			Model: func(m *portProfileKitModel) *types.String { return &m.StormctrlType },
 			SDK:   func(s *ui.PortProfile) *string { return &s.StormctrlType },
 			Elide: resourcekit.NullZero,
+			WriteWhen: func(m *portProfileKitModel) bool {
+				return !m.StormctrlType.IsNull() && m.StormctrlType.ValueString() != ""
+			},
 		},
 		resourcekit.BoolField[portProfileKitModel, ui.PortProfile]{
 			Wire:  "stormctrl_ucast_enabled",

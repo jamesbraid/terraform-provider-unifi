@@ -74,7 +74,8 @@
       "terraform_name": "subnet",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "ipv6_aliases",
@@ -186,7 +187,8 @@
       "terraform_name": "name",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "nat_outbound_ip_addresses",
@@ -207,7 +209,8 @@
       "terraform_name": "setting_preference",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "dhcpguard_enabled",

@@ -27,6 +27,11 @@ type mappingField struct {
 	StructuralType string `json:"structural_type"`
 	TerraformType  string `json:"terraform_type"`
 	Disposition    string `json:"disposition"`
+	// SuppressEmptyWrite is the compiler's verdict, from the behaviour
+	// artifact's empty family, that this field's empty value must be omitted
+	// rather than written. A StringField carrying it gets a WriteWhen that
+	// suppresses the write when the value is null or "".
+	SuppressEmptyWrite bool `json:"suppress_empty_write,omitempty"`
 }
 
 type mapping struct {
@@ -262,6 +267,10 @@ type genField struct {
 	SDK      string // SDK struct member
 	Elide    string // "KeepZero", "NullZero", or "" for kinds without one
 	OmitZero bool
+	// SuppressEmpty emits a WriteWhen that omits an empty value, from the
+	// mapping's suppress_empty_write verdict. Only a StringField carries it:
+	// emptiness is the literal "", which only a string has.
+	SuppressEmpty bool
 }
 
 // sdkValueType is the SDK accessor's pointee per kind; the compiler holds
@@ -379,6 +388,21 @@ func deriveFields(
 				return nil, err
 			}
 			field.OmitZero = omit
+		}
+		if f.SuppressEmptyWrite {
+			// Emptiness is the literal "", so only a StringField can carry
+			// the suppression. The compiler derives the verdict from the
+			// behaviour artifact's empty family, which measures string
+			// emptiness; a non-string field wearing it means the artifact and
+			// the field kind disagree, and dropping it silently would ship the
+			// measured refusal unenforced.
+			if kind != "StringField" {
+				return nil, fmt.Errorf(
+					"%s: mapping marks suppress_empty_write on a %s, but empty-write suppression is a string rule",
+					f.StructuralName, kind,
+				)
+			}
+			field.SuppressEmpty = true
 		}
 		out = append(out, field)
 	}
