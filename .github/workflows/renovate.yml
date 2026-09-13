@@ -16,7 +16,7 @@
 name: renovate
 on:
   schedule:
-    - cron: '34 3 * * *'
+    - cron: '34 * * * *'
   workflow_dispatch: {}
 
 jobs:
