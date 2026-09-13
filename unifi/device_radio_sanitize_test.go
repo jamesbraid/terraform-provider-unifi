@@ -90,6 +90,24 @@ func TestSanitizeRadioForUpdate(t *testing.T) {
 			unifi.DeviceRadioTable{SensLevelEnabled: true, SensLevel: ptrInt64(-70)},
 			func(r unifi.DeviceRadioTable) bool { return r.SensLevel != nil },
 		},
+		{
+			// The unset sentinel: an omitted Optional+Computed ht arrives here
+			// as 0 (ValueInt64Pointer's Unknown), which the controller's pattern
+			// rejects. Drop it so ht is omitted rather than sent as a rejected 0.
+			"ht 0 (unset sentinel) dropped",
+			unifi.DeviceRadioTable{Ht: ptrInt64(0)},
+			func(r unifi.DeviceRadioTable) bool { return r.Ht == nil },
+		},
+		{
+			"ht 40 (valid width) kept",
+			unifi.DeviceRadioTable{Ht: ptrInt64(40)},
+			func(r unifi.DeviceRadioTable) bool { return r.Ht != nil && *r.Ht == 40 },
+		},
+		{
+			"ht 33 (not a channel width) dropped",
+			unifi.DeviceRadioTable{Ht: ptrInt64(33)},
+			func(r unifi.DeviceRadioTable) bool { return r.Ht == nil },
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
