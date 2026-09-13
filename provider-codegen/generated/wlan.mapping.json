@@ -25,7 +25,8 @@
       "terraform_name": "ap_group_mode",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "bc_filter_list",
@@ -158,7 +159,8 @@
       "terraform_name": "minrate_setting_preference",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "mlo_enabled",
@@ -172,7 +174,8 @@
       "terraform_name": "name",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "nas_identifier_type",
@@ -200,7 +203,8 @@
       "terraform_name": "pmf_mode",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "private_preshared_keys",
@@ -277,7 +281,8 @@
       "terraform_name": "security",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "uapsd_enabled",
@@ -312,7 +317,8 @@
       "terraform_name": "wlan_band",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "wlan_bands",
@@ -354,21 +360,24 @@
       "terraform_name": "wpa_enc",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "wpa_mode",
       "terraform_name": "wpa_mode",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "x_passphrase",
       "terraform_name": "passphrase",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "mac_filter_enabled",

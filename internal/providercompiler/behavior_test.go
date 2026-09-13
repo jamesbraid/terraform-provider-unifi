@@ -435,3 +435,144 @@ func TestRequiredWireObservedResolvesNestedPaths(t *testing.T) {
 		}
 	}
 }
+
+// testBehaviorEmpty builds the artifact wrapper carrying a writes family (for
+// its update paths) and an empty family, the two the empty-write suppression
+// derivation reads.
+func testBehaviorEmpty(t *testing.T, writes, empty map[string]any) []byte {
+	t.Helper()
+	return mustJSON(t, map[string]any{
+		"format_version": 1,
+		"source": map[string]any{
+			"repository":           "github.com/jamesbraid/go-unifi",
+			"version":              "v1.113.1",
+			"commit":               strings.Repeat("a", 40),
+			"specification_sha256": strings.Repeat("a", 64),
+		},
+		"behavior": map[string]any{
+			"controller_version": "10.6.101",
+			"writes":             writes,
+			"empty":              empty,
+		},
+	})
+}
+
+func TestPathCollectionExtractsTheCollectionSegment(t *testing.T) {
+	cases := []struct{ path, want string }{
+		{"v2/api/site/{site}/nat/{id}", "nat"},                // v2 API, id-terminated
+		{"api/s/{site}/rest/networkconf/{id}", "networkconf"}, // rest API
+		{"v2/api/site/{site}/nat", "nat"},                     // no trailing id
+		{"", ""},
+		{"{id}", ""}, // only placeholders
+	}
+	for _, tc := range cases {
+		if got := pathCollection(tc.path); got != tc.want {
+			t.Errorf("pathCollection(%q) = %q, want %q", tc.path, got, tc.want)
+		}
+	}
+}
+
+// The bootstrap collection is preferred; a v2-API surface without one (nat)
+// falls back to the collection segment of its measured update path.
+func TestEmptyFamilyCollectionPrefersBootstrapThenPath(t *testing.T) {
+	rest := bootstrap{Resource: bootstrapSchema{Struct: "Network", Collection: "networkconf"}}
+	if got := emptyFamilyCollection(rest, nil); got != "networkconf" {
+		t.Errorf("emptyFamilyCollection(rest) = %q, want networkconf", got)
+	}
+	v2 := bootstrap{Resource: bootstrapSchema{Struct: "Nat"}}
+	writes := map[string]behaviorWrites{"Nat": {UpdatePath: "v2/api/site/{site}/nat/{id}"}}
+	if got := emptyFamilyCollection(v2, writes); got != "nat" {
+		t.Errorf("emptyFamilyCollection(v2) = %q, want nat", got)
+	}
+	if got := emptyFamilyCollection(v2, nil); got != "" {
+		t.Errorf("emptyFamilyCollection(no writes) = %q, want empty", got)
+	}
+}
+
+// Only EMPTY-REJECTED with OMIT-CLEARS is suppressed: an EMPTY-CLEARS field
+// takes an empty write happily, and an OMIT-REJECTED one cannot be safely
+// omitted, so neither is a suppression to derive.
+func TestBehaviorEmptySuppressedWiresAppliesTheRule(t *testing.T) {
+	behavior := testBehaviorEmpty(t,
+		map[string]any{"Nat": map[string]any{"update_path": "v2/api/site/{site}/nat/{id}"}},
+		map[string]any{"nat": map[string]any{
+			"in_interface": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-CLEARS"},
+			"ip_address":   map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-CLEARS"},
+			"description":  map[string]any{"empty": "EMPTY-CLEARS", "omit": "OMIT-CLEARS"},
+			"dhcpd_ip_1":   map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-REJECTED"},
+		}},
+	)
+	source := bootstrap{Resource: bootstrapSchema{Struct: "Nat"}}
+	got, err := behaviorEmptySuppressedWires(behavior, ManagedResource, source)
+	if err != nil {
+		t.Fatalf("behaviorEmptySuppressedWires() error = %v", err)
+	}
+	want := map[string]struct{}{"in_interface": {}, "ip_address": {}}
+	if len(got) != len(want) {
+		t.Fatalf("suppressed = %v, want %v", got, want)
+	}
+	for wire := range want {
+		if _, ok := got[wire]; !ok {
+			t.Errorf("suppressed set missing %q", wire)
+		}
+	}
+}
+
+// A data source never writes, so it derives no empty-write suppression even
+// when the artifact measures its collection.
+func TestBehaviorEmptySuppressedWiresLeavesADataSourceAlone(t *testing.T) {
+	behavior := testBehaviorEmpty(t,
+		map[string]any{"Nat": map[string]any{"update_path": "v2/api/site/{site}/nat/{id}"}},
+		map[string]any{"nat": map[string]any{
+			"in_interface": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-CLEARS"},
+		}},
+	)
+	source := bootstrap{Resource: bootstrapSchema{Struct: "Nat"}}
+	got, err := behaviorEmptySuppressedWires(behavior, DataSource, source)
+	if err != nil {
+		t.Fatalf("behaviorEmptySuppressedWires() error = %v", err)
+	}
+	if got != nil {
+		t.Fatalf("suppressed = %v, want nil for a data source", got)
+	}
+}
+
+// The derived verdict lands on the mapping report the descriptor emitter
+// reads: a managed field the artifact refuses an empty write on is flagged,
+// and one it does not is left alone.
+func TestCompileMarksEmptyWriteSuppressionInTheMappingReport(t *testing.T) {
+	behavior := testBehaviorEmpty(t,
+		map[string]any{"DNSRecord": map[string]any{"update_path": "api/s/{site}/rest/dns/{id}"}},
+		map[string]any{"dns": map[string]any{
+			"key":   map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-CLEARS"},
+			"value": map[string]any{"empty": "EMPTY-CLEARS", "omit": "OMIT-CLEARS"},
+		}},
+	)
+	result, err := Compile(CompileInput{
+		Bootstrap: dnsBootstrapWithLeadStruct(t, dnsFieldNames()),
+		Policy:    testPolicy(t, dnsFieldNames(), testSpecificationDigest),
+		Behavior:  behavior,
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	var mapping struct {
+		Fields []struct {
+			StructuralName     string `json:"structural_name"`
+			SuppressEmptyWrite bool   `json:"suppress_empty_write"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(result.MappingReport, &mapping); err != nil {
+		t.Fatal(err)
+	}
+	suppressed := map[string]bool{}
+	for _, field := range mapping.Fields {
+		suppressed[field.StructuralName] = field.SuppressEmptyWrite
+	}
+	if !suppressed["key"] {
+		t.Error("mapping report does not flag key for empty-write suppression")
+	}
+	if suppressed["value"] {
+		t.Error("mapping report flags value, whose empty the controller clears; only EMPTY-REJECTED wants suppression")
+	}
+}

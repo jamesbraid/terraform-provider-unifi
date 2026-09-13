@@ -17,18 +17,46 @@ type behaviorDocument struct {
 
 // behaviorFacts is the slice of the artifact this compiler consumes. Decoded
 // loosely on purpose: the artifact carries families nothing here reads yet
-// (ownership, discarded, empty, coercions), and the SDK growing it must not
-// refuse every compile.
+// (ownership, discarded, coercions), and the SDK growing it must not refuse
+// every compile.
 type behaviorFacts struct {
 	Writes map[string]behaviorWrites `json:"writes"`
+	// Empty is the empty-write family, keyed by controller collection: for
+	// each field, what the controller does with a literal "" and with the
+	// field left out of the request. Consumed to suppress an empty write
+	// where the controller refuses one but clears on omission.
+	Empty map[string]map[string]behaviorEmptyDisposition `json:"empty"`
 }
 
-// behaviorWrites is one SDK type's measured write behaviour. Only
-// required_on_create is derived so far; the verbs and paths stay with the
-// SDK's own clients.
+// behaviorWrites is one SDK type's measured write behaviour. required_on_create
+// and the update path are derived; the verbs stay with the SDK's own clients.
 type behaviorWrites struct {
 	RequiredOnCreate []string `json:"required_on_create"`
+	// UpdatePath is the controller path the masked update addresses. Kept so
+	// a surface with no bootstrap collection (a v2-API resource such as nat)
+	// can still be tied to its empty-family entry by the path's collection
+	// segment.
+	UpdatePath string `json:"update_path,omitempty"`
 }
+
+// behaviorEmptyDisposition is one field's measured empty-write behaviour: what
+// the controller does with a literal "" (empty) and with the field left out
+// of the request (omit). EMPTY-REJECTED with OMIT-CLEARS is the pair that
+// wants suppression -- the controller refuses the "" but clears on omission,
+// so a field carrying "" must omit rather than send it.
+type behaviorEmptyDisposition struct {
+	Empty string `json:"empty"`
+	Omit  string `json:"omit"`
+}
+
+// The empty-family verdicts this compiler acts on. A field the controller
+// refuses an empty write on (EMPTY-REJECTED) but clears when omitted
+// (OMIT-CLEARS) is the one pair suppression is both necessary and safe for:
+// necessary because sending "" is refused, safe because omitting it clears.
+const (
+	emptyRejected = "EMPTY-REJECTED"
+	omitClears    = "OMIT-CLEARS"
+)
 
 // behaviorRequiredWires resolves the artifact's required_on_create facts
 // against this compile's structs: the bootstrap's lead struct and its
@@ -139,6 +167,86 @@ func structuralMemberField(fields []bootstrapField, name string) (bootstrapField
 		}
 	}
 	return bootstrapField{}, false
+}
+
+// behaviorEmptySuppressedWires resolves the artifact's empty family for the
+// surface's controller collection and returns the lead-struct wires whose
+// empty write must be suppressed: those the controller refuses an empty value
+// on (EMPTY-REJECTED) but clears when omitted (OMIT-CLEARS). A rule carrying
+// no value for such a field must omit it rather than send "". Nil when there
+// is no artifact, the surface never writes, no empty family names the
+// surface's collection, or that collection cannot be resolved.
+//
+// A field the controller refuses both empty and omitted (OMIT-REJECTED) is
+// deliberately left out: omitting it is not safe, so there is no suppression
+// to derive -- that field simply must always carry a value.
+func behaviorEmptySuppressedWires(behavior []byte, kind SurfaceKind, source bootstrap) (map[string]struct{}, error) {
+	if len(behavior) == 0 {
+		return nil, nil
+	}
+	var document behaviorDocument
+	if err := decodeJSON("behaviour artifact", behavior, &document, true); err != nil {
+		return nil, err
+	}
+	if document.FormatVersion != 1 {
+		return nil, fmt.Errorf("unsupported behaviour artifact format %d", document.FormatVersion)
+	}
+	var facts behaviorFacts
+	if err := decodeJSON("behaviour facts", document.Behavior, &facts, false); err != nil {
+		return nil, err
+	}
+	if kind != ManagedResource || len(facts.Empty) == 0 {
+		return nil, nil
+	}
+	collection := emptyFamilyCollection(source, facts.Writes)
+	if collection == "" {
+		return nil, nil
+	}
+	fields, named := facts.Empty[collection]
+	if !named {
+		return nil, nil
+	}
+	suppressed := map[string]struct{}{}
+	for wire, disposition := range fields {
+		if disposition.Empty == emptyRejected && disposition.Omit == omitClears {
+			suppressed[wire] = struct{}{}
+		}
+	}
+	if len(suppressed) == 0 {
+		return nil, nil
+	}
+	return suppressed, nil
+}
+
+// emptyFamilyCollection resolves the controller collection the empty family
+// keys a surface by. A REST-API surface carries it in the bootstrap; a v2-API
+// surface (nat) carries none there, so fall back to the collection segment of
+// the lead struct's measured update path.
+func emptyFamilyCollection(source bootstrap, writes map[string]behaviorWrites) string {
+	if source.Resource.Collection != "" {
+		return source.Resource.Collection
+	}
+	entry, measured := writes[source.Resource.Struct]
+	if !measured {
+		return ""
+	}
+	return pathCollection(entry.UpdatePath)
+}
+
+// pathCollection is the collection segment of a controller path: the last
+// segment that is neither empty nor a {placeholder}. For
+// v2/api/site/{site}/nat/{id} it is "nat"; for
+// api/s/{site}/rest/networkconf/{id} it is "networkconf".
+func pathCollection(path string) string {
+	segments := strings.Split(path, "/")
+	for i := len(segments) - 1; i >= 0; i-- {
+		segment := segments[i]
+		if segment == "" || strings.HasPrefix(segment, "{") {
+			continue
+		}
+		return segment
+	}
+	return ""
 }
 
 // forceRequiredOnCreate rewrites one attribute body's disposition to

@@ -185,6 +185,11 @@ func render(
 		if f.OmitZero {
 			fmt.Fprintf(&b, "\t\t\tOmitZero: true,\n")
 		}
+		if f.SuppressEmpty {
+			fmt.Fprintf(&b,
+				"\t\t\tWriteWhen: func(m *%s) bool { return !m.%s.IsNull() && m.%s.ValueString() != \"\" },\n",
+				modelName, f.Model, f.Model)
+		}
 		fmt.Fprintf(&b, "\t\t},\n")
 	}
 	fmt.Fprintf(&b, "\t}\n}\n")

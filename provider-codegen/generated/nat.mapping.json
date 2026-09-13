@@ -45,14 +45,16 @@
       "terraform_name": "in_interface",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "ip_address",
       "terraform_name": "ip_address",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "suppress_empty_write": true
     },
     {
       "structural_name": "ip_version",

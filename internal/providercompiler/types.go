@@ -409,6 +409,12 @@ type mappingField struct {
 	StructuralType string `json:"structural_type"`
 	TerraformType  string `json:"terraform_type"`
 	Disposition    string `json:"disposition"`
+	// SuppressEmptyWrite marks a field whose empty value the controller
+	// refuses but clears on omission (the behaviour artifact's EMPTY-REJECTED
+	// with OMIT-CLEARS). The descriptor emitter turns it into a WriteWhen that
+	// omits "" rather than sending it. Derived from the artifact, never
+	// hand-set in policy.
+	SuppressEmptyWrite bool `json:"suppress_empty_write,omitempty"`
 }
 
 type providerOwnedMapping struct {
