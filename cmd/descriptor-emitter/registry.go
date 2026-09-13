@@ -21,6 +21,7 @@ import (
 	resource_hotspot_op "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_op"
 	resource_nat "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_nat"
 	resource_network "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_network"
+	resource_ospf_router "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ospf_router"
 	resource_port_forward "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_forward"
 	resource_port_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
 	resource_power_supervisor "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_power_supervisor"
@@ -97,6 +98,10 @@ var surfaces = []surface{
 	// distinct SDK structs, kept hand as one natFilterModel like
 	// firewall_policy's endpoint.
 	{name: "nat", schema: resource_nat.NatResourceSchema, handNested: true},
+	// ospf_router: areas and interfaces are plain list_nested objects with no
+	// injected secret, so the emitter writes their element models and the hand
+	// descriptor lays ObjectListField encode/decode over them.
+	{name: "ospf_router", schema: resource_ospf_router.OspfRouterResourceSchema},
 	{name: "firewall_rule", schema: resource_firewall_rule.FirewallRuleResourceSchema},
 	{name: "network", schema: resource_network.NetworkResourceSchema, handNested: true},
 	{name: "port_forward", schema: resource_port_forward.PortForwardResourceSchema},

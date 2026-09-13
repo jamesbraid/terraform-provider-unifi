@@ -298,6 +298,7 @@ func (p *unifiProvider) Resources(ctx context.Context) []func() resource.Resourc
 		NewHotspotOpResource,
 		NewNatResource,
 		NewNetworkResource,
+		NewOspfRouterResource,
 		NewPortForwardResource,
 		NewPortProfileFrameworkResource,
 		NewPowerSupervisorResource,

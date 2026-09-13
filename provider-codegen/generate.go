@@ -269,6 +269,11 @@ package providercodegen
 //go:generate go tool tfplugingen-framework generate resources --input generated/nat.provider-code-spec.json --output ../internal/generated/resource_nat --package resource_nat
 //go:generate gofmt -w ../internal/generated/resource_nat/nat_resource_gen.go
 
+//go:generate sdkbootstrap -struct OSPFRouter -resource unifi_ospf_router -output bootstrap/go-unifi-v1.103.0-ospf-router.json
+//go:generate speccompile -bootstrap bootstrap/go-unifi-v1.103.0-ospf-router.json -policy policy/ospf_router.json -artifact-prefix ospf_router -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/ospf_router.provider-code-spec.json --output ../internal/generated/resource_ospf_router --package resource_ospf_router
+//go:generate gofmt -w ../internal/generated/resource_ospf_router/ospf_router_resource_gen.go
+
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated
