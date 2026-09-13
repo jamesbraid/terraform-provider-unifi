@@ -69,7 +69,7 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
 				MarkdownDescription: "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("A", "AAAA", "CNAME", "MX", "NS", "PTR", "SOA", "SRV", "TXT"),
+					stringvalidator.OneOf("A", "AAAA", "CNAME", "MX", "NS", "SRV", "TXT"),
 				},
 			},
 			"site": schema.StringAttribute{
