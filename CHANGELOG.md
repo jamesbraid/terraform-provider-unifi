@@ -39,6 +39,12 @@ All notable changes to this project will be documented in this file.
   and static routes. Derived from the pinned controller's own
   `OSPFRouter` definition. The controller requires a `router_id` and at
   least one area on every router.
+- **New resource `unifi_nat`** manages source NAT rules: the rule type,
+  protocol, source and destination filters, and the outbound interface.
+  Derived from the controller's own `Nat` definition. The controller
+  requires a protocol and both filters on every rule, and rejects a
+  cleared `in_interface` or `ip_address` on update — drop the attribute
+  rather than blanking it.
 
 ### 🔧 Maintenance
 
@@ -53,6 +59,14 @@ All notable changes to this project will be documented in this file.
   `Error`, so a test that asserted nothing passed as long as some
   function it called formatted an error. Three `unifi_device` schema
   tests had been passing that way since they were written.
+
+- Several plan-time validators the provider had transcribed by hand are
+  now derived from the controller's constraint table instead. The
+  hand-copied `unifi_firewall_policy.connection_states` value list is
+  dropped for the derived one (same values), and the derived
+  `unifi_dns_record` record types and firewall ICMP type names are
+  re-measured against the current controller: `unifi_dns_record` no
+  longer offers `PTR` or `SOA`, which this controller rejects.
 
 ### ✨ Features
 
