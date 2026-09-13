@@ -572,8 +572,11 @@ func declaredPortOverridesWithFields(declared []declaredPortOverride) []declared
 
 // deviceReconcilePortOverrides rebuilds port_override state from the prior
 // set, not the controller's answer: it keeps a port unchanged unless the
-// practitioner declared it, and only overwrites attributes that were set in
-// prior.
+// practitioner declared it, and for a declared port reconciles every
+// modelled member the practitioner set (non-null in prior) to the value the
+// controller reported, so drift on any of them surfaces on the next plan.
+// op_mode and tagged_networkconf_ids are the two members it handles
+// differently -- see the loop body.
 func deviceReconcilePortOverrides(
 	ctx context.Context,
 	prior types.Set,
@@ -594,6 +597,66 @@ func deviceReconcilePortOverrides(
 		return prior, diags
 	}
 
+	// One reconcile per Go type, each guarded by the prior being non-null: a
+	// member the practitioner never declared stays as it was, so an
+	// Optional-only attribute the config left null does not gain a value and
+	// diff forever. Reconciling every declared member (not just the six the
+	// legacy pass covered) is safe because the capture records nothing
+	// discarded on a port-override write (discarded.DevicePortOverrides = []),
+	// so the value read back is the value the controller kept and a declared
+	// member reading back changed is genuine drift. setting_preference owns no
+	// sibling members on a device (ownership.Device is empty), so no member
+	// needs a "controller derives this" carve-out.
+	reconcileString := func(prior types.String, v string) types.String {
+		if prior.IsNull() {
+			return prior
+		}
+		if v == "" {
+			return types.StringNull()
+		}
+		return types.StringValue(v)
+	}
+	reconcileBool := func(prior types.Bool, v bool) types.Bool {
+		if prior.IsNull() {
+			return prior
+		}
+		return types.BoolValue(v)
+	}
+	reconcileInt64 := func(prior types.Int64, v *int64) types.Int64 {
+		if prior.IsNull() {
+			return prior
+		}
+		return types.Int64PointerValue(v)
+	}
+	// The collection helpers assume a non-null prior; the call site guards it.
+	// An empty API value yields an empty collection, not null, the way the
+	// legacy excluded_networkconf_ids reconcile did. String sets are sorted
+	// for a stable result (a set ignores order); lists keep the API's order,
+	// since a list is order-sensitive and a reorder is real drift.
+	reconcileStringSet := func(v []string) (types.Set, diag.Diagnostics) {
+		sorted := append([]string(nil), v...)
+		sort.Strings(sorted)
+		vals := make([]attr.Value, len(sorted))
+		for i, s := range sorted {
+			vals[i] = types.StringValue(s)
+		}
+		return types.SetValue(types.StringType, vals)
+	}
+	reconcileStringList := func(v []string) (types.List, diag.Diagnostics) {
+		vals := make([]attr.Value, len(v))
+		for i, s := range v {
+			vals[i] = types.StringValue(s)
+		}
+		return types.ListValue(types.StringType, vals)
+	}
+	reconcileInt64List := func(v []int64) (types.List, diag.Diagnostics) {
+		vals := make([]attr.Value, len(v))
+		for i, n := range v {
+			vals[i] = types.Int64Value(n)
+		}
+		return types.ListValue(types.Int64Type, vals)
+	}
+
 	elements := make([]attr.Value, 0, len(priorModels))
 	for _, pm := range priorModels {
 		idx := pm.Index.ValueInt64()
@@ -608,59 +671,74 @@ func deviceReconcilePortOverrides(
 
 		updated := pm
 
-		if !pm.Name.IsNull() {
-			if apiPO.Name == "" {
-				updated.Name = types.StringNull()
-			} else {
-				updated.Name = types.StringValue(apiPO.Name)
-			}
-		}
-		if !pm.NativeNetworkID.IsNull() {
-			if apiPO.NATiveNetworkID == "" {
-				updated.NativeNetworkID = types.StringNull()
-			} else {
-				updated.NativeNetworkID = types.StringValue(apiPO.NATiveNetworkID)
-			}
-		}
-		if !pm.Forward.IsNull() {
-			if apiPO.Forward == "" {
-				updated.Forward = types.StringNull()
-			} else {
-				updated.Forward = types.StringValue(apiPO.Forward)
-			}
-		}
-		if !pm.TaggedVLANMgmt.IsNull() {
-			if apiPO.TaggedVLANMgmt == "" {
-				updated.TaggedVLANMgmt = types.StringNull()
-			} else {
-				updated.TaggedVLANMgmt = types.StringValue(apiPO.TaggedVLANMgmt)
-			}
+		updated.Name = reconcileString(pm.Name, apiPO.Name)
+		updated.PortProfileID = reconcileString(pm.PortProfileID, apiPO.PortProfileID)
+		updated.PoeMode = reconcileString(pm.PoeMode, apiPO.PoeMode)
+		updated.Dot1xCtrl = reconcileString(pm.Dot1xCtrl, apiPO.Dot1XCtrl)
+		updated.FecMode = reconcileString(pm.FecMode, apiPO.FecMode)
+		updated.Forward = reconcileString(pm.Forward, apiPO.Forward)
+		updated.NativeNetworkID = reconcileString(pm.NativeNetworkID, apiPO.NATiveNetworkID)
+		updated.SettingPreference = reconcileString(pm.SettingPreference, apiPO.SettingPreference)
+		updated.StormctrlType = reconcileString(pm.StormctrlType, apiPO.StormctrlType)
+		updated.TaggedVLANMgmt = reconcileString(pm.TaggedVLANMgmt, apiPO.TaggedVLANMgmt)
+		updated.VoiceNetworkID = reconcileString(pm.VoiceNetworkID, apiPO.VoiceNetworkID)
+
+		updated.Autoneg = reconcileBool(pm.Autoneg, apiPO.Autoneg)
+		updated.EgressRateLimitKbpsEnabled = reconcileBool(pm.EgressRateLimitKbpsEnabled, apiPO.EgressRateLimitKbpsEnabled)
+		updated.FlowControlEnabled = reconcileBool(pm.FlowControlEnabled, apiPO.FlowControlEnabled)
+		updated.FullDuplex = reconcileBool(pm.FullDuplex, apiPO.FullDuplex)
+		updated.Isolation = reconcileBool(pm.Isolation, apiPO.Isolation)
+		updated.LldpmedEnabled = reconcileBool(pm.LldpmedEnabled, apiPO.LldpmedEnabled)
+		updated.LldpmedNotifyEnabled = reconcileBool(pm.LldpmedNotifyEnabled, apiPO.LldpmedNotifyEnabled)
+		updated.PortKeepaliveEnabled = reconcileBool(pm.PortKeepaliveEnabled, apiPO.PortKeepaliveEnabled)
+		updated.PortSecurityEnabled = reconcileBool(pm.PortSecurityEnabled, apiPO.PortSecurityEnabled)
+		updated.StormctrlBroadcastEnabled = reconcileBool(pm.StormctrlBroadcastEnabled, apiPO.StormctrlBroadcastastEnabled)
+		updated.StormctrlMcastEnabled = reconcileBool(pm.StormctrlMcastEnabled, apiPO.StormctrlMcastEnabled)
+		updated.StormctrlUcastEnabled = reconcileBool(pm.StormctrlUcastEnabled, apiPO.StormctrlUcastEnabled)
+		updated.StpPortMode = reconcileBool(pm.StpPortMode, apiPO.StpPortMode)
+
+		updated.EgressRateLimitKbps = reconcileInt64(pm.EgressRateLimitKbps, apiPO.EgressRateLimitKbps)
+		updated.MirrorPortIDX = reconcileInt64(pm.MirrorPortIDX, apiPO.MirrorPortIDX)
+		updated.PriorityQueue1Level = reconcileInt64(pm.PriorityQueue1Level, apiPO.PriorityQueue1Level)
+		updated.PriorityQueue2Level = reconcileInt64(pm.PriorityQueue2Level, apiPO.PriorityQueue2Level)
+		updated.PriorityQueue3Level = reconcileInt64(pm.PriorityQueue3Level, apiPO.PriorityQueue3Level)
+		updated.PriorityQueue4Level = reconcileInt64(pm.PriorityQueue4Level, apiPO.PriorityQueue4Level)
+		updated.Speed = reconcileInt64(pm.Speed, apiPO.Speed)
+		updated.StormctrlBroadcastLevel = reconcileInt64(pm.StormctrlBroadcastLevel, apiPO.StormctrlBroadcastastLevel)
+		updated.StormctrlBroadcastRate = reconcileInt64(pm.StormctrlBroadcastRate, apiPO.StormctrlBroadcastastRate)
+		updated.StormctrlMcastLevel = reconcileInt64(pm.StormctrlMcastLevel, apiPO.StormctrlMcastLevel)
+		updated.StormctrlMcastRate = reconcileInt64(pm.StormctrlMcastRate, apiPO.StormctrlMcastRate)
+		updated.StormctrlUcastLevel = reconcileInt64(pm.StormctrlUcastLevel, apiPO.StormctrlUcastLevel)
+		updated.StormctrlUcastRate = reconcileInt64(pm.StormctrlUcastRate, apiPO.StormctrlUcastRate)
+
+		if !pm.Dot1XIDleTimeout.IsNull() {
+			updated.Dot1XIDleTimeout = util.DurationPtrValue(apiPO.Dot1XIDleTimeout, time.Second)
 		}
 		if !pm.ExcludedNetworkIDs.IsNull() {
-			if len(apiPO.ExcludedNetworkIDs) > 0 {
-				sorted := make([]string, len(apiPO.ExcludedNetworkIDs))
-				copy(sorted, apiPO.ExcludedNetworkIDs)
-				sort.Strings(sorted)
-				vals := make([]attr.Value, len(sorted))
-				for i, id := range sorted {
-					vals[i] = types.StringValue(id)
-				}
-				setVal, setDiags := types.SetValue(types.StringType, vals)
-				diags.Append(setDiags...)
-				updated.ExcludedNetworkIDs = setVal
-			} else {
-				emptySet, setDiags := types.SetValue(types.StringType, []attr.Value{})
-				diags.Append(setDiags...)
-				updated.ExcludedNetworkIDs = emptySet
-			}
+			set, setDiags := reconcileStringSet(apiPO.ExcludedNetworkIDs)
+			diags.Append(setDiags...)
+			updated.ExcludedNetworkIDs = set
 		}
-		if !pm.PortProfileID.IsNull() {
-			if apiPO.PortProfileID == "" {
-				updated.PortProfileID = types.StringNull()
-			} else {
-				updated.PortProfileID = types.StringValue(apiPO.PortProfileID)
-			}
+		if !pm.MulticastRouterNetworkconfIDs.IsNull() {
+			set, setDiags := reconcileStringSet(apiPO.MulticastRouterNetworkIDs)
+			diags.Append(setDiags...)
+			updated.MulticastRouterNetworkconfIDs = set
 		}
+		if !pm.PortSecurityMACAddress.IsNull() {
+			list, listDiags := reconcileStringList(apiPO.PortSecurityMACAddress)
+			diags.Append(listDiags...)
+			updated.PortSecurityMACAddress = list
+		}
+		if !pm.AggregateMembers.IsNull() {
+			list, listDiags := reconcileInt64List(apiPO.AggregateMembers)
+			diags.Append(listDiags...)
+			updated.AggregateMembers = list
+		}
+
+		// op_mode and tagged_networkconf_ids are deliberately left out of this
+		// declared-guarded pass. op_mode is Computed with a "switch" default
+		// and needs its own unconditional read-back; tagged_networkconf_ids is
+		// declarable-but-inert -- never written, so it has no round-trip.
 
 		objVal, objDiags := types.ObjectValueFrom(ctx, updated.AttributeTypes(), updated)
 		diags.Append(objDiags...)

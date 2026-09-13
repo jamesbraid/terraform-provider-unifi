@@ -870,6 +870,167 @@ func Test_devicePortOverrideDeclaredFields_matchesEveryModeledMember(t *testing.
 	}
 }
 
+// Test_deviceReconcilePortOverrides_reconcilesEveryDeclaredMember pins that
+// every declared modelled member is read back from the controller's answer,
+// not echoed from prior. It declares one port with every member set, hands
+// reconcile an API entry for that port with every member CHANGED, and fails
+// for any member that reads back equal to prior -- the signature of a member
+// reconcile forgot. Like the declared-fields completeness test, reconcile is
+// a hand-written pass over the model with no compiler-checked link to the
+// attribute set, so this is what catches a member added to the model but not
+// to the reconcile.
+//
+// index is the match key (prior == api by construction);
+// tagged_networkconf_ids is declarable-but-inert and has no round-trip;
+// op_mode is Computed with a "switch" default and is read back unconditionally
+// in its own step. Those three are the only exclusions.
+func Test_deviceReconcilePortOverrides_reconcilesEveryDeclaredMember(t *testing.T) {
+	ctx := context.Background()
+	p := func(n int64) *int64 { return &n }
+
+	prior := portOverrideModel{
+		Index:                         types.Int64Value(1),
+		Name:                          types.StringValue("prior"),
+		PortProfileID:                 types.StringValue("prior"),
+		OpMode:                        types.StringValue("switch"),
+		PoeMode:                       types.StringValue("prior"),
+		AggregateMembers:              types.ListValueMust(types.Int64Type, []attr.Value{types.Int64Value(1)}),
+		Autoneg:                       types.BoolValue(true),
+		Dot1xCtrl:                     types.StringValue("prior"),
+		Dot1XIDleTimeout:              timetypes.NewGoDurationValue(30 * time.Second),
+		EgressRateLimitKbps:           types.Int64Value(1),
+		EgressRateLimitKbpsEnabled:    types.BoolValue(true),
+		ExcludedNetworkIDs:            types.SetValueMust(types.StringType, []attr.Value{types.StringValue("prior-net")}),
+		FecMode:                       types.StringValue("prior"),
+		FlowControlEnabled:            types.BoolValue(true),
+		Forward:                       types.StringValue("prior"),
+		FullDuplex:                    types.BoolValue(true),
+		Isolation:                     types.BoolValue(true),
+		LldpmedEnabled:                types.BoolValue(true),
+		LldpmedNotifyEnabled:          types.BoolValue(true),
+		MirrorPortIDX:                 types.Int64Value(1),
+		MulticastRouterNetworkconfIDs: types.SetValueMust(types.StringType, []attr.Value{types.StringValue("prior-mnet")}),
+		NativeNetworkID:               types.StringValue("prior"),
+		PortKeepaliveEnabled:          types.BoolValue(true),
+		PortSecurityEnabled:           types.BoolValue(true),
+		PortSecurityMACAddress:        types.ListValueMust(types.StringType, []attr.Value{types.StringValue("aa:aa:aa:aa:aa:aa")}),
+		PriorityQueue1Level:           types.Int64Value(1),
+		PriorityQueue2Level:           types.Int64Value(1),
+		PriorityQueue3Level:           types.Int64Value(1),
+		PriorityQueue4Level:           types.Int64Value(1),
+		SettingPreference:             types.StringValue("prior"),
+		Speed:                         types.Int64Value(1),
+		StormctrlBroadcastEnabled:     types.BoolValue(true),
+		StormctrlBroadcastLevel:       types.Int64Value(1),
+		StormctrlBroadcastRate:        types.Int64Value(1),
+		StormctrlMcastEnabled:         types.BoolValue(true),
+		StormctrlMcastLevel:           types.Int64Value(1),
+		StormctrlMcastRate:            types.Int64Value(1),
+		StormctrlType:                 types.StringValue("prior"),
+		StormctrlUcastEnabled:         types.BoolValue(true),
+		StormctrlUcastLevel:           types.Int64Value(1),
+		StormctrlUcastRate:            types.Int64Value(1),
+		StpPortMode:                   types.BoolValue(true),
+		TaggedNetworkIDs:              types.SetValueMust(types.StringType, []attr.Value{types.StringValue("prior-tag")}),
+		TaggedVLANMgmt:                types.StringValue("prior"),
+		VoiceNetworkID:                types.StringValue("prior"),
+	}
+	priorObj, d := types.ObjectValueFrom(ctx, portOverrideAttrTypes(), prior)
+	if d.HasError() {
+		t.Fatalf("building prior object: %v", d)
+	}
+	priorSet, d := types.SetValue(types.ObjectType{AttrTypes: portOverrideAttrTypes()}, []attr.Value{priorObj})
+	if d.HasError() {
+		t.Fatalf("building prior set: %v", d)
+	}
+
+	// Every member of this API entry differs from prior, so a reconciled
+	// member must end up different from prior; a member left at prior is one
+	// reconcile skipped.
+	api := []unifi.DevicePortOverrides{{
+		PortIDX:                      p(1),
+		Name:                         "api",
+		PortProfileID:                "api",
+		OpMode:                       "aggregate",
+		PoeMode:                      "api",
+		AggregateMembers:             []int64{2},
+		Autoneg:                      false,
+		Dot1XCtrl:                    "api",
+		Dot1XIDleTimeout:             p(60),
+		EgressRateLimitKbps:          p(2),
+		EgressRateLimitKbpsEnabled:   false,
+		ExcludedNetworkIDs:           []string{"api-net"},
+		FecMode:                      "api",
+		FlowControlEnabled:           false,
+		Forward:                      "api",
+		FullDuplex:                   false,
+		Isolation:                    false,
+		LldpmedEnabled:               false,
+		LldpmedNotifyEnabled:         false,
+		MirrorPortIDX:                p(2),
+		MulticastRouterNetworkIDs:    []string{"api-mnet"},
+		NATiveNetworkID:              "api",
+		PortKeepaliveEnabled:         false,
+		PortSecurityEnabled:          false,
+		PortSecurityMACAddress:       []string{"bb:bb:bb:bb:bb:bb"},
+		PriorityQueue1Level:          p(2),
+		PriorityQueue2Level:          p(2),
+		PriorityQueue3Level:          p(2),
+		PriorityQueue4Level:          p(2),
+		SettingPreference:            "api",
+		Speed:                        p(2),
+		StormctrlBroadcastastEnabled: false,
+		StormctrlBroadcastastLevel:   p(2),
+		StormctrlBroadcastastRate:    p(2),
+		StormctrlMcastEnabled:        false,
+		StormctrlMcastLevel:          p(2),
+		StormctrlMcastRate:           p(2),
+		StormctrlType:                "api",
+		StormctrlUcastEnabled:        false,
+		StormctrlUcastLevel:          p(2),
+		StormctrlUcastRate:           p(2),
+		StpPortMode:                  false,
+		TaggedNetworkIDs:             []string{"api-tag"},
+		TaggedVLANMgmt:               "api",
+		VoiceNetworkID:               "api",
+	}}
+
+	got, diags := deviceReconcilePortOverrides(ctx, priorSet, api)
+	if diags.HasError() {
+		t.Fatalf("reconcile: %v", diags)
+	}
+	elems := got.Elements()
+	if len(elems) != 1 {
+		t.Fatalf("reconcile returned %d elements, want 1", len(elems))
+	}
+	reconciled, ok := elems[0].(types.Object)
+	if !ok {
+		t.Fatalf("reconciled element is %T, want types.Object", elems[0])
+	}
+
+	skip := map[string]bool{
+		"index":                  true,
+		"tagged_networkconf_ids": true,
+		"op_mode":                true,
+	}
+	for name := range portOverrideAttrTypes() {
+		if skip[name] {
+			continue
+		}
+		if reconciled.Attributes()[name].Equal(priorObj.Attributes()[name]) {
+			t.Errorf("member %q read back unchanged from prior (%v); it is not reconciled "+
+				"from the controller response", name, priorObj.Attributes()[name])
+		}
+	}
+
+	// tagged_networkconf_ids is inert: it must keep its prior value, not the
+	// controller's, since the write never sends it.
+	if !reconciled.Attributes()["tagged_networkconf_ids"].Equal(priorObj.Attributes()["tagged_networkconf_ids"]) {
+		t.Errorf("tagged_networkconf_ids was reconciled (%v); it is declarable-but-inert and must keep prior",
+			reconciled.Attributes()["tagged_networkconf_ids"])
+	}
+}
+
 func Test_portOverrideAttrTypes(t *testing.T) {
 	tests := []struct {
 		name string
