@@ -84,6 +84,12 @@ unifi_network.enabled
 unifi_network.igmp_snooping
 unifi_network.internet_access
 unifi_network.network_isolation
+unifi_ospf_router.announce_default_route
+unifi_ospf_router.enabled
+unifi_ospf_router.interfaces.passive_interface
+unifi_ospf_router.redistribute_bgp_routes
+unifi_ospf_router.redistribute_connected_routes
+unifi_ospf_router.redistribute_static_routes
 unifi_port_forward.enabled
 unifi_port_forward.logging
 unifi_port_forward.protocol

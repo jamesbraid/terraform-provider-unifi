@@ -25,6 +25,7 @@ import (
 	resource_hotspot_op "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_op"
 	resource_nat "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_nat"
 	resource_network "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_network"
+	resource_ospf_router "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ospf_router"
 	resource_port_forward "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_forward"
 	resource_port_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
 	resource_power_supervisor "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_power_supervisor"
@@ -318,6 +319,22 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				natKitSpec(), resource_nat.NatResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		// ospf_router carries areas and interfaces, whose passive_interface member
+		// the SDK emits without omitempty: NestedProblems checks it is declared
+		// rather than sent as a silent zero.
+		"ospf_router": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(ospfRouterKitSpec()) {
+				t.Error(problem)
+			}
+			for _, problem := range resourcekit.NestedProblems(ospfRouterKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				ospfRouterKitSpec(), resource_ospf_router.OspfRouterResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

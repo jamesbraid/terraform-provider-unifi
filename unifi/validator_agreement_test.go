@@ -70,6 +70,7 @@ var unifiStructTypes = map[string]reflect.Type{
 	"HotspotOp":       reflect.TypeOf(ui.HotspotOp{}),
 	"Nat":             reflect.TypeOf(ui.Nat{}),
 	"Network":         reflect.TypeOf(ui.Network{}),
+	"OSPFRouter":      reflect.TypeOf(ui.OSPFRouter{}),
 	"PortForward":     reflect.TypeOf(ui.PortForward{}),
 	"PortProfile":     reflect.TypeOf(ui.PortProfile{}),
 	"PowerSupervisor": reflect.TypeOf(ui.PowerSupervisor{}),

@@ -102,6 +102,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("network", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := ospfRouterKitBackend(api)
+		record("ospf_router", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := portForwardKitBackend(api)
 		record("port_forward", backend.Create != nil, backend.CreateFields != nil)
 	}

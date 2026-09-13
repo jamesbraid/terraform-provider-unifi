@@ -198,6 +198,11 @@
         ]
       }
     },
+    "unifi_ospf_router": {
+      "sdk_type": "OSPFRouter",
+      "duration_units": {},
+      "schema_version": 0
+    },
     "unifi_port_forward": {
       "sdk_type": "PortForward",
       "duration_units": {},
