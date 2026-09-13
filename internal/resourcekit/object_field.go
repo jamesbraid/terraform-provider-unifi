@@ -125,10 +125,28 @@ type nestedMemberChecker interface {
 	nestedProblems() []string
 }
 
+// nestedElementReflector lets OmitZeroProblems reach a nested block's SDK
+// element type and outer wire without naming the element type at its generic
+// boundary -- the same "reach through an interface the kind implements" trick
+// nestedMemberChecker uses for NestedProblems. The census walks the element's
+// pointer-to-integer members against the nested struct's own constraint
+// sub-map; see nestedOmitZeroProblems.
+type nestedElementReflector interface {
+	nestedElementType() reflect.Type
+	nestedWireName() string
+}
+
 func (f ObjectField[M, S, E]) nestedProblems() []string {
 	var element E
 	return nestedTypeProblems(f.Wire, reflect.TypeOf(element), f.AttrTypes, f.Unmodelled)
 }
+
+func (f ObjectField[M, S, E]) nestedElementType() reflect.Type {
+	var element E
+	return reflect.TypeOf(element)
+}
+
+func (f ObjectField[M, S, E]) nestedWireName() string { return f.Wire }
 
 // nestedTypeProblems reports every force-emitted member of a nested SDK type
 // that the object's attribute types do not declare and the descriptor has not
@@ -290,3 +308,10 @@ func (f ObjectListField[M, S, E]) nestedProblems() []string {
 	var element E
 	return nestedTypeProblems(f.Wire, reflect.TypeOf(element), f.AttrTypes, f.Unmodelled)
 }
+
+func (f ObjectListField[M, S, E]) nestedElementType() reflect.Type {
+	var element E
+	return reflect.TypeOf(element)
+}
+
+func (f ObjectListField[M, S, E]) nestedWireName() string { return f.Wire }

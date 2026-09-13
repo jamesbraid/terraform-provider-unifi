@@ -74,7 +74,7 @@ func TestGlobalApOmitsAZeroTheControllerRejects(t *testing.T) {
 	for wire, constraint := range settings.FieldConstraints["SettingGlobalAp"] {
 		constraints[wire] = ui.FieldConstraint(constraint)
 	}
-	for _, problem := range resourcekit.OmitZeroProblems(globalApKitSpec(), constraints) {
+	for _, problem := range resourcekit.OmitZeroProblems(globalApKitSpec(), constraints, nil) {
 		t.Error(problem)
 	}
 }

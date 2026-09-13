@@ -217,7 +217,7 @@ func TestRadiusOmitsAZeroTheControllerRejects(t *testing.T) {
 	for wire, constraint := range settings.FieldConstraints["SettingRadius"] {
 		constraints[wire] = ui.FieldConstraint(constraint)
 	}
-	for _, problem := range resourcekit.OmitZeroProblems(radiusKitSpec(), constraints) {
+	for _, problem := range resourcekit.OmitZeroProblems(radiusKitSpec(), constraints, nil) {
 		t.Error(problem)
 	}
 }

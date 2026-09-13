@@ -6,11 +6,25 @@ import (
 	"testing"
 )
 
-// knownOmitZeroGaps pins every OmitZeroProblems hit R2-C Task 10b's fix
-// round chose NOT to close with OmitZero, and why -- so the census stays
-// green without going silent about what it still finds. Each entry must
-// still be produced by the walk below, or the gap was closed and the pin is
-// stale; remove it in the same commit that fixes it.
+// knownOmitZeroGaps pins every OmitZeroProblems hit whose fix is not adding
+// OmitZero to the field, and why -- so the census stays green without going
+// silent about what it still finds. Each entry must still be produced by the
+// walk below, or the gap was closed and the pin is stale; remove it in the
+// same commit that fixes it.
+//
+// The top-level entries are hits where OmitZero is wrong (a Required field) or
+// redundant (a plan-time validator already rejects 0, so no zero reaches the
+// write). The nested entries are a different shape: OmitZeroProblems now
+// descends into ObjectField / ObjectListField element types, but a nested
+// member is filled in by the descriptor's Encode closure, not an Int64PtrField,
+// so there is no OmitZero flag for the structural walk to read -- it reflects
+// the SDK struct and reports every zero-rejecting pointer-integer member. Where
+// the member can be Unknown on write (Optional+Computed), the fix lives in that
+// closure -- radiusServerParts drops zero/unknown via util.OmitZeroInt64Pointer,
+// and the device radio_table's sanitizeRadioForUpdate drops an out-of-range or
+// unset-sentinel value -- and the pin records that the structural walk still
+// sees it. Where the member cannot be Unknown (Optional-only, plan-guarded), the
+// pin is redundant, the dns_record.port case one level down.
 var knownOmitZeroGaps = map[string]string{
 	"dns_record.port": `not this class's fix, even after R2-C Task 10c tightened the SCHEMA ` +
 		`validator to int64validator.Between(1, 65535) to match the controller's own pattern ` +
@@ -29,6 +43,40 @@ var knownOmitZeroGaps = map[string]string{
 		`value to the six legal index ranges, none of which include 0.`,
 	"static_route.static-route_distance": `Required (the Terraform attribute is named "distance"); ` +
 		`same reasoning as firewall_rule.rule_index above.`,
+
+	// Nested hits from the descent into ObjectListField element types.
+	"radius_profile.acct_servers.port": `Optional+Computed, so an omitted port is Unknown on ` +
+		`create and the Encode closure would send it as 0. The pattern's trailing |^$ arm accepts ` +
+		`an empty string, but a numeric field never sends "", so omitting is the only "unset" -- ` +
+		`radiusServerParts now uses util.OmitZeroInt64Pointer to drop zero/unknown, closing the ` +
+		`hazard. This structural census still reports it because it reflects ` +
+		`RADIUSProfileAcctServers, not the Encode closure that carries the fix.`,
+	"radius_profile.auth_servers.port": `same as radius_profile.acct_servers.port -- both server ` +
+		`blocks share radiusServerParts, so the fix and the reason are identical; pinned because the ` +
+		`structural walk cannot see the closure.`,
+	"device.radio_table.ht": `Optional+Computed with a OneOf(20,40,...) validator that rejects 0, ` +
+		`but Computed means an omitted value is Unknown on write and a validator does not run on ` +
+		`Unknown, so ValueInt64Pointer sends 0. sanitizeRadioForUpdate (run inside the radio_table ` +
+		`Encode) now drops an ht that is not one of the controller's channel widths -- the ` +
+		`unknown-sentinel 0 among them -- so no 0 reaches the wire (see TestSanitizeRadioForUpdate). ` +
+		`The structural walk still reports it because it reflects DeviceRadioTable, not the closure.`,
+	"device.radio_table.maxsta": `already handled: sanitizeRadioForUpdate nils maxsta unless it is ` +
+		`in [1,200], so the unknown-sentinel 0 is dropped before the wire (see ` +
+		`TestSanitizeRadioForUpdate). Pinned because this structural walk reflects DeviceRadioTable, ` +
+		`not the Encode closure that sanitizes it.`,
+	"device.radio_table.min_rssi": `already handled: sanitizeRadioForUpdate nils min_rssi unless ` +
+		`enabled and in [-90,-67], so the unknown-sentinel 0 is dropped before the wire (see ` +
+		`TestSanitizeRadioForUpdate). Pinned as for device.radio_table.maxsta.`,
+	"device.radio_table.sens_level": `already handled: sanitizeRadioForUpdate nils sens_level unless ` +
+		`enabled and in [-90,-50], so the unknown-sentinel 0 is dropped before the wire (see ` +
+		`TestSanitizeRadioForUpdate). Pinned as for device.radio_table.maxsta.`,
+	"nat.destination_filter.port": `redundant, the dns_record.port case one level down: the nested ` +
+		`port is Optional-only (not Computed), so an omitted one is null -- never Unknown -- and its ` +
+		`ValueInt64Pointer encode drops it; an explicit 0 fails the schema's ` +
+		`int64validator.Between(1,99999) at plan time, before Encode runs. No zero can reach the ` +
+		`wire, so omitting zero/unknown would change nothing.`,
+	"nat.source_filter.port": `same as nat.destination_filter.port: Optional-only and plan-guarded ` +
+		`by Between(1,99999), so no zero reaches the wire.`,
 }
 
 // TestEveryKitSurfaceOmitsAZeroTheControllerRejects is the R2-C Task 10b
