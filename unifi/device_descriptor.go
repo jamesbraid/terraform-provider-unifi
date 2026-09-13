@@ -888,8 +888,24 @@ func sanitizeRadioForUpdate(radioName string, radio *ui.DeviceRadioTable) diag.D
 	if !radio.SensLevelEnabled || !inRange(radio.SensLevel, -90, -50) {
 		radio.SensLevel = nil
 	}
+	// ht is one of a fixed set of channel widths, enforced at plan time by the
+	// schema's OneOf validator, so the only out-of-set value that reaches here
+	// is the 0 a plain ValueInt64Pointer produces for an omitted (Unknown)
+	// Optional+Computed radio -- the "unset" sentinel, like maxsta's above. The
+	// controller rejects a 0 (api.err.InvalidValue), so drop it and let the
+	// controller keep its own width.
+	if radio.Ht != nil && !validHt[*radio.Ht] {
+		radio.Ht = nil
+	}
 
 	return diags
+}
+
+// validHt is the set of channel widths the controller accepts for
+// radio_table.ht, the same set the schema's OneOf validator enforces.
+var validHt = map[int64]bool{
+	20: true, 40: true, 80: true, 160: true, 240: true, 320: true,
+	1080: true, 2160: true, 4320: true,
 }
 
 // deviceKitSpec is the whole of unifi_device's behaviour.

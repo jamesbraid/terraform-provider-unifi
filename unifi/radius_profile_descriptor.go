@@ -13,6 +13,7 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_radius_profile"
 	resource_radius_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_profile"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // radiusServerAttrTypes types ONE server, not the list. The Terraform name is
@@ -45,9 +46,15 @@ func radiusServerParts(object types.Object) (ip string, port *int64, secret stri
 	if value, ok := object.Attributes()["ip"].(types.String); ok {
 		ip = value.ValueString()
 	}
-	if value, ok := object.Attributes()["port"].(types.Int64); ok && !value.IsNull() {
-		p := value.ValueInt64()
-		port = &p
+	// The controller's port pattern rejects a literal 0. Its trailing |^$ arm
+	// accepts an empty string, but a numeric field never sends "", so omitting
+	// the value is the only way to say "unset" -- the empty-string alternative
+	// is moot here. port is Optional+Computed, so an omitted one arrives Unknown,
+	// which a plain ValueInt64Pointer would send as 0 (api.err.InvalidValue).
+	// Omit zero/unknown so port's omitempty tag drops it and the controller keeps
+	// its own, the OmitZero rule an Int64PtrField would carry.
+	if value, ok := object.Attributes()["port"].(types.Int64); ok {
+		port = util.OmitZeroInt64Pointer(value)
 	}
 	if value, ok := object.Attributes()["secret"].(types.String); ok {
 		secret = value.ValueString()
