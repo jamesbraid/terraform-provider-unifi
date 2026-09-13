@@ -31,6 +31,15 @@ All notable changes to this project will be documented in this file.
   controller error into a Terraform message now drop the request body,
   and a test fails the build if a new one is added without it.
 
+- **`unifi_device` now reflects the controller's real state for every
+  declared `port_override` attribute.** On refresh it reconciles every
+  attribute a block declares (previously only six of about forty-four),
+  so out-of-band drift on any of them is seen instead of silently kept.
+  `op_mode` is read back from the controller, so a port the controller
+  holds in aggregate or mirror mode is no longer reported as `switch`.
+  And a declared attribute is no longer overwritten by the prior plan on
+  apply, so these reconciled reads survive rather than being undone.
+
 ### ✨ Features
 
 - **New resource `unifi_ospf_router`** manages OSPF routers: the router
