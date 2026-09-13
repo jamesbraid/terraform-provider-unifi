@@ -26,7 +26,7 @@ jobs:
     if: github.server_url != 'https://github.com'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/renovatebot/renovate:41
+      image: ghcr.io/renovatebot/renovate:44
     steps:
       - name: Refuse to pretend without a token
         run: |
