@@ -83,6 +83,36 @@ func TestApplyPlanToStateLeavesUnsetUncoveredAttributesAlone(t *testing.T) {
 	}
 }
 
+func TestApplyPlanToStateLeavesHookOwnedAttributesToTheHook(t *testing.T) {
+	// Vlan has no Field, so without HookOwned copyUncoveredPlanValues would
+	// copy the plan's value over it (that is TestApplyPlanToStateReachesThe...
+	// above). Marking it hook-owned means the value already in state -- what an
+	// AfterReceive hook reconciled -- must survive the plan copy.
+	spec := uncoveredSpec()
+	spec.HookOwned = []func(*uncoveredModel) any{
+		func(m *uncoveredModel) any { return &m.Vlan },
+	}
+	state := uncoveredModel{
+		ID:   types.StringValue("id-1"),
+		Name: types.StringValue("old"),
+		Vlan: types.Int64Value(76), // stands in for a hook-reconciled value
+	}
+	plan := uncoveredModel{
+		ID:   types.StringValue("id-1"),
+		Name: types.StringValue("new"),
+		Vlan: types.Int64Value(81),
+	}
+	spec.ApplyPlanToState(&plan, &state)
+	if state.Name.ValueString() != "new" {
+		t.Errorf("name = %v, want new; marking one attribute hook-owned must not "+
+			"stop a Field-covered attribute from being applied", state.Name)
+	}
+	if state.Vlan.ValueInt64() != 76 {
+		t.Errorf("vlan = %v, want the reconciled 76; a hook-owned attribute must not be "+
+			"overwritten by the raw plan", state.Vlan)
+	}
+}
+
 func TestCreateKeepsAPlanValueTheResponseOmits(t *testing.T) {
 	r := kitResource(Backend[kitSDK]{
 		Create: func(_ context.Context, _ string, in *kitSDK) (*kitSDK, error) {

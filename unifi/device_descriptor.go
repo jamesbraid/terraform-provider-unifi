@@ -964,6 +964,15 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 		// reads it as a managed mapping.json field this descriptor drops.
 		MappedElsewhere: []string{"port_overrides"},
 
+		// port_override is not a Field, so copyUncoveredPlanValues would copy
+		// the raw plan over it on create and update -- clobbering what
+		// deviceReconcilePortOverrides (AfterReceive) just rebuilt from the
+		// controller's answer. Marking it hook-owned keeps the reconcile as the
+		// sole authority for this attribute on every code path.
+		HookOwned: []func(*deviceKitModel) any{
+			func(m *deviceKitModel) any { return &m.PortOverride },
+		},
+
 		// A device is hardware. Destroying the resource releases it from state;
 		// forgetting the device is a separate, opt-in act.
 		BeforeDelete: func(_ context.Context, model *deviceKitModel) (bool, diag.Diagnostics) {
