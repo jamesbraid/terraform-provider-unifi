@@ -183,6 +183,11 @@
         ]
       }
     },
+    "unifi_nat": {
+      "sdk_type": "Nat",
+      "duration_units": {},
+      "schema_version": 0
+    },
     "unifi_network": {
       "sdk_type": "Network",
       "list": {
