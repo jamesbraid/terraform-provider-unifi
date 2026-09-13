@@ -395,3 +395,43 @@ func TestCompileRefusesARequiredOnCreateWireDeclaredAsABlock(t *testing.T) {
 		t.Fatalf("Compile() error = %v, want a refusal naming the block-declared required wire", err)
 	}
 }
+
+// TestRequiredWireObservedResolvesNestedPaths covers the artifact's dotted
+// required_on_create paths against a struct with observed nested Fields: an
+// object member (source.zone_id) and an array<object> element member
+// (areas[].network_ids), the OSPFRouter shape the flat sourceFields lookup
+// cannot see. A path whose leaf is not observed is refused, so a stale
+// artifact still fails the compile rather than silently forcing nothing.
+func TestRequiredWireObservedResolvesNestedPaths(t *testing.T) {
+	sourceFields := map[string]bootstrapField{
+		"router_id": {Name: "router_id", Type: "string"},
+		"areas": {Name: "areas", Type: "array<object>", Fields: []bootstrapField{
+			{Name: "area_id", Type: "string"},
+			{Name: "network_ids", Type: "array<string>"},
+		}},
+		"source": {Name: "source", Type: "object", Fields: []bootstrapField{
+			{Name: "zone_id", Type: "string"},
+		}},
+		// A companion field is stored under its qualified key.
+		"Companion.flag": {Name: "flag", Type: "bool"},
+	}
+	cases := []struct {
+		qualifier, wire string
+		want            bool
+	}{
+		{"", "router_id", true},              // flat lead field
+		{"", "areas", true},                  // the array field itself
+		{"", "areas[].network_ids", true},    // array<object> element member
+		{"", "source.zone_id", true},         // object member
+		{"", "areas[].nonexistent", false},   // observed parent, absent leaf
+		{"", "missing.zone_id", false},       // absent parent
+		{"", "source.zone_id.deeper", false}, // scalar has no members
+		{"Companion", "flag", true},          // flat companion field
+		{"Companion", "flag.nested", false},  // companions carry no nested behaviour
+	}
+	for _, tc := range cases {
+		if got := requiredWireObserved(sourceFields, tc.qualifier, tc.wire); got != tc.want {
+			t.Errorf("requiredWireObserved(%q, %q) = %v, want %v", tc.qualifier, tc.wire, got, tc.want)
+		}
+	}
+}

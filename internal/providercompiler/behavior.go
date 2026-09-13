@@ -3,6 +3,7 @@ package providercompiler
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // behaviorDocument mirrors the wrapper cmd/sdk-bootstrap writes around the
@@ -80,18 +81,64 @@ func behaviorRequiredWires(
 			continue
 		}
 		for _, wire := range writes.RequiredOnCreate {
-			key := qualifyField(entry.qualifier, wire)
-			if _, observed := sourceFields[key]; !observed {
+			if !requiredWireObserved(sourceFields, entry.qualifier, wire) {
 				return nil, fmt.Errorf(
 					"the behaviour artifact marks %q required on create of %s, but the catalog "+
 						"does not observe that field; the artifact and the bootstrap disagree",
 					wire, entry.name,
 				)
 			}
-			required[key] = struct{}{}
+			required[qualifyField(entry.qualifier, wire)] = struct{}{}
 		}
 	}
 	return required, nil
+}
+
+// requiredWireObserved reports whether a required_on_create wire names a field
+// the bootstrap observed. A flat wire is a key of sourceFields (bare for the
+// lead struct, qualified for a companion). A nested wire -- the artifact's
+// dotted path into an object member (source.zone_id) or an array<object>
+// element member (areas[].network_ids) -- is resolved segment by segment
+// against the lead struct's observed nested Fields. Companions carry no
+// nested behaviour, so a qualified wire is only ever a flat companion field.
+func requiredWireObserved(sourceFields map[string]bootstrapField, qualifier, wire string) bool {
+	if _, ok := sourceFields[qualifyField(qualifier, wire)]; ok {
+		return true
+	}
+	if qualifier != "" || !strings.ContainsAny(wire, ".[") {
+		return false
+	}
+	return resolveNestedStructuralWire(sourceFields, wire)
+}
+
+// resolveNestedStructuralWire walks a dotted wire path into the lead struct's
+// observed nested Fields. The "[]" marking an array<object> segment is
+// dropped -- a required member of the element is required whether the element
+// stands alone or repeats.
+func resolveNestedStructuralWire(sourceFields map[string]bootstrapField, wire string) bool {
+	segments := strings.Split(wire, ".")
+	field, ok := sourceFields[strings.TrimSuffix(segments[0], "[]")]
+	if !ok {
+		return false
+	}
+	for _, segment := range segments[1:] {
+		member, ok := structuralMemberField(field.Fields, strings.TrimSuffix(segment, "[]"))
+		if !ok {
+			return false
+		}
+		field = member
+	}
+	return true
+}
+
+// structuralMemberField finds a nested member by its observed wire name.
+func structuralMemberField(fields []bootstrapField, name string) (bootstrapField, bool) {
+	for _, field := range fields {
+		if field.Name == name {
+			return field, true
+		}
+	}
+	return bootstrapField{}, false
 }
 
 // forceRequiredOnCreate rewrites one attribute body's disposition to
