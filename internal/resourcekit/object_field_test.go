@@ -68,7 +68,7 @@ func TestUnmodelledSilencesOnlyWhatItNames(t *testing.T) {
 		AttrTypes: map[string]attr.Type{},
 		Unmodelled: []string{
 			"match_mac", "match_opposite_ips", "match_opposite_networks",
-			"match_opposite_ports",
+			"match_opposite_ports", "zone_id",
 		},
 	}
 	// Everything force-emitted is either declared or named, so the field is
@@ -81,8 +81,8 @@ func TestUnmodelledSilencesOnlyWhatItNames(t *testing.T) {
 	partial := field
 	partial.Unmodelled = []string{"match_mac"}
 	problems := partial.nestedProblems()
-	if len(problems) != 3 {
-		t.Fatalf("exempting one of four left %d problem(s), want 3: %s",
+	if len(problems) != 4 {
+		t.Fatalf("exempting one of five left %d problem(s), want 4: %s",
 			len(problems), strings.Join(problems, "\n"))
 	}
 	for _, problem := range problems {
@@ -98,11 +98,11 @@ func TestNestedProblemsIgnoresOmitemptyMembers(t *testing.T) {
 		AttrTypes: map[string]attr.Type{},
 		Unmodelled: []string{
 			"match_mac", "match_opposite_ips", "match_opposite_networks",
-			"match_opposite_ports",
+			"match_opposite_ports", "zone_id",
 		},
 	}
-	// FirewallPolicySource has eleven omitempty members and four
-	// force-emitted ones; with the four named, nothing should be left.
+	// FirewallPolicySource has twelve omitempty members and five
+	// force-emitted ones; with the five named, nothing should be left.
 	if problems := field.nestedProblems(); len(problems) != 0 {
 		t.Fatalf("omitempty members were reported: %s", strings.Join(problems, "\n"))
 	}
@@ -181,8 +181,8 @@ func TestNestedProblemsReachesFieldsThroughTheSpecAndThroughReadOnly(t *testing.
 
 	t.Run("through the spec", func(t *testing.T) {
 		spec := Spec[kitModel, kitSDK]{Fields: []Field[kitModel, kitSDK]{field}}
-		if got := len(NestedProblems(spec)); got != 4 {
-			t.Fatalf("NestedProblems reported %d, want 4", got)
+		if got := len(NestedProblems(spec)); got != 5 {
+			t.Fatalf("NestedProblems reported %d, want 5", got)
 		}
 	})
 
@@ -190,8 +190,8 @@ func TestNestedProblemsReachesFieldsThroughTheSpecAndThroughReadOnly(t *testing.
 		spec := Spec[kitModel, kitSDK]{
 			Fields: []Field[kitModel, kitSDK]{ReadOnly[kitModel, kitSDK](field)},
 		}
-		if got := len(NestedProblems(spec)); got != 4 {
-			t.Fatalf("NestedProblems reported %d through ReadOnly, want 4; ReadOnly "+
+		if got := len(NestedProblems(spec)); got != 5 {
+			t.Fatalf("NestedProblems reported %d through ReadOnly, want 5; ReadOnly "+
 				"only stops the field being written from the model, the SDK struct "+
 				"still goes out whole when its key is masked", got)
 		}
@@ -326,8 +326,8 @@ func TestObjectListFieldChecksItsElementType(t *testing.T) {
 		Wire:      "endpoints",
 		AttrTypes: map[string]attr.Type{},
 	}
-	if problems := hazardous.nestedProblems(); len(problems) != 4 {
-		t.Errorf("an element type with four force-emitted members reported %d problem(s): %s",
+	if problems := hazardous.nestedProblems(); len(problems) != 5 {
+		t.Errorf("an element type with five force-emitted members reported %d problem(s): %s",
 			len(problems), strings.Join(problems, "\n"))
 	}
 }
