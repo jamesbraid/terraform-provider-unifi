@@ -14,6 +14,7 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // TestRadiusAfterReceiveKeepsThePlansSecretWhenNamed pins radiusAfterReceive
@@ -202,5 +203,21 @@ func TestRadiusNestedSchemaHasExactlyItsAttributes(t *testing.T) {
 	if len(nested.Attributes) != 6 {
 		t.Errorf("radius has %d attribute(s), want 6; update radiusKitSpec and this count together",
 			len(nested.Attributes))
+	}
+}
+
+// TestRadiusOmitsAZeroTheControllerRejects is setting_radius's own local
+// version of the OmitZeroProblems census, the same shape as
+// TestNetflowOmitsAZeroTheControllerRejects: unifi_setting is not walked by
+// the global census (settingResource does not implement OmitZeroProblems),
+// so this section gates its own Int64PtrFields against
+// settings.FieldConstraints["SettingRadius"] by hand.
+func TestRadiusOmitsAZeroTheControllerRejects(t *testing.T) {
+	constraints := make(map[string]ui.FieldConstraint, len(settings.FieldConstraints["SettingRadius"]))
+	for wire, constraint := range settings.FieldConstraints["SettingRadius"] {
+		constraints[wire] = ui.FieldConstraint(constraint)
+	}
+	for _, problem := range resourcekit.OmitZeroProblems(radiusKitSpec(), constraints) {
+		t.Error(problem)
 	}
 }

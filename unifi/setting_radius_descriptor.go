@@ -53,17 +53,24 @@ func radiusKitSpec() resourcekit.Spec[settingRadiusModel, settings.Radius] {
 		Subject:  "Radius Setting",
 		New:      func() *settings.Radius { return &settings.Radius{} },
 		Fields: resourcekit.Override(settingRadiusGenFields(), []resourcekit.Field[settingRadiusModel, settings.Radius]{
+			// OmitZero: the controller's port pattern rejects a literal 0, and
+			// both ports are Optional+Computed, so an unset value is Unknown on
+			// create -- ValueInt64Pointer() would force-emit the zero the
+			// controller refuses. Same shape as radius_user.vlan and wlan's
+			// dtim fields. Gated by TestRadiusOmitsAZeroTheControllerRejects.
 			resourcekit.Int64PtrField[settingRadiusModel, settings.Radius]{
-				Wire:  "acct_port",
-				Model: func(m *settingRadiusModel) *types.Int64 { return &m.AcctPort },
-				SDK:   func(s *settings.Radius) **int64 { return &s.AcctPort },
-				Elide: resourcekit.KeepZero,
+				Wire:     "acct_port",
+				Model:    func(m *settingRadiusModel) *types.Int64 { return &m.AcctPort },
+				SDK:      func(s *settings.Radius) **int64 { return &s.AcctPort },
+				Elide:    resourcekit.KeepZero,
+				OmitZero: true,
 			},
 			resourcekit.Int64PtrField[settingRadiusModel, settings.Radius]{
-				Wire:  "auth_port",
-				Model: func(m *settingRadiusModel) *types.Int64 { return &m.AuthPort },
-				SDK:   func(s *settings.Radius) **int64 { return &s.AuthPort },
-				Elide: resourcekit.KeepZero,
+				Wire:     "auth_port",
+				Model:    func(m *settingRadiusModel) *types.Int64 { return &m.AuthPort },
+				SDK:      func(s *settings.Radius) **int64 { return &s.AuthPort },
+				Elide:    resourcekit.KeepZero,
+				OmitZero: true,
 			},
 			resourcekit.DurationPtrField[settingRadiusModel, settings.Radius]{
 				Wire:  "interim_update_interval",
