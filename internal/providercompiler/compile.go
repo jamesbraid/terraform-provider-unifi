@@ -137,6 +137,34 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, err
 	}
 
+	// List and set wires the controller requires a minimum element count in.
+	// Derived into a plan-time size validator on the matching attribute, laid
+	// into the policy field's own validators before the build reads it -- the
+	// same shape the SDK constraint table's validators take.
+	minItems, err := behaviorMinItems(input.Behavior, rules.SurfaceKind, source, sourceFields)
+	if err != nil {
+		return Result{}, err
+	}
+	if len(minItems) > 0 {
+		applied := map[string]bool{}
+		if err := applyMinItemsValidators(rules.Fields, "", minItems, applied); err != nil {
+			return Result{}, err
+		}
+		unapplied := map[string]struct{}{}
+		for path := range minItems {
+			if !applied[path] {
+				unapplied[path] = struct{}{}
+			}
+		}
+		for _, path := range cmdio.SortedKeys(unapplied) {
+			notices = append(notices, fmt.Sprintf(
+				"min_items on %q is observed but its field is not a managed list or set in "+
+					"policy (omitted, claimed, or grouped); no size validator was derived",
+				path,
+			))
+		}
+	}
+
 	claimedFields, claimedMembers, err := claimedStructuralFields(rules.SurfaceKind, rules.Claims)
 	if err != nil {
 		return Result{}, err

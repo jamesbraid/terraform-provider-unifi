@@ -576,3 +576,161 @@ func TestCompileMarksEmptyWriteSuppressionInTheMappingReport(t *testing.T) {
 		t.Error("mapping report flags value, whose empty the controller clears; only EMPTY-REJECTED wants suppression")
 	}
 }
+
+// testBehaviorMinItems builds the artifact wrapper carrying a writes family
+// whose entries include min_items maps.
+func testBehaviorMinItems(t *testing.T, writes map[string]any) []byte {
+	t.Helper()
+	return mustJSON(t, map[string]any{
+		"format_version": 1,
+		"source": map[string]any{
+			"repository":           "github.com/jamesbraid/go-unifi",
+			"version":              "v1.113.1",
+			"commit":               strings.Repeat("a", 40),
+			"specification_sha256": strings.Repeat("a", 64),
+		},
+		"behavior": map[string]any{
+			"controller_version": "10.6.101",
+			"writes":             writes,
+		},
+	})
+}
+
+// The artifact's dotted min_items path is canonicalised to the structural
+// path the build uses -- the array marker dropped.
+func TestBehaviorMinItemsResolvesAndCanonicalisesNestedPaths(t *testing.T) {
+	sourceFields := map[string]bootstrapField{
+		"areas": {Name: "areas", Type: "array<object>", Fields: []bootstrapField{
+			{Name: "network_ids", Type: "array<string>"},
+		}},
+	}
+	source := bootstrap{Resource: bootstrapSchema{Struct: "OSPFRouter"}}
+	behavior := testBehaviorMinItems(t, map[string]any{
+		"OSPFRouter": map[string]any{
+			"min_items": map[string]any{"areas[].network_ids": 1},
+		},
+	})
+	got, err := behaviorMinItems(behavior, ManagedResource, source, sourceFields)
+	if err != nil {
+		t.Fatalf("behaviorMinItems() error = %v", err)
+	}
+	if len(got) != 1 || got["areas.network_ids"] != 1 {
+		t.Fatalf("min items = %v, want {areas.network_ids: 1}", got)
+	}
+}
+
+// A min_items path the catalog does not observe is a stale artifact, refused
+// exactly as an unobserved required-on-create wire is.
+func TestBehaviorMinItemsRefusesAnUnobservedPath(t *testing.T) {
+	sourceFields := map[string]bootstrapField{
+		"areas": {Name: "areas", Type: "array<object>", Fields: []bootstrapField{
+			{Name: "area_id", Type: "string"},
+		}},
+	}
+	source := bootstrap{Resource: bootstrapSchema{Struct: "OSPFRouter"}}
+	behavior := testBehaviorMinItems(t, map[string]any{
+		"OSPFRouter": map[string]any{
+			"min_items": map[string]any{"areas[].network_ids": 1},
+		},
+	})
+	_, err := behaviorMinItems(behavior, ManagedResource, source, sourceFields)
+	if err == nil || !strings.Contains(err.Error(), "network_ids") ||
+		!strings.Contains(err.Error(), "OSPFRouter") {
+		t.Fatalf("behaviorMinItems() error = %v, want the unobserved path and struct named", err)
+	}
+}
+
+// The measured minimum lands as a plan-time SizeAtLeast validator on the
+// nested list member the path names.
+func TestCompileDerivesAListSizeValidatorFromMinItems(t *testing.T) {
+	bootstrap := mustJSON(t, map[string]any{
+		"format_version": 1,
+		"source": map[string]any{
+			"repository":           "github.com/ubiquiti-community/go-unifi",
+			"commit":               "e255518385e0104eb838be56c2a491de158f3194",
+			"specification_sha256": testSpecificationDigest,
+		},
+		"resource": map[string]any{
+			"name":   "unifi_area_probe",
+			"struct": "AreaProbe",
+			"fields": []any{
+				map[string]any{
+					"name": "areas", "type": "array<object>",
+					"fields": []any{map[string]any{"name": "network_ids", "type": "array<string>"}},
+				},
+			},
+		},
+	})
+	policy := mustJSON(t, map[string]any{
+		"format_version":              1,
+		"surface_kind":                "managed_resource",
+		"resource":                    "unifi_area_probe",
+		"source_specification_sha256": testSpecificationDigest,
+		"description":                 "",
+		"fields": []any{
+			map[string]any{
+				"structural_name": "areas",
+				"terraform_name":  "areas",
+				"terraform_type":  "list_nested",
+				"disposition":     "managed",
+				"attribute":       map[string]any{"computed_optional_required": "required"},
+				"fields": []any{
+					map[string]any{
+						"structural_name": "network_ids", "terraform_name": "network_ids",
+						"terraform_type": "list", "disposition": "managed",
+						"attribute": map[string]any{
+							"computed_optional_required": "required",
+							"element_type":               map[string]any{"string": map[string]any{}},
+						},
+					},
+				},
+			},
+		},
+		"provider_owned": []any{},
+	})
+	result, err := Compile(CompileInput{
+		Bootstrap: bootstrap,
+		Policy:    policy,
+		Behavior: testBehaviorMinItems(t, map[string]any{
+			"AreaProbe": map[string]any{"min_items": map[string]any{"areas[].network_ids": 1}},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	areas := collectionAttribute(t, result.ProviderCodeSpec, "areas")
+	var nested struct {
+		NestedObject struct {
+			Attributes []map[string]json.RawMessage `json:"attributes"`
+		} `json:"nested_object"`
+	}
+	if err := json.Unmarshal(areas["list_nested"], &nested); err != nil {
+		t.Fatal(err)
+	}
+	for _, member := range nested.NestedObject.Attributes {
+		var name string
+		if err := json.Unmarshal(member["name"], &name); err != nil {
+			t.Fatal(err)
+		}
+		if name != "network_ids" {
+			continue
+		}
+		var definition struct {
+			Validators []struct {
+				Custom struct {
+					SchemaDefinition string `json:"schema_definition"`
+				} `json:"custom"`
+			} `json:"validators"`
+		}
+		if err := json.Unmarshal(member["list"], &definition); err != nil {
+			t.Fatal(err)
+		}
+		for _, validator := range definition.Validators {
+			if validator.Custom.SchemaDefinition == "listvalidator.SizeAtLeast(1)" {
+				return
+			}
+		}
+		t.Fatalf("network_ids validators = %+v, want a listvalidator.SizeAtLeast(1)", definition.Validators)
+	}
+	t.Fatal("spec has no network_ids member to check")
+}
