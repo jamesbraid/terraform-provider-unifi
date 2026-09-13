@@ -77,7 +77,7 @@ func TestDeviceSupervisionOmitsAZeroTheControllerRejects(t *testing.T) {
 	for wire, constraint := range settings.FieldConstraints["SettingDeviceSupervision"] {
 		constraints[wire] = ui.FieldConstraint(constraint)
 	}
-	for _, problem := range resourcekit.OmitZeroProblems(deviceSupervisionKitSpec(), constraints) {
+	for _, problem := range resourcekit.OmitZeroProblems(deviceSupervisionKitSpec(), constraints, nil) {
 		t.Error(problem)
 	}
 }

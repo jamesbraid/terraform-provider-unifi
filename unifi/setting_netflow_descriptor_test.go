@@ -79,7 +79,7 @@ func TestNetflowOmitsAZeroTheControllerRejects(t *testing.T) {
 	for wire, constraint := range settings.FieldConstraints["SettingNetflow"] {
 		constraints[wire] = ui.FieldConstraint(constraint)
 	}
-	for _, problem := range resourcekit.OmitZeroProblems(netflowKitSpec(), constraints) {
+	for _, problem := range resourcekit.OmitZeroProblems(netflowKitSpec(), constraints, nil) {
 		t.Error(problem)
 	}
 }
