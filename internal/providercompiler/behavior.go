@@ -28,8 +28,9 @@ type behaviorFacts struct {
 	Empty map[string]map[string]behaviorEmptyDisposition `json:"empty"`
 }
 
-// behaviorWrites is one SDK type's measured write behaviour. required_on_create
-// and the update path are derived; the verbs stay with the SDK's own clients.
+// behaviorWrites is one SDK type's measured write behaviour. required_on_create,
+// min_items and the update path are derived; the verbs stay with the SDK's own
+// clients.
 type behaviorWrites struct {
 	RequiredOnCreate []string `json:"required_on_create"`
 	// UpdatePath is the controller path the masked update addresses. Kept so
@@ -37,6 +38,11 @@ type behaviorWrites struct {
 	// can still be tied to its empty-family entry by the path's collection
 	// segment.
 	UpdatePath string `json:"update_path,omitempty"`
+	// MinItems records the minimum element count the controller requires on a
+	// list or set wire, keyed by the same dotted structural path
+	// required_on_create uses (areas[].network_ids). Derived into a plan-time
+	// size validator.
+	MinItems map[string]int `json:"min_items,omitempty"`
 }
 
 // behaviorEmptyDisposition is one field's measured empty-write behaviour: what
@@ -247,6 +253,86 @@ func pathCollection(path string) string {
 		return segment
 	}
 	return ""
+}
+
+// behaviorMinItems resolves the artifact's min_items facts for the surface's
+// lead struct: each names a list or set wire the controller requires a minimum
+// number of elements in. The keys are canonicalised to the dotted structural
+// path the policy build uses -- the array marker "[]" dropped, since a minimum
+// applies to the collection whether it stands alone or repeats. A path the
+// catalog does not observe is refused, exactly as an unobserved
+// required_on_create wire is: the artifact and bootstrap resolve from one
+// module, so disagreement is staleness. Nil when there is no artifact, the
+// surface never writes, or the lead struct records no min_items.
+func behaviorMinItems(behavior []byte, kind SurfaceKind, source bootstrap, sourceFields map[string]bootstrapField) (map[string]int, error) {
+	if len(behavior) == 0 {
+		return nil, nil
+	}
+	var document behaviorDocument
+	if err := decodeJSON("behaviour artifact", behavior, &document, true); err != nil {
+		return nil, err
+	}
+	if document.FormatVersion != 1 {
+		return nil, fmt.Errorf("unsupported behaviour artifact format %d", document.FormatVersion)
+	}
+	var facts behaviorFacts
+	if err := decodeJSON("behaviour facts", document.Behavior, &facts, false); err != nil {
+		return nil, err
+	}
+	if kind != ManagedResource {
+		return nil, nil
+	}
+	entry, measured := facts.Writes[source.Resource.Struct]
+	if !measured || len(entry.MinItems) == 0 {
+		return nil, nil
+	}
+	resolved := map[string]int{}
+	for wire, count := range entry.MinItems {
+		if !requiredWireObserved(sourceFields, "", wire) {
+			return nil, fmt.Errorf(
+				"the behaviour artifact records min_items on %q of %s, but the catalog does not "+
+					"observe that field; the artifact and the bootstrap disagree",
+				wire, source.Resource.Struct,
+			)
+		}
+		resolved[strings.ReplaceAll(wire, "[]", "")] = count
+	}
+	return resolved, nil
+}
+
+// applyMinItemsValidators injects a list or set SizeAtLeast validator into
+// every policy field whose structural path the artifact records a min_items
+// count for. It walks the field tree the way the build does, so a nested
+// member (areas.network_ids) is reached at the path its min_items key names.
+// The validator lands in the field's own policy attribute before the build
+// reads it, exactly as a required-on-create override does. applied records
+// which paths it reached, so the caller can notice a min_items fact whose
+// field the policy omitted rather than drop it silently.
+func applyMinItemsValidators(fields []fieldPolicy, prefix string, minItems map[string]int, applied map[string]bool) error {
+	for i := range fields {
+		field := &fields[i]
+		if field.StructuralName == "" {
+			continue
+		}
+		path := field.StructuralName
+		if prefix != "" {
+			path = prefix + "." + field.StructuralName
+		}
+		if count, marked := minItems[path]; marked && field.Disposition == "managed" {
+			injected, err := injectSizeAtLeast(path, field.TerraformType, field.Attribute, count)
+			if err != nil {
+				return err
+			}
+			field.Attribute = injected
+			applied[path] = true
+		}
+		if len(field.Fields) > 0 {
+			if err := applyMinItemsValidators(field.Fields, path, minItems, applied); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // forceRequiredOnCreate rewrites one attribute body's disposition to

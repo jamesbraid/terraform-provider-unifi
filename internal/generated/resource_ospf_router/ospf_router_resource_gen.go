@@ -6,6 +6,7 @@ package resource_ospf_router
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -52,6 +53,9 @@ func OspfRouterResourceSchema(ctx context.Context) schema.Schema {
 							Required:            true,
 							Description:         "IDs of the networks announced into this area.",
 							MarkdownDescription: "IDs of the networks announced into this area.",
+							Validators: []validator.List{
+								listvalidator.SizeAtLeast(1),
+							},
 						},
 					},
 				},

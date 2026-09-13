@@ -149,11 +149,39 @@ func deriveConstraintValidators(owner, terraformType, elementType string, constr
 // RegexMatches and this provider's controllerregex.Matches -- and a hand
 // transcription in either shadows the same derived fact.
 var (
-	oneOfConflictMarkers   = []string{".OneOf("}
-	betweenConflictMarkers = []string{".Between("}
-	lengthConflictMarkers  = []string{".Length"}
-	regexConflictMarkers   = []string{".RegexMatches(", "controllerregex.Matches("}
+	oneOfConflictMarkers       = []string{".OneOf("}
+	betweenConflictMarkers     = []string{".Between("}
+	lengthConflictMarkers      = []string{".Length"}
+	regexConflictMarkers       = []string{".RegexMatches(", "controllerregex.Matches("}
+	sizeAtLeastConflictMarkers = []string{".SizeAtLeast("}
 )
+
+// injectSizeAtLeast folds a measured min_items count into a list or set
+// attribute's validators as SizeAtLeast(count) -- the plan-time check the
+// controller's own minimum implies. The validator package follows the
+// collection kind (listvalidator for a list, setvalidator for a set); a min
+// on anything else is refused rather than dropped, since the artifact then
+// disagrees with the served shape. A hand-transcribed SizeAtLeast is refused
+// the same way every other derived validator refuses its hand twin.
+func injectSizeAtLeast(owner, terraformType string, attribute json.RawMessage, count int) (json.RawMessage, error) {
+	var pkg string
+	switch terraformType {
+	case "list", "list_nested":
+		pkg = "listvalidator"
+	case "set", "set_nested":
+		pkg = "setvalidator"
+	default:
+		return nil, fmt.Errorf(
+			"field %q records min_items %d but is terraform_type %q, not a list or set",
+			owner, count, terraformType,
+		)
+	}
+	schemaDefinition := fmt.Sprintf("%s.SizeAtLeast(%d)", pkg, count)
+	imports := []customValidatorImport{
+		{Path: "github.com/hashicorp/terraform-plugin-framework-validators/" + pkg},
+	}
+	return appendDerivedValidator(owner, attribute, schemaDefinition, imports, sizeAtLeastConflictMarkers, "SizeAtLeast")
+}
 
 // deriveElementConstraintValidators is deriveConstraintValidators for a
 // collection: the same shapes, derived against the element type and wrapped

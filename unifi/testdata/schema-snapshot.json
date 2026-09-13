@@ -5216,7 +5216,10 @@
           "type": "[\"list\",\"string\"]",
           "required": true,
           "description": "IDs of the networks announced into this area.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "listvalidator.sizeAtLeastValidator: list must contain at least 1 elements"
+          ]
         },
         "enabled": {
           "kind": "attribute",
