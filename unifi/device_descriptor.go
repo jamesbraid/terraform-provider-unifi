@@ -317,6 +317,32 @@ func deviceKitBeforeSend(
 			}
 		}
 
+		// radio_table is written the same way, and for the same reason, but it
+		// MERGES rather than replaces: UpdateDeviceRadioTable writes only the
+		// named members of the declared radios and leaves every other member,
+		// every other radio, and the members this client has no field for
+		// (nss, radio_caps, max_txpower) untouched -- so there is no stored
+		// array to read back and resend, unlike port_overrides. The grouping is
+		// still needed: the SDK applies one member mask to every radio in a
+		// call, sending a masked member at its Go zero for a radio that did not
+		// declare it, and the controller's member-level merge would apply that
+		// zero -- so radios with different declared member sets can never share
+		// a call. Radios are addressed by name (wifi-ng and its kin), which the
+		// config must carry; a block naming no writable member, or no name, is
+		// dropped rather than sent.
+		radios, rd := deviceRadiosDeclaredFromConfig(ctx, config.RadioTable)
+		diags.Append(rd...)
+		if diags.HasError() {
+			return diags
+		}
+		radios = declaredRadiosWithFields(radios)
+		if len(radios) > 0 {
+			if _, err := updateDeviceRadioTableGrouped(ctx, client, site, sdk, radios); err != nil {
+				diags.AddError("Error Updating Radio Table", resourcekit.DiagErrorText(err))
+				return diags
+			}
+		}
+
 		return diags
 	}
 }
@@ -814,9 +840,10 @@ func devicePortOverridesDeclaredFromConfig(
 	return out, diags
 }
 
-// deviceKitAfterReceive rebuilds port_override from prior state. A null prior
-// stays null: writing the controller's full port list would make the next
-// plan propose removing every port the practitioner never managed.
+// deviceKitAfterReceive rebuilds port_override and radio_table from prior
+// state. A null prior stays null: writing the controller's full list would
+// make the next plan propose removing every entry the practitioner never
+// managed.
 func deviceKitAfterReceive() func(
 	context.Context, *ui.Device, *deviceKitModel, deviceKitModel, any,
 ) diag.Diagnostics {
@@ -828,6 +855,7 @@ func deviceKitAfterReceive() func(
 		_ any,
 	) diag.Diagnostics {
 		var diags diag.Diagnostics
+
 		if model.PortOverride.IsNull() || model.PortOverride.IsUnknown() {
 			// A create's zero model carries an untyped null here, which the
 			// framework rejects with MISSING TYPE; give it the element type
@@ -835,13 +863,33 @@ func deviceKitAfterReceive() func(
 			if model.PortOverride.ElementType(ctx) == nil {
 				model.PortOverride = types.SetNull(devicePortOverrideElementType(ctx))
 			}
-			return diags
+		} else {
+			reconciled, d := deviceReconcilePortOverrides(ctx, model.PortOverride, sdk.PortOverrides)
+			diags.Append(d...)
+			if !diags.HasError() {
+				model.PortOverride = reconciled
+			}
 		}
-		reconciled, d := deviceReconcilePortOverrides(ctx, model.PortOverride, sdk.PortOverrides)
-		diags.Append(d...)
-		if !diags.HasError() {
-			model.PortOverride = reconciled
+
+		if model.RadioTable.IsNull() || model.RadioTable.IsUnknown() {
+			// radio_table is Optional+Computed, so an unconfigured create plans
+			// it Unknown, and Terraform requires a known value after apply.
+			// Resolve it to a typed null rather than the controller's whole
+			// array: a null prior stays null, the way port_override does, so a
+			// device with radios the practitioner never declared does not have
+			// them all appear in state and then read as a removal on the next
+			// plan. (port_override only reaches this branch already-null, since
+			// it is Optional-only, so it can leave a real element type alone;
+			// radio_table has to force the unknown to a known null.)
+			model.RadioTable = types.ListNull(deviceRadioTableElementType(ctx))
+		} else {
+			reconciled, d := deviceReconcileRadioTable(ctx, model.RadioTable, sdk.RadioTable)
+			diags.Append(d...)
+			if !diags.HasError() {
+				model.RadioTable = reconciled
+			}
 		}
+
 		return diags
 	}
 }
@@ -908,6 +956,316 @@ var validHt = map[int64]bool{
 	1080: true, 2160: true, 4320: true,
 }
 
+// deviceRadioTableEncode maps ONE radio_table block to the SDK type and the
+// wire names of the members its config actually set, for the merge write
+// updateDeviceRadioTableGrouped performs. It is the radio_table counterpart of
+// devicePortOverrideEncode, and reads the member list off the model's own
+// null/unknown-ness rather than the encoded struct for the reason that
+// function's declaredFields comment sets out: every ui.DeviceRadioTable member
+// is omitempty, so a member the config left alone is indistinguishable, once
+// encoded, from one set to that member's zero value.
+//
+// sanitizeRadioForUpdate runs here, the same pre-write guard the whole-array
+// path used, and its ht drop stays: it nils the out-of-range and unset-
+// sentinel values the controller rejects. Those never reach the mask anyway --
+// the presence check drops an Unknown member, which is what a sentinel is --
+// but the guard is kept both because the task asks for it and because it is
+// what keeps a member the guard nil'd (a disabled min_rssi) out of the mask,
+// so maskedBody omits it rather than sending an explicit null the whole-array
+// path never sent.
+func deviceRadioTableEncode(
+	ctx context.Context, object types.Object,
+) (ui.DeviceRadioTable, []string, diag.Diagnostics) {
+	var model radioTableModel
+	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		return ui.DeviceRadioTable{}, nil, diags
+	}
+
+	radio := ui.DeviceRadioTable{
+		Radio:                 model.Radio.ValueString(),
+		Channel:               model.Channel.ValueString(),
+		Ht:                    model.Ht.ValueInt64Pointer(),
+		TxPower:               model.TxPower.ValueString(),
+		TxPowerMode:           model.TxPowerMode.ValueString(),
+		MinRssiEnabled:        model.MinRssiEnabled.ValueBool(),
+		MinRssi:               model.MinRssi.ValueInt64Pointer(),
+		AntennaGain:           model.AntennaGain.ValueInt64Pointer(),
+		AntennaID:             model.AntennaID.ValueInt64Pointer(),
+		Dfs:                   model.Dfs.ValueBool(),
+		HardNoiseFloorEnabled: model.HardNoiseFloorEnabled.ValueBool(),
+		LoadbalanceEnabled:    model.LoadbalanceEnabled.ValueBool(),
+		Maxsta:                model.Maxsta.ValueInt64Pointer(),
+		Name:                  model.Name.ValueString(),
+		SensLevel:             model.SensLevel.ValueInt64Pointer(),
+		SensLevelEnabled:      model.SensLevelEnabled.ValueBool(),
+		VwireEnabled:          model.VwireEnabled.ValueBool(),
+	}
+	diags.Append(sanitizeRadioForUpdate(radio.Radio, &radio)...)
+
+	fields := deviceRadioTableDeclaredFields(model, radio)
+	if model.Name.IsUnknown() {
+		// A name Terraform has not resolved yet cannot address a radio:
+		// ValueString() returns "" for it, and the controller refuses an entry
+		// with no name. Report nothing declared instead -- the caller drops an
+		// empty entry (declaredRadiosWithFields), and the block takes effect on
+		// a later apply once name is known.
+		radio.Name = ""
+		fields = nil
+	}
+	return radio, fields, diags
+}
+
+// deviceRadioTableDeclaredFields lists the wire names of the members this
+// radio block's config actually set, presence-encoded so a false/""/0 the
+// practitioner wrote is representable. It reads the model's null/unknown-ness,
+// not the encoded struct, for the reason devicePortOverrideDeclaredFields sets
+// out.
+//
+// name never appears here: it addresses the radio rather than configuring it,
+// and UpdateDeviceRadioTable carries the key itself, the way index does for a
+// port override. dfs never appears either: the controller discards it on write
+// (behavior.json's discarded set records it), so sending it changes nothing
+// and reconciling it back would surface the controller's own value as drift
+// against a declared one -- it is declarable-but-inert, the radio_table
+// analogue of port_override's tagged_networkconf_ids.
+//
+// The four members sanitizeRadioForUpdate can nil (ht, min_rssi, maxsta,
+// sens_level) are named only when a value survived the guard, so one the guard
+// dropped is omitted rather than sent as an explicit null.
+//
+// A member added to deviceRadioTableEncode without a matching declare() call
+// here silently stops being writable through the merge path.
+// Test_deviceRadioTableDeclaredFields_matchesEveryModeledMember pins the full
+// set so that gap fails a test instead of shipping quietly.
+func deviceRadioTableDeclaredFields(model radioTableModel, radio ui.DeviceRadioTable) []string {
+	var fields []string
+	declare := func(wire string, v attr.Value) {
+		if !v.IsNull() && !v.IsUnknown() {
+			fields = append(fields, wire)
+		}
+	}
+	// A pointer member the guard nil'd is not sent: the config declared it, but
+	// the value did not survive sanitizeRadioForUpdate, so naming it would send
+	// a null.
+	declareSanitized := func(wire string, v attr.Value, kept *int64) {
+		if !v.IsNull() && !v.IsUnknown() && kept != nil {
+			fields = append(fields, wire)
+		}
+	}
+
+	declare("radio", model.Radio)
+	declare("channel", model.Channel)
+	declareSanitized("ht", model.Ht, radio.Ht)
+	declare("tx_power", model.TxPower)
+	declare("tx_power_mode", model.TxPowerMode)
+	declare("min_rssi_enabled", model.MinRssiEnabled)
+	declareSanitized("min_rssi", model.MinRssi, radio.MinRssi)
+	declare("antenna_gain", model.AntennaGain)
+	declare("antenna_id", model.AntennaID)
+	declare("hard_noise_floor_enabled", model.HardNoiseFloorEnabled)
+	declare("loadbalance_enabled", model.LoadbalanceEnabled)
+	declareSanitized("maxsta", model.Maxsta, radio.Maxsta)
+	declareSanitized("sens_level", model.SensLevel, radio.SensLevel)
+	declare("sens_level_enabled", model.SensLevelEnabled)
+	declare("vwire_enabled", model.VwireEnabled)
+
+	return fields
+}
+
+// deviceRadiosDeclaredFromConfig encodes radio_table blocks together with the
+// exact members each block's config named, for the merge write
+// updateDeviceRadioTableGrouped performs. It reads config, not the
+// plan/state effective carries, for the reason
+// devicePortOverridesDeclaredFromConfig sets out: an Optional+Computed member
+// can be non-null in state purely because a prior read filled it in.
+func deviceRadiosDeclaredFromConfig(
+	ctx context.Context, config types.List,
+) ([]declaredRadio, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if config.IsNull() || config.IsUnknown() {
+		return nil, diags
+	}
+	elements := config.Elements()
+	out := make([]declaredRadio, 0, len(elements))
+	for _, elem := range elements {
+		object, ok := elem.(types.Object)
+		if !ok {
+			diags.Append(diag.NewErrorDiagnostic(
+				"Invalid radio table model",
+				"Error casting `radioTableModel` to `types.Object`",
+			))
+			continue
+		}
+		radio, fields, d := deviceRadioTableEncode(ctx, object)
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		out = append(out, declaredRadio{Radio: radio, Fields: fields})
+	}
+	return out, diags
+}
+
+// dedupeDeclaredRadios keeps one declared entry per radio name, the last one
+// wins. radio_table is a list, so two blocks can name the same radio; sending
+// both as one array would be ambiguous to a controller that keys on name.
+// An entry with no name (an unknown, dropped downstream) is left alone.
+func dedupeDeclaredRadios(declared []declaredRadio) []declaredRadio {
+	seen := make(map[string]int, len(declared))
+	out := make([]declaredRadio, 0, len(declared))
+	for _, d := range declared {
+		if d.Radio.Name == "" {
+			out = append(out, d)
+			continue
+		}
+		if at, duplicate := seen[d.Radio.Name]; duplicate {
+			out[at] = d
+			continue
+		}
+		seen[d.Radio.Name] = len(out)
+		out = append(out, d)
+	}
+	return out
+}
+
+// declaredRadiosWithFields drops entries that name no writable member, or no
+// radio at all: an unknown name lands here too, since deviceRadioTableEncode
+// clears Fields for it. Writing nothing is the correct answer for "manage this
+// radio, change nothing" under a merge, and it has to happen before grouping --
+// an empty mask is not a valid UpdateDeviceRadioTable call, it is a refused one.
+func declaredRadiosWithFields(declared []declaredRadio) []declaredRadio {
+	declared = dedupeDeclaredRadios(declared)
+	out := make([]declaredRadio, 0, len(declared))
+	for _, d := range declared {
+		if len(d.Fields) == 0 || d.Radio.Name == "" {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+// deviceReconcileRadioTable rebuilds radio_table state from the prior list, not
+// the controller's whole array: it keeps a radio unchanged unless the
+// practitioner declared it, and for a declared radio reconciles every modelled
+// member the practitioner set (non-null in prior) to the value the controller
+// reported, so drift surfaces on the next plan. It is keyed by name, the
+// controller's own radio key. It mirrors deviceReconcilePortOverrides, with two
+// differences the capture dictates: dfs is read back only to resolve an unset
+// Computed value, never over a set one (the controller discards a written dfs,
+// so reading it back would diff forever), and there is no whole-collection
+// carve-out like op_mode because radio_table carries no such default.
+func deviceReconcileRadioTable(
+	ctx context.Context,
+	prior types.List,
+	apiRadios []ui.DeviceRadioTable,
+) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	apiByName := make(map[string]ui.DeviceRadioTable, len(apiRadios))
+	for _, r := range apiRadios {
+		if r.Name != "" {
+			apiByName[r.Name] = r
+		}
+	}
+
+	var priorModels []radioTableModel
+	diags.Append(prior.ElementsAs(ctx, &priorModels, false)...)
+	if diags.HasError() {
+		return prior, diags
+	}
+
+	// A member the practitioner never declared stays as it was, so an
+	// Optional-only value the config left null does not gain one and diff
+	// forever. An Optional+Computed member left unset is Unknown rather than
+	// null, and reconcileX below reads the controller's value for it (Unknown
+	// is not null), which resolves the Computed without inventing drift.
+	reconcileString := func(prior types.String, v string) types.String {
+		if prior.IsNull() {
+			return prior
+		}
+		if v == "" {
+			return types.StringNull()
+		}
+		return types.StringValue(v)
+	}
+	reconcileBool := func(prior types.Bool, v bool) types.Bool {
+		if prior.IsNull() {
+			return prior
+		}
+		return types.BoolValue(v)
+	}
+	reconcileInt64 := func(prior types.Int64, v *int64) types.Int64 {
+		if prior.IsNull() {
+			return prior
+		}
+		return types.Int64PointerValue(v)
+	}
+
+	elements := make([]attr.Value, 0, len(priorModels))
+	for _, pm := range priorModels {
+		name := pm.Name.ValueString()
+		apiR, found := apiByName[name]
+		if !found {
+			// Radio not in the API response -- keep the prior value unchanged.
+			objVal, objDiags := types.ObjectValueFrom(ctx, radioTableAttrTypes(), pm)
+			diags.Append(objDiags...)
+			elements = append(elements, objVal)
+			continue
+		}
+
+		updated := pm
+
+		updated.Radio = reconcileString(pm.Radio, apiR.Radio)
+		updated.Channel = reconcileString(pm.Channel, apiR.Channel)
+		updated.TxPower = reconcileString(pm.TxPower, apiR.TxPower)
+		updated.TxPowerMode = reconcileString(pm.TxPowerMode, apiR.TxPowerMode)
+		updated.Name = reconcileString(pm.Name, apiR.Name)
+
+		updated.MinRssiEnabled = reconcileBool(pm.MinRssiEnabled, apiR.MinRssiEnabled)
+		updated.HardNoiseFloorEnabled = reconcileBool(pm.HardNoiseFloorEnabled, apiR.HardNoiseFloorEnabled)
+		updated.LoadbalanceEnabled = reconcileBool(pm.LoadbalanceEnabled, apiR.LoadbalanceEnabled)
+		updated.SensLevelEnabled = reconcileBool(pm.SensLevelEnabled, apiR.SensLevelEnabled)
+		updated.VwireEnabled = reconcileBool(pm.VwireEnabled, apiR.VwireEnabled)
+
+		updated.Ht = reconcileInt64(pm.Ht, apiR.Ht)
+		updated.MinRssi = reconcileInt64(pm.MinRssi, apiR.MinRssi)
+		updated.AntennaGain = reconcileInt64(pm.AntennaGain, apiR.AntennaGain)
+		updated.AntennaID = reconcileInt64(pm.AntennaID, apiR.AntennaID)
+		updated.Maxsta = reconcileInt64(pm.Maxsta, apiR.Maxsta)
+		updated.SensLevel = reconcileInt64(pm.SensLevel, apiR.SensLevel)
+
+		// dfs is discarded on write (behavior.json), so a value the practitioner
+		// set must not be overwritten by the controller's own -- that would diff
+		// forever. It is Optional+Computed, though, so an unset one is Unknown
+		// and has to resolve to a known value; take the controller's only then.
+		if pm.Dfs.IsUnknown() {
+			updated.Dfs = types.BoolValue(apiR.Dfs)
+		} else {
+			updated.Dfs = pm.Dfs
+		}
+
+		objVal, objDiags := types.ObjectValueFrom(ctx, radioTableAttrTypes(), updated)
+		diags.Append(objDiags...)
+		elements = append(elements, objVal)
+	}
+
+	if diags.HasError() {
+		return prior, diags
+	}
+
+	listValue, listDiags := types.ListValue(
+		types.ObjectType{AttrTypes: radioTableAttrTypes()},
+		elements,
+	)
+	diags.Append(listDiags...)
+	if diags.HasError() {
+		return prior, diags
+	}
+	return listValue, diags
+}
+
 // deviceKitSpec is the whole of unifi_device's behaviour.
 func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 	return resourcekit.Spec[deviceKitModel, ui.Device]{
@@ -949,66 +1307,6 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 				Wire:  "type",
 				Model: func(m *deviceKitModel) *types.String { return &m.Type },
 				SDK:   func(s *ui.Device) *string { return &s.Type },
-				Elide: resourcekit.KeepZero,
-			},
-			resourcekit.ObjectListField[deviceKitModel, ui.Device, ui.DeviceRadioTable]{
-				Wire:      "radio_table",
-				Model:     func(m *deviceKitModel) *types.List { return &m.RadioTable },
-				SDK:       func(s *ui.Device) *[]ui.DeviceRadioTable { return &s.RadioTable },
-				AttrTypes: radioTableAttrTypes(),
-				Encode: func(
-					ctx context.Context, object types.Object,
-				) (ui.DeviceRadioTable, diag.Diagnostics) {
-					var model radioTableModel
-					diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
-					if diags.HasError() {
-						return ui.DeviceRadioTable{}, diags
-					}
-					radio := ui.DeviceRadioTable{
-						Radio:                 model.Radio.ValueString(),
-						Channel:               model.Channel.ValueString(),
-						Ht:                    model.Ht.ValueInt64Pointer(),
-						TxPower:               model.TxPower.ValueString(),
-						TxPowerMode:           model.TxPowerMode.ValueString(),
-						MinRssiEnabled:        model.MinRssiEnabled.ValueBool(),
-						MinRssi:               model.MinRssi.ValueInt64Pointer(),
-						AntennaGain:           model.AntennaGain.ValueInt64Pointer(),
-						AntennaID:             model.AntennaID.ValueInt64Pointer(),
-						Dfs:                   model.Dfs.ValueBool(),
-						HardNoiseFloorEnabled: model.HardNoiseFloorEnabled.ValueBool(),
-						LoadbalanceEnabled:    model.LoadbalanceEnabled.ValueBool(),
-						Maxsta:                model.Maxsta.ValueInt64Pointer(),
-						Name:                  model.Name.ValueString(),
-						SensLevel:             model.SensLevel.ValueInt64Pointer(),
-						SensLevelEnabled:      model.SensLevelEnabled.ValueBool(),
-						VwireEnabled:          model.VwireEnabled.ValueBool(),
-					}
-					diags.Append(sanitizeRadioForUpdate(radio.Radio, &radio)...)
-					return radio, diags
-				},
-				Decode: func(
-					ctx context.Context, radio ui.DeviceRadioTable,
-				) (types.Object, diag.Diagnostics) {
-					return types.ObjectValueFrom(ctx, radioTableAttrTypes(), radioTableModel{
-						Radio:                 util.StringValueOrNull(radio.Radio),
-						Channel:               util.StringValueOrNull(radio.Channel),
-						Ht:                    types.Int64PointerValue(radio.Ht),
-						TxPower:               util.StringValueOrNull(radio.TxPower),
-						TxPowerMode:           util.StringValueOrNull(radio.TxPowerMode),
-						MinRssiEnabled:        types.BoolValue(radio.MinRssiEnabled),
-						MinRssi:               types.Int64PointerValue(radio.MinRssi),
-						AntennaGain:           types.Int64PointerValue(radio.AntennaGain),
-						AntennaID:             types.Int64PointerValue(radio.AntennaID),
-						Dfs:                   types.BoolValue(radio.Dfs),
-						HardNoiseFloorEnabled: types.BoolValue(radio.HardNoiseFloorEnabled),
-						LoadbalanceEnabled:    types.BoolValue(radio.LoadbalanceEnabled),
-						Maxsta:                types.Int64PointerValue(radio.Maxsta),
-						Name:                  util.StringValueOrNull(radio.Name),
-						SensLevel:             types.Int64PointerValue(radio.SensLevel),
-						SensLevelEnabled:      types.BoolValue(radio.SensLevelEnabled),
-						VwireEnabled:          types.BoolValue(radio.VwireEnabled),
-					})
-				},
 				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.ObjectListField[deviceKitModel, ui.Device, ui.DeviceOutletOverrides]{
@@ -1063,20 +1361,28 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 		// part of the general masked write at all, see deviceKitBeforeSend.
 		AlwaysWire: []string{"type"},
 
-		// port_overrides round-trips (deviceReconcilePortOverrides on read,
-		// updateDevicePortOverridesGrouped via deviceKitBeforeSend on write)
-		// without ever being a Fields entry or an AlwaysWire name, so it
-		// needs to be named here or TestEveryDescriptorAgreesWithItsSources
-		// reads it as a managed mapping.json field this descriptor drops.
-		MappedElsewhere: []string{"port_overrides"},
+		// port_overrides and radio_table round-trip (deviceReconcile* on read,
+		// updateDevice*Grouped via deviceKitBeforeSend on write) without ever
+		// being a Fields entry or an AlwaysWire name, so they need to be named
+		// here or TestEveryDescriptorAgreesWithItsSources reads them as managed
+		// mapping.json fields this descriptor drops. radio_table left the field
+		// list because its general masked write is a whole-array replace: the
+		// generated members are omitempty, so it drops both a member sitting at
+		// its zero value and the ones this client has no field for at all (nss,
+		// radio_caps, max_txpower), clobbering what the AP reports about its own
+		// hardware. UpdateDeviceRadioTable writes only the named members of the
+		// declared radios and merges the rest -- see deviceKitBeforeSend.
+		MappedElsewhere: []string{"port_overrides", "radio_table"},
 
-		// port_override is not a Field, so copyUncoveredPlanValues would copy
-		// the raw plan over it on create and update -- clobbering what
-		// deviceReconcilePortOverrides (AfterReceive) just rebuilt from the
-		// controller's answer. Marking it hook-owned keeps the reconcile as the
-		// sole authority for this attribute on every code path.
+		// port_override and radio_table are not Fields, so copyUncoveredPlanValues
+		// would copy the raw plan over them on create and update -- clobbering what
+		// deviceReconcilePortOverrides / deviceReconcileRadioTable (AfterReceive)
+		// just rebuilt from the controller's answer. Marking them hook-owned keeps
+		// the reconcile as the sole authority for these attributes on every code
+		// path.
 		HookOwned: []func(*deviceKitModel) any{
 			func(m *deviceKitModel) any { return &m.PortOverride },
+			func(m *deviceKitModel) any { return &m.RadioTable },
 		},
 
 		// A device is hardware. Destroying the resource releases it from state;
@@ -1115,4 +1421,19 @@ func devicePortOverrideElementType(ctx context.Context) attr.Type {
 	// Unreachable while the schema declares port_override as a set block; the
 	// test comparing against the served schema fails before this can matter.
 	return types.ObjectType{}
+}
+
+// deviceRadioTableElementType reads the element type off the served schema
+// rather than restating it, the same way devicePortOverrideElementType does --
+// radio_table is a list ATTRIBUTE, not a block, so it comes off Attributes.
+func deviceRadioTableElementType(ctx context.Context) attr.Type {
+	attribute := resource_device.DeviceResourceSchema(ctx).Attributes["radio_table"]
+	if attribute != nil {
+		if listType, ok := attribute.GetType().(basetypes.ListType); ok {
+			return listType.ElemType
+		}
+	}
+	// Unreachable while the schema declares radio_table as a list attribute;
+	// the test comparing against the served schema fails before this matters.
+	return types.ObjectType{AttrTypes: radioTableAttrTypes()}
 }

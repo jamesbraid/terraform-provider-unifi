@@ -2052,3 +2052,131 @@ func Test_deviceUpdate_computedMemberNullInConfigIsNotDeclared(t *testing.T) {
 			"from plan instead of config would have sent plan's false", got["autoneg"])
 	}
 }
+
+// TestAccDeviceFramework_radioTableMergePreservesUndeclared is the live proof
+// of the lossless radio_table write. It runs against the adopted access point
+// (UNIFI_ACC_AP_MAC), not the switch the other device acceptance tests use --
+// a switch has no radios, so the merge has nothing to operate on there.
+//
+// It seeds one radio with a member the config never names (maxsta), applies a
+// config that changes a different member of that radio (min_rssi), and checks,
+// by reading the device directly rather than through Terraform state, that the
+// declared write took effect while the seeded member survived. That is the
+// merge port_overrides does not do: radio_table keeps what a mask omits, so a
+// write naming only min_rssi must leave maxsta alone. A regression that resent
+// the whole array the way UpdateDevicePortOverrides does would wipe maxsta.
+//
+// The AP keeps informing after adoption, so both the seed and the assertion
+// poll until the controller reports the written value rather than reading once
+// -- the same settling the SDK's own integration test needs.
+func TestAccDeviceFramework_radioTableMergePreservesUndeclared(t *testing.T) {
+	mac := os.Getenv(acctestenv.EnvAccAPMAC)
+	if mac == "" {
+		t.Skipf("%s not set; skipping radio_table acceptance test (needs an adopted access point)",
+			acctestenv.EnvAccAPMAC)
+	}
+
+	client := testAccRawDeviceClient(t)
+	site := testAccDeviceSite()
+	ctx := context.Background()
+
+	// Find a radio the AP actually reports; the write is keyed by its name.
+	device, err := client.GetDeviceByMAC(ctx, site, mac)
+	if err != nil {
+		t.Fatalf("reading the AP: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Minute)
+	for len(device.RadioTable) == 0 && time.Now().Before(deadline) {
+		time.Sleep(3 * time.Second)
+		if device, err = client.GetDeviceByMAC(ctx, site, mac); err != nil {
+			t.Fatalf("re-reading the AP: %v", err)
+		}
+	}
+	var radioName string
+	for _, r := range device.RadioTable {
+		if r.Name != "" {
+			radioName = r.Name
+			break
+		}
+	}
+	if radioName == "" {
+		t.Skipf("the adopted AP %s reports no radio with a name, so the merge cannot be exercised "+
+			"(RADIO-ACCEPTANCE-BLOCKED-ON-HARNESS: needs a herded U7PRO/U6M reporting a named radio)", mac)
+	}
+
+	const seededMaxsta = 33
+	settled := func(want func(unifi.DeviceRadioTable) bool, what string) unifi.DeviceRadioTable {
+		t.Helper()
+		limit := time.Now().Add(90 * time.Second)
+		for {
+			d, err := client.GetDeviceByMAC(ctx, site, mac)
+			if err != nil {
+				t.Fatalf("reading the AP while waiting for %s: %v", what, err)
+			}
+			for _, r := range d.RadioTable {
+				if r.Name == radioName && want(r) {
+					return r
+				}
+			}
+			if time.Now().After(limit) {
+				t.Fatalf("radio %q never reported %s", radioName, what)
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
+
+	// Seed maxsta -- a member the config below never names -- and wait for it.
+	if _, err := client.UpdateDeviceRadioTable(ctx, site, device,
+		[]unifi.DeviceRadioTable{{Name: radioName, Maxsta: ptrInt64(seededMaxsta)}}, "maxsta"); err != nil {
+		t.Fatalf("seeding maxsta on %q: %v", radioName, err)
+	}
+	settled(func(r unifi.DeviceRadioTable) bool { return r.Maxsta != nil && *r.Maxsta == seededMaxsta },
+		fmt.Sprintf("maxsta=%d", seededMaxsta))
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDeviceFrameworkConfig_radioTable(mac, radioName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_device.test", "id"),
+					resource.TestCheckResourceAttr("unifi_device.test", "radio_table.#", "1"),
+					func(*terraform.State) error {
+						after := settled(
+							func(r unifi.DeviceRadioTable) bool { return r.MinRssiEnabled && r.MinRssi != nil && *r.MinRssi == -78 },
+							"min_rssi=-78",
+						)
+						if after.Maxsta == nil || *after.Maxsta != seededMaxsta {
+							return fmt.Errorf("radio %q maxsta = %v, want %d -- the member the config did "+
+								"not name must survive the min_rssi write (the merge, not a whole-array replace)",
+								radioName, after.Maxsta, seededMaxsta)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func testAccDeviceFrameworkConfig_radioTable(mac, radioName string) string {
+	// radio_table is a ListNestedAttribute, not a block, so it takes list
+	// assignment syntax rather than repeated blocks.
+	return fmt.Sprintf(`
+resource "unifi_device" "test" {
+	mac  = %q
+	name = "Test AP"
+	allow_adoption = true
+	forget_on_destroy = false
+
+	radio_table = [
+		{
+			name             = %q
+			min_rssi_enabled = true
+			min_rssi         = -78
+		},
+	]
+}
+`, mac, radioName)
+}
