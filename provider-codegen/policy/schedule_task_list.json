@@ -3,7 +3,7 @@
   "surface_kind": "list_resource",
   "resource": "unifi_schedule_task",
   "generator_name": "schedule_task",
-  "source_specification_sha256": "c753c7f5576d55122f3d1329f036ec99a9c7100a6dee7a5af86b5735d0133545",
+  "source_specification_sha256": "ba88fff352e02887f0239f3673f484a945c4a4a56cac778ca839205d35ae8104",
   "description": "List scheduled tasks in a site.",
   "fields": [],
   "omitted": [

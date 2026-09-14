@@ -2,9 +2,9 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.113.1-0.20260914003144-121ee9ac6a37",
-    "commit": "121ee9ac6a37d721d33d4892b87802137b723647",
-    "specification_sha256": "1ed9dc0db5148ec4c780b2673c68836e3443687e4d6b29f6f3641dbcf568c010"
+    "version": "v1.113.1-0.20260914070148-cf82bcd9ac5b",
+    "commit": "cf82bcd9ac5b6780a311220c2349db886a28074d",
+    "specification_sha256": "91a97175de844e2e3b1176ea597a1758c26e28a864325e5eb9813878a609b37a"
   },
   "behavior": {
     "controller_version": "10.6.101",
@@ -163,12 +163,26 @@
       }
     },
     "discarded": {
+      "APGroup": [],
+      "Account": [],
+      "ChannelPlan": [],
+      "ClientGroup": [],
+      "DHCPOption": [],
       "DNSRecord": [],
+      "Device": [
+        "lcm_brightness"
+      ],
       "DevicePortOverrides": [],
       "DeviceRadioTable": [
         "dfs"
       ],
+      "DpiApp": [],
+      "DpiGroup": [],
+      "DynamicDNS": [],
       "FirewallGroup": [],
+      "FirewallRule": [],
+      "Hotspot2Conf": [],
+      "HotspotOp": [],
       "HotspotPackage": [],
       "Network": [
         "dhcpd_dns_enabled",
@@ -180,19 +194,225 @@
         "igmp_snooping",
         "upnp_lan_enabled"
       ],
+      "NetworkMembersGroup": [],
       "PortForward": [],
-      "TrafficRoute": []
+      "PortProfile": [
+        "excluded_networkconf_ids",
+        "fec_mode"
+      ],
+      "RADIUSProfile": [],
+      "Routing": [],
+      "ScheduleTask": [],
+      "SpatialRecord": [],
+      "TrafficRoute": [],
+      "WLANGroup": []
     },
     "empty": {
+      "DevicePortOverrides": {
+        "autoneg": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "isolation": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "name": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "poe_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "stp_port_mode": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        }
+      },
       "DeviceRadioTable": {
         "tx_power_mode": {
           "empty": "EMPTY-REJECTED",
           "omit": "OMIT-KEEPS"
         }
       },
+      "SettingDashboard": {
+        "layout_preference": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "SettingMgmt": {
+        "x_ssh_password": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_ssh_username": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "account": {
+        "ip": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "tunnel_config_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "tunnel_medium_type": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "tunnel_type": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "ulp_user_id": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "vlan": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_password": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "apgroups": {
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        }
+      },
+      "bgp/config": {
+        "description": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        }
+      },
+      "channelplan": {
+        "date": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "dashboard": {
+        "layout_preference": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
       "device": {
+        "led_override": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REPLACED-Gateway Enterprise",
+          "omit": "OMIT-KEEPS"
+        },
         "radio_table": {
           "empty": "EMPTY-IGNORED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "dhcpoption": {
+        "code": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "width": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "dpiapp": {
+        "apps": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "blocked": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "cats": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "log": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "qos_rate_max_down": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "qos_rate_max_up": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "dpigroup": {
+        "dpiapp_ids": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "enabled": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "dynamicdns": {
+        "host_name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "interface": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "login": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "options": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "server": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "service": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_password": {
+          "empty": "EMPTY-REJECTED",
           "omit": "OMIT-KEEPS"
         }
       },
@@ -214,6 +434,68 @@
           "omit": "OMIT-KEEPS"
         },
         "source": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "firewallrule": {
+        "dst_port": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "src_address": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "hotspot2conf": {
+        "domain_name_list": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "hessid": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "network_access_internet": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "network_auth_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "network_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "venue_group": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "venue_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "hotspotop": {
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "note": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_password": {
           "empty": "EMPTY-REJECTED",
           "omit": "OMIT-KEEPS"
         }
@@ -244,6 +526,12 @@
         "ip_address": {
           "empty": "EMPTY-REJECTED",
           "omit": "OMIT-CLEARS"
+        }
+      },
+      "network-members-group": {
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
         }
       },
       "networkconf": {
@@ -321,6 +609,10 @@
         }
       },
       "portconf": {
+        "dot1x_ctrl": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
         "forward": {
           "empty": "EMPTY-REJECTED",
           "omit": "OMIT-KEEPS"
@@ -396,6 +688,98 @@
           "omit": "OMIT-KEEPS"
         }
       },
+      "radiusprofile": {
+        "acct_servers": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "acct_servers.ip": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "acct_servers.x_secret": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "auth_servers": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "auth_servers.ip": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "auth_servers.x_secret": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "interim_update_interval": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "vlan_wlan_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_ca_crts": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_client_crt": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_client_crt_filename": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_client_private_key": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_client_private_key_filename": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "x_client_private_key_password": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "routing": {
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "static-route_distance": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "scheduletask": {
+        "cron_expr": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "name": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "spatialrecord": {
+        "devices": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
       "static-dns": {
         "enabled": {
           "empty": "EMPTY-CLEARS",
@@ -438,6 +822,34 @@
         "next_hop": {
           "empty": "EMPTY-CLEARS",
           "omit": "OMIT-CLEARS"
+        }
+      },
+      "user": {
+        "name": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "network_id": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "note": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "usergroup": {
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "qos_rate_max_down": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "qos_rate_max_up": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
         }
       },
       "wlanconf": {
@@ -497,6 +909,12 @@
           "empty": "EMPTY-REJECTED",
           "omit": "OMIT-KEEPS"
         }
+      },
+      "wlangroup": {
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
       }
     },
     "coercions": {
@@ -504,6 +922,62 @@
       "SettingUsg": {}
     },
     "writes": {
+      "APGroup": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/apgroups",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/apgroups/{id}",
+        "required_on_create": [
+          "device_macs",
+          "name"
+        ]
+      },
+      "Account": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/account",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/account/{id}"
+      },
+      "BGPConfig": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/bgp/config",
+        "update_verb": "POST",
+        "update_path": "v2/api/site/{site}/bgp/config",
+        "required_on_create": [
+          "frr_bgpd_config",
+          "uploaded_file_name"
+        ]
+      },
+      "ChannelPlan": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/channelplan",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/channelplan/{id}"
+      },
+      "Client": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/user",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/user/{id}",
+        "required_on_create": [
+          "mac"
+        ],
+        "required_on_create_when": {
+          "local_dns_record_enabled=true": [
+            "local_dns_record",
+            "use_fixedip"
+          ],
+          "use_fixedip=true": [
+            "fixed_ip"
+          ]
+        }
+      },
+      "ClientGroup": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/usergroup",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/usergroup/{id}"
+      },
       "ContentFiltering": {
         "create_verb": "POST",
         "create_path": "v2/api/site/{site}/content-filtering/create",
@@ -513,6 +987,15 @@
           "categories",
           "name",
           "schedule"
+        ]
+      },
+      "DHCPOption": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/dhcpoption",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/dhcpoption/{id}",
+        "required_on_create": [
+          "type"
         ]
       },
       "DNSRecord": {
@@ -526,6 +1009,18 @@
           "value"
         ]
       },
+      "Device": {
+        "create_verb": "",
+        "create_path": "",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/device/{id}"
+      },
+      "DevicePortOverrides": {
+        "create_verb": "",
+        "create_path": "",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/device/{id}"
+      },
       "DeviceRadioTable": {
         "create_verb": "",
         "create_path": "",
@@ -534,6 +1029,29 @@
         "required_on_update": [
           "name"
         ]
+      },
+      "DpiApp": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/dpiapp",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/dpiapp/{id}"
+      },
+      "DpiGroup": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/dpigroup",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/dpigroup/{id}"
+      },
+      "DynamicDNS": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/dynamicdns",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/dynamicdns/{id}",
+        "required_on_create_when": {
+          "service=custom": [
+            "server"
+          ]
+        }
       },
       "FirewallGroup": {
         "create_verb": "POST",
@@ -555,6 +1073,35 @@
           "source.zone_id"
         ]
       },
+      "FirewallRule": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/firewallrule",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/firewallrule/{id}",
+        "required_on_create": [
+          "action",
+          "rule_index",
+          "ruleset"
+        ]
+      },
+      "FirewallZone": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/firewall/zone",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/firewall/zone/{id}"
+      },
+      "Hotspot2Conf": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/hotspot2conf",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/hotspot2conf/{id}"
+      },
+      "HotspotOp": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/hotspotop",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/hotspotop/{id}"
+      },
       "HotspotPackage": {
         "create_verb": "POST",
         "create_path": "api/s/{site}/rest/hotspotpackage",
@@ -573,6 +1120,63 @@
           "destination_filter",
           "protocol",
           "source_filter"
+        ]
+      },
+      "Network": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/networkconf",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/networkconf/{id}",
+        "required_on_create_when": {
+          "purpose=corporate": [
+            "vlan",
+            "vlan_enabled"
+          ],
+          "purpose=guest": [
+            "vlan",
+            "vlan_enabled"
+          ],
+          "purpose=remote-user-vpn,vpn_type=openvpn-server": [
+            "local_port",
+            "radiusprofile_id",
+            "vpn_type"
+          ],
+          "purpose=site-vpn,vpn_type=ipsec-vpn": [
+            "ipsec_interface",
+            "ipsec_peer_ip",
+            "remote_vpn_subnets",
+            "vpn_type",
+            "x_ipsec_pre_shared_key"
+          ],
+          "purpose=vlan-only": [
+            "vlan",
+            "vlan_enabled"
+          ],
+          "purpose=vpn-client,vpn_type=wireguard-client": [
+            "dhcpd_dns_1",
+            "ip_subnet",
+            "wireguard_client_peer_ip",
+            "wireguard_client_peer_port",
+            "wireguard_client_peer_public_key",
+            "x_wireguard_private_key"
+          ],
+          "purpose=wan": []
+        }
+      },
+      "NetworkMembersGroup": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/network-members-group",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/network-members-group/{id}",
+        "required_on_create": [
+          "members",
+          "name",
+          "type"
+        ],
+        "required_on_update": [
+          "members",
+          "name",
+          "type"
         ]
       },
       "OSPFRouter": {
@@ -595,6 +1199,81 @@
         "update_verb": "PUT",
         "update_path": "api/s/{site}/rest/portforward/{id}"
       },
+      "PortProfile": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/portconf",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/portconf/{id}"
+      },
+      "RADIUSProfile": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/radiusprofile",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/radiusprofile/{id}",
+        "required_on_create": [
+          "acct_servers.ip",
+          "acct_servers.x_secret",
+          "auth_servers.ip",
+          "auth_servers.x_secret"
+        ]
+      },
+      "Routing": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/routing",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/routing/{id}",
+        "required_on_create": [
+          "static-route_network",
+          "static-route_type",
+          "type"
+        ],
+        "required_on_create_when": {
+          "static-route_type=blackhole": null,
+          "static-route_type=interface-route": [
+            "static-route_interface"
+          ],
+          "static-route_type=nexthop-route": [
+            "static-route_nexthop"
+          ]
+        }
+      },
+      "ScheduleTask": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/scheduletask",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/scheduletask/{id}",
+        "required_on_create": [
+          "action",
+          "cron_expr"
+        ]
+      },
+      "SettingDashboard": {
+        "create_verb": "",
+        "create_path": "",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/set/setting/dashboard"
+      },
+      "SettingMgmt": {
+        "create_verb": "",
+        "create_path": "",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/set/setting/mgmt"
+      },
+      "SpatialRecord": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/spatialrecord",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/spatialrecord/{id}",
+        "required_on_create": [
+          "devices",
+          "devices.mac",
+          "devices.position",
+          "devices.position.x",
+          "devices.position.y",
+          "devices.position.z",
+          "name"
+        ]
+      },
       "TrafficRoute": {
         "create_verb": "POST",
         "create_path": "v2/api/site/{site}/trafficroutes",
@@ -610,6 +1289,43 @@
           "network_id",
           "target_devices"
         ]
+      },
+      "WLAN": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/wlanconf",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/wlanconf/{id}",
+        "required_on_create": [
+          "ap_group_ids"
+        ],
+        "required_on_create_when": {
+          "security=open": [
+            "ap_group_ids"
+          ],
+          "security=osen": [
+            "ap_group_ids",
+            "radiusprofile_id"
+          ],
+          "security=wep": [
+            "ap_group_ids"
+          ],
+          "security=wpaeap": [
+            "ap_group_ids",
+            "radiusprofile_id"
+          ],
+          "security=wpapsk": [
+            "ap_group_ids"
+          ]
+        },
+        "min_items": {
+          "ap_group_ids": 1
+        }
+      },
+      "WLANGroup": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/wlangroup",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/wlangroup/{id}"
       }
     },
     "rejected_creates": {
