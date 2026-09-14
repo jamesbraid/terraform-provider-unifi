@@ -159,8 +159,7 @@
         "device_macs": {
           "kind": "attribute",
           "type": "[\"set\",\"string\"]",
-          "optional": true,
-          "computed": true,
+          "required": true,
           "description": "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
           "description_kind": "plain",
           "plan_modifiers": [
@@ -268,8 +267,7 @@
         "config": {
           "kind": "attribute",
           "type": "\"string\"",
-          "optional": true,
-          "computed": true,
+          "required": true,
           "description": "The raw FRRouting BGP daemon configuration. Conflicts with `asn`, `router_id`, and `peers`.",
           "description_kind": "markdown",
           "validators": [
@@ -417,8 +415,7 @@
         "upload_file_name": {
           "kind": "attribute",
           "type": "\"string\"",
-          "optional": true,
-          "computed": true,
+          "required": true,
           "description": "The name of the uploaded configuration file.",
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to frr.conf",
@@ -7216,8 +7213,7 @@
         "action": {
           "kind": "attribute",
           "type": "\"string\"",
-          "optional": true,
-          "computed": true,
+          "required": true,
           "description": "The action the task performs. The controller only schedules firmware upgrades, so `upgrade` is the sole value.",
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to upgrade",
@@ -12933,12 +12929,14 @@
         "ap_group_ids": {
           "kind": "attribute",
           "type": "[\"set\",\"string\"]",
-          "optional": true,
-          "computed": true,
+          "required": true,
           "description": "List of AP group IDs to apply this WLAN to.",
           "description_kind": "markdown",
           "plan_modifiers": [
             "setplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
+          "validators": [
+            "setvalidator.sizeAtLeastValidator: set must contain at least 1 elements"
           ]
         },
         "ap_group_mode": {

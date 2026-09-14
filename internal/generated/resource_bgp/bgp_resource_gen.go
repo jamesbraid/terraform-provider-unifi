@@ -32,8 +32,7 @@ func BgpResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"config": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
+				Required:            true,
 				Description:         "The raw FRRouting BGP daemon configuration. Conflicts with `asn`, `router_id`, and `peers`.",
 				MarkdownDescription: "The raw FRRouting BGP daemon configuration. Conflicts with `asn`, `router_id`, and `peers`.",
 				Validators: []validator.String{
@@ -117,8 +116,7 @@ func BgpResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"upload_file_name": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
+				Required:            true,
 				Description:         "The name of the uploaded configuration file.",
 				MarkdownDescription: "The name of the uploaded configuration file.",
 				Validators: []validator.String{

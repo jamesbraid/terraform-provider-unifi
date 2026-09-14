@@ -22,8 +22,7 @@ func ApGroupResourceSchema(ctx context.Context) schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"device_macs": schema.SetAttribute{
 				ElementType:         hwtypes.MACAddressType{},
-				Optional:            true,
-				Computed:            true,
+				Required:            true,
 				Description:         "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
 				MarkdownDescription: "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
 				PlanModifiers: []planmodifier.Set{

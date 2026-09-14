@@ -36,12 +36,14 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"ap_group_ids": schema.SetAttribute{
 				ElementType:         types.StringType,
-				Optional:            true,
-				Computed:            true,
+				Required:            true,
 				Description:         "List of AP group IDs to apply this WLAN to.",
 				MarkdownDescription: "List of AP group IDs to apply this WLAN to.",
 				PlanModifiers: []planmodifier.Set{
 					setplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
 				},
 			},
 			"ap_group_mode": schema.StringAttribute{
