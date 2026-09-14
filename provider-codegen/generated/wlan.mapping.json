@@ -18,7 +18,8 @@
       "terraform_name": "ap_group_ids",
       "structural_type": "array<string>",
       "terraform_type": "set",
-      "disposition": "managed"
+      "disposition": "managed",
+      "provider_fills_required_wire": true
     },
     {
       "structural_name": "ap_group_mode",

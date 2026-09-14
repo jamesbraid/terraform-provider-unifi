@@ -1,4 +1,14 @@
 {
+  "provider_filled_wires": [
+    {
+      "structural_name": "frr_bgpd_config",
+      "reason": "The controller refuses a create without frr_bgpd_config, but the provider supplies it: bgp_descriptor.go lists frr_bgpd_config in AlwaysWire and bgpBeforeSend renders it from asn/router_id/peers (via renderFRRConfig) whenever the structured attributes are in use, so a config using those may omit config and the attribute stays Optional+Computed."
+    },
+    {
+      "structural_name": "uploaded_file_name",
+      "reason": "The controller refuses a create without uploaded_file_name, but the provider supplies it: policy declares a static schema default of \"frr.conf\" for upload_file_name, which the framework fills whenever a config omits it, so the attribute stays Optional+Computed rather than forced Required."
+    }
+  ],
   "description": "Manages BGP configuration for the UniFi Controller. Configuration can be provided either as a raw FRR config string via `config`, or via structured attributes (`asn`, `router_id`, `peers`) which render a config from a template.",
   "fields": [
     {

@@ -100,7 +100,14 @@ func radiusProfileKitSpec() resourcekit.Spec[radiusProfileKitModel, ui.RADIUSPro
 				Decode: func(_ context.Context, e ui.RADIUSProfileAcctServers) (types.Object, diag.Diagnostics) {
 					return radiusServerObject(e.IP, e.Port, e.Secret)
 				},
-				Elide: resourcekit.NullZero,
+				// x_secret is modelled -- Encode above sets it from the
+				// object's "secret" attribute -- just under the renamed
+				// Terraform key this file's header comment explains. The
+				// completeness check matches AttrTypes keys against wire
+				// names, so a rename reads as unmodelled; named here to
+				// record that, not because the zero value ever ships.
+				Unmodelled: []string{"x_secret"},
+				Elide:      resourcekit.NullZero,
 			},
 			resourcekit.ObjectListField[radiusProfileKitModel, ui.RADIUSProfile, ui.RADIUSProfileAuthServers]{
 				Wire:      "auth_servers",
@@ -114,7 +121,10 @@ func radiusProfileKitSpec() resourcekit.Spec[radiusProfileKitModel, ui.RADIUSPro
 				Decode: func(_ context.Context, e ui.RADIUSProfileAuthServers) (types.Object, diag.Diagnostics) {
 					return radiusServerObject(e.IP, e.Port, e.Secret)
 				},
-				Elide: resourcekit.NullZero,
+				// Same rename as acct_servers above: x_secret is modelled as
+				// "secret", not unmodelled.
+				Unmodelled: []string{"x_secret"},
+				Elide:      resourcekit.NullZero,
 			},
 		}),
 		// Seeded here as well as in radiusProfileKitBackend, because Configure binds

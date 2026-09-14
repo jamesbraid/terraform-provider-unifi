@@ -38,7 +38,7 @@ func scheduleTaskGenFields() []resourcekit.Field[scheduleTaskKitModel, ui.Schedu
 			Wire:  "action",
 			Model: func(m *scheduleTaskKitModel) *types.String { return &m.Action },
 			SDK:   func(s *ui.ScheduleTask) *string { return &s.Action },
-			Elide: resourcekit.KeepZero,
+			Elide: resourcekit.NullZero,
 		},
 		resourcekit.StringField[scheduleTaskKitModel, ui.ScheduleTask]{
 			Wire:  "cron_expr",

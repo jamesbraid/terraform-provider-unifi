@@ -19,7 +19,8 @@ func ScheduleTaskResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"action": schema.StringAttribute{
-				Required:            true,
+				Optional:            true,
+				Computed:            true,
 				Description:         "The action the task performs. The controller only schedules firmware upgrades, so `upgrade` is the sole value.",
 				MarkdownDescription: "The action the task performs. The controller only schedules firmware upgrades, so `upgrade` is the sole value.",
 				Validators: []validator.String{
