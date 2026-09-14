@@ -50,6 +50,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("client_qos_rate", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := contentFilteringKitBackend(api)
+		record("content_filtering", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := deviceKitBackend(api)
 		record("device", backend.Create != nil, backend.CreateFields != nil)
 	}

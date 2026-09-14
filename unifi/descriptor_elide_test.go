@@ -12,6 +12,7 @@ import (
 	resource_bgp "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_bgp"
 	resource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client"
 	resource_client_qos_rate "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
+	resource_content_filtering "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_content_filtering"
 	resource_device "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_device"
 	resource_dhcp_option "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dhcp_option"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
@@ -335,6 +336,19 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				ospfRouterKitSpec(), resource_ospf_router.OspfRouterResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		// content_filtering carries schedule, a single_nested object whose
+		// only member (mode) the SDK emits with omitempty, so there is no
+		// force-emitted member for NestedProblems to catch.
+		"content_filtering": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(contentFilteringKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				contentFilteringKitSpec(), resource_content_filtering.ContentFilteringResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

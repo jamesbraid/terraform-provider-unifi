@@ -19,6 +19,7 @@ unifi_client.blocked
 unifi_client.skip_forget_on_destroy
 unifi_client_qos_rate.qos_rate_max_down
 unifi_client_qos_rate.qos_rate_max_up
+unifi_content_filtering.enabled
 unifi_device.allow_adoption
 unifi_device.forget_on_destroy
 unifi_device.port_override.op_mode
