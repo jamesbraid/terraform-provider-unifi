@@ -54,22 +54,16 @@ var knownOmitZeroGaps = map[string]string{
 	"radius_profile.auth_servers.port": `same as radius_profile.acct_servers.port -- both server ` +
 		`blocks share radiusServerParts, so the fix and the reason are identical; pinned because the ` +
 		`structural walk cannot see the closure.`,
-	"device.radio_table.ht": `Optional+Computed with a OneOf(20,40,...) validator that rejects 0, ` +
-		`but Computed means an omitted value is Unknown on write and a validator does not run on ` +
-		`Unknown, so ValueInt64Pointer sends 0. sanitizeRadioForUpdate (run inside the radio_table ` +
-		`Encode) now drops an ht that is not one of the controller's channel widths -- the ` +
-		`unknown-sentinel 0 among them -- so no 0 reaches the wire (see TestSanitizeRadioForUpdate). ` +
-		`The structural walk still reports it because it reflects DeviceRadioTable, not the closure.`,
-	"device.radio_table.maxsta": `already handled: sanitizeRadioForUpdate nils maxsta unless it is ` +
-		`in [1,200], so the unknown-sentinel 0 is dropped before the wire (see ` +
-		`TestSanitizeRadioForUpdate). Pinned because this structural walk reflects DeviceRadioTable, ` +
-		`not the Encode closure that sanitizes it.`,
-	"device.radio_table.min_rssi": `already handled: sanitizeRadioForUpdate nils min_rssi unless ` +
-		`enabled and in [-90,-67], so the unknown-sentinel 0 is dropped before the wire (see ` +
-		`TestSanitizeRadioForUpdate). Pinned as for device.radio_table.maxsta.`,
-	"device.radio_table.sens_level": `already handled: sanitizeRadioForUpdate nils sens_level unless ` +
-		`enabled and in [-90,-50], so the unknown-sentinel 0 is dropped before the wire (see ` +
-		`TestSanitizeRadioForUpdate). Pinned as for device.radio_table.maxsta.`,
+	// device.radio_table.{ht,maxsta,min_rssi,sens_level} used to be pinned here:
+	// the structural walk descends into ObjectListField element types, and
+	// radio_table was one. It no longer is -- radio_table left the field list to
+	// be written by the merge method UpdateDeviceRadioTable (deviceKitBeforeSend),
+	// keyed and masked by member -- so the walk cannot reach DeviceRadioTable
+	// through the device surface and stops producing those hits. The
+	// unknown-sentinel zero those pins tracked is now dropped twice over: the
+	// presence mask (deviceRadioTableDeclaredFields) drops an Unknown member
+	// before it can be named, and sanitizeRadioForUpdate still runs inside
+	// deviceRadioTableEncode as the pre-write guard (see TestSanitizeRadioForUpdate).
 	"nat.destination_filter.port": `redundant, the dns_record.port case one level down: the nested ` +
 		`port is Optional-only (not Computed), so an omitted one is null -- never Unknown -- and its ` +
 		`ValueInt64Pointer encode drops it; an explicit 0 fails the schema's ` +
