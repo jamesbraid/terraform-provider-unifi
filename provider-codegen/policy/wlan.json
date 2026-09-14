@@ -1,4 +1,10 @@
 {
+  "provider_filled_wires": [
+    {
+      "structural_name": "ap_group_ids",
+      "reason": "The controller refuses a create without ap_group_ids, but the provider supplies it in the common case: wlan_descriptor.go's wlanBeforeSend fills it (from the prefetched AP group inventory, preferring the \"default\" group) whenever ap_group_mode is \"all\" and create leaves it empty -- UDM SE requires the wire even in \"all\" mode -- so a config using ap_group_mode = \"all\" may omit ap_group_ids and the attribute stays Optional+Computed. A config using ap_group_mode = \"custom\" still has to set it themselves; the fallback only covers \"all\"."
+    }
+  ],
   "description": "Manages a WiFi network / SSID in UniFi Controller",
   "fields": [
     {

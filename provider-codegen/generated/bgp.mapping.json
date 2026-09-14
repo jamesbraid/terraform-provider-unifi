@@ -31,14 +31,16 @@
       "terraform_name": "config",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "provider_fills_required_wire": true
     },
     {
       "structural_name": "uploaded_file_name",
       "terraform_name": "upload_file_name",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "provider_fills_required_wire": true
     }
   ],
   "provider_owned": [

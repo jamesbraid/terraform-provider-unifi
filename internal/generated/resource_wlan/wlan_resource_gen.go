@@ -36,7 +36,8 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"ap_group_ids": schema.SetAttribute{
 				ElementType:         types.StringType,
-				Required:            true,
+				Optional:            true,
+				Computed:            true,
 				Description:         "List of AP group IDs to apply this WLAN to.",
 				MarkdownDescription: "List of AP group IDs to apply this WLAN to.",
 				PlanModifiers: []planmodifier.Set{

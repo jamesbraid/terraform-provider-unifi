@@ -1,4 +1,10 @@
 {
+  "provider_filled_wires": [
+    {
+      "structural_name": "action",
+      "reason": "The controller refuses a create without action, but the provider supplies it: policy declares a static schema default of \"upgrade\" -- the sole action the controller schedules -- which the framework fills whenever a config omits it, so the attribute stays Optional+Computed rather than forced Required."
+    }
+  ],
   "format_version": 1,
   "surface_kind": "managed_resource",
   "resource": "unifi_schedule_task",
