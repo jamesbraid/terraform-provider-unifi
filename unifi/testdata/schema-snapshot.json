@@ -822,6 +822,154 @@
         }
       }
     },
+    "unifi_content_filtering": {
+      "version": 0,
+      "description": "Manages a content filtering policy: a set of blocked categories, allow/block lists, the clients and networks it applies to, and a schedule for when it is active.",
+      "description_kind": "markdown",
+      "attributes": {
+        "allow_list": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "description": "Domains the policy always allows, regardless of the blocked categories.",
+          "description_kind": "markdown"
+        },
+        "block_list": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "description": "Domains the policy always blocks, in addition to the blocked categories.",
+          "description_kind": "markdown"
+        },
+        "categories": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "required": true,
+          "description": "The content categories the policy blocks. The controller requires this on every create.",
+          "description_kind": "markdown"
+        },
+        "client_macs": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "description": "MAC addresses of the clients the policy applies to.",
+          "description_kind": "markdown"
+        },
+        "enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Whether the policy is enabled.",
+          "description_kind": "markdown",
+          "default": "booldefault.staticBoolDefault: value defaults to true"
+        },
+        "id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "computed": true,
+          "description": "The ID of the content filtering policy.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "The name of the content filtering policy. The controller requires this on every create.",
+          "description_kind": "markdown"
+        },
+        "network_ids": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "description": "IDs of the `unifi_network`s the policy applies to.",
+          "description_kind": "markdown"
+        },
+        "safe_search": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "description": "Safe-search providers the policy enforces.",
+          "description_kind": "markdown"
+        },
+        "schedule": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "required": true,
+          "description": "When the policy is active. The controller requires this on every create.",
+          "description_kind": "markdown"
+        },
+        "schedule.mode": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "The content filtering schedule's mode.",
+          "description_kind": "markdown"
+        },
+        "site": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The name of the site to associate the content filtering policy with.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource.",
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "timeouts": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "description_kind": "plain",
+          "custom_type": "timeouts.Type: \u003ccarries no description\u003e"
+        },
+        "timeouts.create": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.delete": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.read": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        },
+        "timeouts.update": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours).",
+          "description_kind": "plain",
+          "validators": [
+            "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+          ]
+        }
+      }
+    },
     "unifi_device": {
       "version": 3,
       "description": "`unifi_device` manages a device of the network.\n\nDevices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.",

@@ -8,6 +8,7 @@ import (
 	resource_bgp "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_bgp"
 	resource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client"
 	resource_client_qos_rate "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
+	resource_content_filtering "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_content_filtering"
 	resource_device "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_device"
 	resource_dhcp_option "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dhcp_option"
 	resource_dns_record "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
@@ -120,6 +121,11 @@ var surfaces = []surface{
 	{name: "wlan", schema: resource_wlan.WlanResourceSchema, handModel: true},
 	{name: "bgp", schema: resource_bgp.BgpResourceSchema},
 	{name: "client_qos_rate", schema: resource_client_qos_rate.ClientQosRateResourceSchema},
+	// content_filtering: schedule is a plain single_nested object with no
+	// injected secret, so the emitter writes its model and attr-type map and
+	// the hand descriptor lays an ObjectField encode/decode over it, like
+	// ospf_router's areas and interfaces one nesting level up.
+	{name: "content_filtering", schema: resource_content_filtering.ContentFilteringResourceSchema},
 	{name: "dhcp_option", schema: resource_dhcp_option.DhcpOptionResourceSchema, crud: true, subject: "DHCP Option"},
 	{name: "dns_record", schema: resource_dns_record.DnsRecordResourceSchema},
 	{name: "dpi_app", schema: resource_dpi_app.DpiAppResourceSchema, crud: true, subject: "DPI Application"},

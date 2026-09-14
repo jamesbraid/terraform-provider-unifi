@@ -285,6 +285,7 @@ func (p *unifiProvider) Resources(ctx context.Context) []func() resource.Resourc
 		NewDeprecatedAccountResource,
 		NewAPGroupResource,
 		NewBGPResource,
+		NewContentFilteringResource,
 		NewDeviceFrameworkResource,
 		NewDHCPOptionResource,
 		NewDpiAppResource,

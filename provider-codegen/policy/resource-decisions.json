@@ -51,6 +51,11 @@
       },
       "schema_version": 0
     },
+    "unifi_content_filtering": {
+      "sdk_type": "ContentFiltering",
+      "duration_units": {},
+      "schema_version": 0
+    },
     "unifi_device": {
       "sdk_type": "Device",
       "list": {

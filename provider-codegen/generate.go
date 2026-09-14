@@ -274,6 +274,11 @@ package providercodegen
 //go:generate go tool tfplugingen-framework generate resources --input generated/ospf_router.provider-code-spec.json --output ../internal/generated/resource_ospf_router --package resource_ospf_router
 //go:generate gofmt -w ../internal/generated/resource_ospf_router/ospf_router_resource_gen.go
 
+//go:generate sdkbootstrap -struct ContentFiltering -resource unifi_content_filtering -output bootstrap/go-unifi-v1.103.0-content-filtering.json
+//go:generate speccompile -bootstrap bootstrap/go-unifi-v1.103.0-content-filtering.json -policy policy/content_filtering.json -artifact-prefix content_filtering -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/content_filtering.provider-code-spec.json --output ../internal/generated/resource_content_filtering --package resource_content_filtering
+//go:generate gofmt -w ../internal/generated/resource_content_filtering/content_filtering_resource_gen.go
+
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated
