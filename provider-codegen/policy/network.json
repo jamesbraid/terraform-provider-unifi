@@ -178,18 +178,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
-                }
-              ],
-              "schema_definition": "validators.DomainNameValidator()"
-            }
-          }
         ]
       },
       "disposition": "managed",

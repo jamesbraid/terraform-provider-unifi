@@ -409,14 +409,14 @@ func TestCompileRefusesAPatternControllerregexCannotCompile(t *testing.T) {
 // TestCompileSkipsAnUncompilablePatternAlreadyCoveredByAHandValidator is the
 // uncompilable-pattern path's other half: when the field already carries a
 // hand validator, an uncompilable pattern is skipped rather than refused,
-// and the hand validator survives untouched. This mirrored a real case
-// before this task -- network.json's domain_name has a hand-written
-// validators.DomainNameValidator() that was an RE2-safe reimplementation of
-// the SDK's lookaround domain pattern, back when Go's RE2 engine could not
-// compile it. controllerregex can, so that real pattern no longer exercises
-// this path (see TestCompileAppendsDerivedRegexMatchesBesideAHandNonRegexValidator
-// for what happens to it now: a second, derived validator appended beside
-// the hand one); the fixture below is synthetic, the same kind of
+// and the hand validator survives untouched. This once mirrored a real
+// case: network.json's domain_name carried a hand-written RE2-safe
+// reimplementation of the SDK's lookaround domain pattern, back when Go's
+// RE2 engine could not compile it. controllerregex compiles that pattern
+// directly, so the hand validator was redundant and has been removed --
+// the resource now derives the controller pattern alone, like the data
+// source. No real field exercises this fallback today; the fixture below
+// is synthetic, the same kind of
 // translator-grammar escape as the refusal test above, chosen only to keep
 // this fallback covered as a fail-safe. Refusing here would force
 // "validators": "none", which would delete the hand validator too (the
@@ -435,7 +435,7 @@ func TestCompileSkipsAnUncompilablePatternAlreadyCoveredByAHandValidator(t *test
 						"imports": []any{
 							map[string]any{"path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"},
 						},
-						"schema_definition": "validators.DomainNameValidator()",
+						"schema_definition": "validators.CIDRValidator()",
 					},
 				},
 			}
@@ -449,7 +449,7 @@ func TestCompileSkipsAnUncompilablePatternAlreadyCoveredByAHandValidator(t *test
 		t.Fatalf("validators = %v, want exactly the untouched hand validator", validators)
 	}
 	custom := jsonObject(validators[0]["custom"])
-	if got, want := jsonString(custom["schema_definition"]), "validators.DomainNameValidator()"; got != want {
+	if got, want := jsonString(custom["schema_definition"]), "validators.CIDRValidator()"; got != want {
 		t.Fatalf("schema_definition = %q, want the hand validator %q unchanged", got, want)
 	}
 	wantNotice := "skipped unparsable pattern for unifi_dns_record.key: hand validator present"

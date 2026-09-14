@@ -5210,7 +5210,6 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "*validators.domainNameValidator: value must be a valid domain name",
             "controllerregex.matchesValidator: value must match regular expression '(?=^.{3,253}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?\u003c!-)\\.)+[a-zA-Z]{2,63}$)|^$|[a-zA-Z0-9-]{1,63}'"
           ]
         },
