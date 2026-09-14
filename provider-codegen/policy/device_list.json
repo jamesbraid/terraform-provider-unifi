@@ -31,7 +31,6 @@
     "green_ap_enabled",
     "hardware_offload",
     "hdmi_ports",
-    "heightInMeters",
     "hostname",
     "inform_ip",
     "ip",
@@ -66,7 +65,6 @@
     "lte_soft_limit",
     "lte_username",
     "mac",
-    "map_id",
     "mbb_overrides",
     "mesh_mlo_enabled",
     "mesh_sta_vap_enabled",
@@ -111,9 +109,7 @@
     "vbms_override",
     "video_info",
     "volume",
-    "x",
-    "x_baresip_password",
-    "y"
+    "x_baresip_password"
   ],
   "format_version": 1,
   "generator_name": "device",
@@ -158,6 +154,6 @@
     }
   ],
   "resource": "unifi_device",
-  "source_specification_sha256": "7859887de509b220e2bc85db677cb9f40e93182d32d477e65fa1aa20fbcdeb57",
+  "source_specification_sha256": "f8413d6e8fca56c9c54a59776dd2c2c3ed67df141ec301ff3c22a3947bd631bf",
   "surface_kind": "list_resource"
 }

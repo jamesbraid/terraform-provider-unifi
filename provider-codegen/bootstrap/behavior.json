@@ -2,9 +2,9 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.113.1-0.20260913175936-ae6c3f1109b2",
-    "commit": "ae6c3f1109b2519dc69cba7c216e146100b4e796",
-    "specification_sha256": "007150ff2caecd91b855e0fef37335c1d8f7a6847268216227aef3ef0e22e1d6"
+    "version": "v1.113.1-0.20260913225340-2b6e7b3b7e12",
+    "commit": "2b6e7b3b7e12c6ac8d2e6614d7256311eef21191",
+    "specification_sha256": "140100693ea076f367e66bab7030740d41a0295614e48c85587c42f60994985c"
   },
   "behavior": {
     "controller_version": "10.6.101",
@@ -164,6 +164,10 @@
     },
     "discarded": {
       "DevicePortOverrides": [],
+      "DeviceRadioTable": [
+        "dfs"
+      ],
+      "HotspotPackage": [],
       "Network": [
         "dhcpd_dns_enabled",
         "dhcpd_gateway_enabled",
@@ -176,6 +180,32 @@
       ]
     },
     "empty": {
+      "DeviceRadioTable": {
+        "tx_power_mode": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "device": {
+        "radio_table": {
+          "empty": "EMPTY-IGNORED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "hotspotpackage": {
+        "charged_as": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "currency": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-CLEARS"
+        },
+        "name": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        }
+      },
       "nat": {
         "description": {
           "empty": "EMPTY-CLEARS",
@@ -354,14 +384,29 @@
       }
     },
     "coercions": {
+      "HotspotPackage": {},
       "SettingUsg": {}
     },
     "writes": {
       "ContentFiltering": {
-        "create_verb": "POST-REJECTED-405",
-        "create_path": "v2/api/site/{site}/content-filtering",
-        "update_verb": "",
-        "update_path": ""
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/content-filtering/create",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/content-filtering/{id}",
+        "required_on_create": [
+          "categories",
+          "name",
+          "schedule"
+        ]
+      },
+      "DeviceRadioTable": {
+        "create_verb": "",
+        "create_path": "",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/device/{id}",
+        "required_on_update": [
+          "name"
+        ]
       },
       "FirewallPolicy": {
         "create_verb": "POST",
@@ -371,6 +416,15 @@
         "required_on_create": [
           "destination.zone_id",
           "source.zone_id"
+        ]
+      },
+      "HotspotPackage": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/hotspotpackage",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/hotspotpackage/{id}",
+        "required_on_create": [
+          "trial_duration_minutes"
         ]
       },
       "Nat": {
