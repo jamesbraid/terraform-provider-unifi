@@ -1,0 +1,556 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "resource": "unifi_hotspot_package",
+  "generator_name": "hotspot_package",
+  "source_specification_sha256": "6b1a906c7497968737a13afe685359dc21c263ac9171dfc3f5951166f8d6b465",
+  "description": "Manages a hotspot package: a guest-portal access plan, either a timed free trial or an hourly paid plan. The controller's sanitizer requires exactly one of `trial_duration_minutes` (free trial, `amount` zero) or `hours` (paid, `amount` non-zero) on every write, including a masked update that only touches an unrelated attribute -- so `trial_duration_minutes` is forced Required here and always joins the write mask. Only the free-trial branch is exercised by this resource today; the paid branch needs `trial_duration_minutes` absent, which a Required attribute cannot express.",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the hotspot package.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "amount",
+      "terraform_name": "amount",
+      "terraform_type": "float64",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The price of the package. Zero (the default when unset) makes the package a free trial, priced by `trial_duration_minutes`; a non-zero amount prices it by the hour instead, through `hours`."
+      }
+    },
+    {
+      "structural_name": "charged_as",
+      "terraform_name": "charged_as",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "How a paid package is charged, e.g. `hour`. Only meaningful when `amount` is non-zero."
+      }
+    },
+    {
+      "structural_name": "currency",
+      "terraform_name": "currency",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The three-letter ISO 4217 currency code `amount` is priced in, e.g. `USD`. Only meaningful when `amount` is non-zero."
+      }
+    },
+    {
+      "structural_name": "custom_payment_fields_enabled",
+      "terraform_name": "custom_payment_fields_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects the fields below rather than the controller's own default set.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "hours",
+      "terraform_name": "hours",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The number of hours a paid package grants access for. Set only when `amount` is non-zero; the controller's sanitizer refuses a package carrying both this and `trial_duration_minutes`."
+      }
+    },
+    {
+      "structural_name": "index",
+      "terraform_name": "index",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The package's position in the site's hotspot package list."
+      }
+    },
+    {
+      "structural_name": "limit_down",
+      "terraform_name": "limit_down",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The download rate limit applied to a client on this package, gated by `limit_overwrite`."
+      }
+    },
+    {
+      "structural_name": "limit_overwrite",
+      "terraform_name": "limit_overwrite",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether this package overrides the site's default rate and quota limits with `limit_down`, `limit_up` and `limit_quota`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "limit_quota",
+      "terraform_name": "limit_quota",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The data quota applied to a client on this package, gated by `limit_overwrite`."
+      }
+    },
+    {
+      "structural_name": "limit_up",
+      "terraform_name": "limit_up",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The upload rate limit applied to a client on this package, gated by `limit_overwrite`."
+      }
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the hotspot package."
+      }
+    },
+    {
+      "structural_name": "payment_fields_address_enabled",
+      "terraform_name": "payment_fields_address_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects an address.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_address_required",
+      "terraform_name": "payment_fields_address_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the address the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_city_enabled",
+      "terraform_name": "payment_fields_city_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects a city.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_city_required",
+      "terraform_name": "payment_fields_city_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the city the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_country_enabled",
+      "terraform_name": "payment_fields_country_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects a country.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_country_required",
+      "terraform_name": "payment_fields_country_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the country the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_email_enabled",
+      "terraform_name": "payment_fields_email_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects an email address.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_email_required",
+      "terraform_name": "payment_fields_email_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the email address the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_first_name_enabled",
+      "terraform_name": "payment_fields_first_name_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects a first name.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_first_name_required",
+      "terraform_name": "payment_fields_first_name_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the first name the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_last_name_enabled",
+      "terraform_name": "payment_fields_last_name_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects a last name.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_last_name_required",
+      "terraform_name": "payment_fields_last_name_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the last name the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_state_enabled",
+      "terraform_name": "payment_fields_state_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects a state or province.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_state_required",
+      "terraform_name": "payment_fields_state_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the state or province the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_zip_enabled",
+      "terraform_name": "payment_fields_zip_enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the guest-portal payment form collects a ZIP or postal code.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "payment_fields_zip_required",
+      "terraform_name": "payment_fields_zip_required",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the ZIP or postal code the payment form collects is required rather than optional.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "trial_duration_minutes",
+      "terraform_name": "trial_duration_minutes",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The length of the free trial in minutes. The controller requires this on every create and refuses a masked update that names any field without also naming this one, so it is always part of the write."
+      }
+    },
+    {
+      "structural_name": "trial_reset",
+      "terraform_name": "trial_reset",
+      "terraform_type": "float64",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The number of hours after which a client may start another free trial."
+      }
+    }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "site_id"
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the hotspot package belongs to.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

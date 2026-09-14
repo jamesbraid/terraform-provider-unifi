@@ -69,6 +69,7 @@ var unifiStructTypes = map[string]reflect.Type{
 	"FirewallRule":     reflect.TypeOf(ui.FirewallRule{}),
 	"FirewallZone":     reflect.TypeOf(ui.FirewallZone{}),
 	"HotspotOp":        reflect.TypeOf(ui.HotspotOp{}),
+	"HotspotPackage":   reflect.TypeOf(ui.HotspotPackage{}),
 	"Nat":              reflect.TypeOf(ui.Nat{}),
 	"Network":          reflect.TypeOf(ui.Network{}),
 	"OSPFRouter":       reflect.TypeOf(ui.OSPFRouter{}),

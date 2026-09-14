@@ -278,6 +278,10 @@ package providercodegen
 //go:generate speccompile -bootstrap bootstrap/go-unifi-v1.103.0-content-filtering.json -policy policy/content_filtering.json -artifact-prefix content_filtering -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/content_filtering.provider-code-spec.json --output ../internal/generated/resource_content_filtering --package resource_content_filtering
 //go:generate gofmt -w ../internal/generated/resource_content_filtering/content_filtering_resource_gen.go
+//go:generate sdkbootstrap -struct HotspotPackage -resource unifi_hotspot_package -output bootstrap/go-unifi-v1.103.0-hotspot-package.json
+//go:generate speccompile -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-package.json -policy policy/hotspot_package.json -artifact-prefix hotspot_package -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/hotspot_package.provider-code-spec.json --output ../internal/generated/resource_hotspot_package --package resource_hotspot_package
+//go:generate gofmt -w ../internal/generated/resource_hotspot_package/hotspot_package_resource_gen.go
 
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.

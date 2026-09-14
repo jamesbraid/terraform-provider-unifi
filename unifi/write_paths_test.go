@@ -98,6 +98,10 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 		record("hotspot_op", backend.Create != nil, backend.CreateFields != nil)
 	}
 	{
+		backend := hotspotPackageKitBackend(api)
+		record("hotspot_package", backend.Create != nil, backend.CreateFields != nil)
+	}
+	{
 		backend := natKitBackend(api)
 		record("nat", backend.Create != nil, backend.CreateFields != nil)
 	}

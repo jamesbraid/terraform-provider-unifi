@@ -32,6 +32,7 @@ var FrozenTypeNames = map[string]string{
 	"firewallZoneDataSource":      "unifi_firewall_zone",
 	"firewallZoneKitResource":     "unifi_firewall_zone",
 	"hotspotOpKitResource":        "unifi_hotspot_op",
+	"hotspotPackageKitResource":   "unifi_hotspot_package",
 	"natKitResource":              "unifi_nat",
 	"networkDataSource":           "unifi_network",
 	"networkKitResource":          "unifi_network",

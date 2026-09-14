@@ -20,6 +20,7 @@ import (
 	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	resource_hotspot_op "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_op"
+	resource_hotspot_package "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_package"
 	resource_nat "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_nat"
 	resource_network "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_network"
 	resource_ospf_router "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ospf_router"
@@ -134,6 +135,10 @@ var surfaces = []surface{
 	{name: "firewall_group", schema: resource_firewall_group.FirewallGroupResourceSchema},
 	{name: "firewall_zone", schema: resource_firewall_zone.FirewallZoneResourceSchema},
 	{name: "hotspot_op", schema: resource_hotspot_op.HotspotOpResourceSchema, crud: true, subject: "Hotspot Operator"},
+	// hotspot_package: amount and trial_reset are float64 on the wire, a
+	// shape no generated field kind covers, so the hand descriptor lays a
+	// resourcekit.Float64Field over each with resourcekit.Override.
+	{name: "hotspot_package", schema: resource_hotspot_package.HotspotPackageResourceSchema},
 	{name: "radius_user", schema: resource_radius_user.RadiusUserResourceSchema},
 	{name: "schedule_task", schema: resource_schedule_task.ScheduleTaskResourceSchema},
 	{name: "setting_auto_speedtest", section: "auto_speedtest", mirror: true, subject: "Auto Speedtest Setting"},
