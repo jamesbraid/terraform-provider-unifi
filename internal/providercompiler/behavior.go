@@ -335,6 +335,48 @@ func applyMinItemsValidators(fields []fieldPolicy, prefix string, minItems map[s
 	return nil
 }
 
+// providerFilledWires resolves the policy's provider-filled-wire opt-outs
+// against the required-on-create set. Each names a wire the controller
+// refuses a create without, but the provider supplies (the descriptor lists
+// it in AlwaysWire and a BeforeSend fills a default), so a config may omit it
+// and the attribute stays user-optional -- it must not be forced Required.
+// The returned set is keyed exactly as requiredWires is.
+//
+// An opt-out is refused when it names a wire the artifact does not mark
+// required on create: the exception would then lift a force that never fires,
+// reading as an exception where there is none, and it would linger unnoticed
+// once the SDK stops requiring the wire. This is per-declared-wire only --
+// every required wire the policy does not name stays forced. The reason is
+// required for the same purpose the claim's is: the compiler cannot check the
+// fill, so a bare flag would assert the exception with nothing behind it.
+func providerFilledWires(declared []providerFilledWire, requiredWires map[string]struct{}) (map[string]struct{}, error) {
+	if len(declared) == 0 {
+		return nil, nil
+	}
+	filled := make(map[string]struct{}, len(declared))
+	for _, wire := range declared {
+		if wire.StructuralName == "" {
+			return nil, fmt.Errorf("a provider_filled_wires entry names no structural field")
+		}
+		if strings.TrimSpace(wire.Reason) == "" {
+			return nil, fmt.Errorf(
+				"provider_filled_wires entry for %q gives no reason; the provider fill it stands "+
+					"in for must be stated", wire.StructuralName)
+		}
+		key := qualifyField(wire.StructuralSource, wire.StructuralName)
+		if _, required := requiredWires[key]; !required {
+			return nil, fmt.Errorf(
+				"policy opts %q out of required-on-create forcing, but the behaviour artifact does "+
+					"not mark it required on create; the opt-out is stale", key)
+		}
+		if _, dup := filled[key]; dup {
+			return nil, fmt.Errorf("provider_filled_wires names %q twice", key)
+		}
+		filled[key] = struct{}{}
+	}
+	return filled, nil
+}
+
 // forceRequiredOnCreate rewrites one attribute body's disposition to
 // required. The rest of the body is the policy's to keep; only requiredness
 // is a measured fact here, so only it is overridden.

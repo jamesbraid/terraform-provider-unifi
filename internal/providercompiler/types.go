@@ -142,8 +142,11 @@ type policy struct {
 	Groupings                 []groupingPolicy   `json:"groupings,omitempty"`
 	Flattenings               []flatteningPolicy `json:"flattenings,omitempty"`
 	Claims                    []claimPolicy      `json:"claims,omitempty"`
-	Description               string             `json:"description"`
-	Fields                    []fieldPolicy      `json:"fields"`
+	// ProviderFilledWires opts named required-on-create wires out of the
+	// compiler's force-to-Required rule; see providerFilledWire.
+	ProviderFilledWires []providerFilledWire `json:"provider_filled_wires,omitempty"`
+	Description         string               `json:"description"`
+	Fields              []fieldPolicy        `json:"fields"`
 	// Omitted is a compact form of a bare omitted field: one with no
 	// disposition beyond "omitted" itself -- no attribute, no semantic_id, no
 	// nested fields, nothing an object form would carry that this would
@@ -311,6 +314,28 @@ type flattenedMember struct {
 	Attribute      json.RawMessage `json:"attribute,omitempty"`
 }
 
+// providerFilledWire opts one required-on-create wire out of the compiler's
+// rule that a wire the controller refuses a create without is forced Required
+// in the schema. The controller does refuse the create, but the provider
+// supplies the wire itself -- the descriptor lists it in AlwaysWire and a
+// BeforeSend fills a default -- so a config may legitimately omit it and the
+// attribute stays user-optional. Named here, per wire and with a reason,
+// rather than left as a silent gap: the wire is still required on the wire,
+// and forcing it everywhere else must not stop, so the exception is declared
+// where a reviewer can audit it against the descriptor.
+type providerFilledWire struct {
+	// StructuralName is the observed wire the opt-out names, keyed exactly as
+	// a required_on_create wire is: bare for the lead struct.
+	StructuralName string `json:"structural_name"`
+	// StructuralSource names the struct it belongs to, empty for the lead.
+	StructuralSource string `json:"structural_source,omitempty"`
+	// Reason says how the provider fills the wire, in prose -- the descriptor
+	// AlwaysWire entry and the BeforeSend that supplies the default. Required:
+	// the compiler cannot check the fill itself, so a bare flag would assert
+	// the exception with nothing behind it.
+	Reason string `json:"reason"`
+}
+
 type providerOwnedPolicy struct {
 	TerraformName string          `json:"terraform_name"`
 	TerraformType string          `json:"terraform_type,omitempty"`
@@ -415,6 +440,12 @@ type mappingField struct {
 	// omits "" rather than sending it. Derived from the artifact, never
 	// hand-set in policy.
 	SuppressEmptyWrite bool `json:"suppress_empty_write,omitempty"`
+	// ProviderFillsRequiredWire marks a managed attribute whose wire the
+	// artifact measured required on create but whose policy opts it out of the
+	// force-to-Required rule (see providerFilledWire): the provider supplies
+	// the wire, so the attribute stays user-optional. The behaviour-agreement
+	// suite reads this to know the attribute is deliberately not Required.
+	ProviderFillsRequiredWire bool `json:"provider_fills_required_wire,omitempty"`
 }
 
 type providerOwnedMapping struct {

@@ -343,6 +343,87 @@ func TestCompileNoticesARequiredWireConsumedByAClaim(t *testing.T) {
 	t.Fatalf("Notices = %v, want one naming the claimed required-on-create wire", result.Notices)
 }
 
+// A required-on-create wire the provider supplies is opted out per wire: the
+// opted-out wire keeps its own optional disposition while every other
+// required wire is still forced, and the exception is recorded on the
+// mapping row for the agreement suite to read.
+func TestCompileProviderFilledWireStaysOptionalWhileOthersAreForced(t *testing.T) {
+	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	rules["provider_filled_wires"] = []any{map[string]any{
+		"structural_name": "key",
+		"reason":          "the provider fills key from a default before send on this fixture",
+	}}
+	result, err := Compile(CompileInput{
+		Bootstrap: dnsBootstrapWithLeadStruct(t, dnsFieldNames()),
+		Policy:    mustJSON(t, rules),
+		Behavior:  testBehavior(t, map[string][]string{"DNSRecord": {"key", "priority"}}),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	// "key" is served as "name"; opted out, it keeps the policy's optional.
+	if got := attributeRequiredness(t, result.ProviderCodeSpec, "name"); got != "optional" {
+		t.Errorf("attribute name = %q, want optional: its wire is provider-filled and opted out", got)
+	}
+	// "priority" is not opted out, so the force still fires.
+	if got := attributeRequiredness(t, result.ProviderCodeSpec, "priority"); got != "required" {
+		t.Errorf("attribute priority = %q, want required: only the declared wire is lifted", got)
+	}
+	var mapping struct {
+		Fields []struct {
+			StructuralName            string `json:"structural_name"`
+			ProviderFillsRequiredWire bool   `json:"provider_fills_required_wire"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(result.MappingReport, &mapping); err != nil {
+		t.Fatal(err)
+	}
+	flagged := map[string]bool{}
+	for _, field := range mapping.Fields {
+		flagged[field.StructuralName] = field.ProviderFillsRequiredWire
+	}
+	if !flagged["key"] {
+		t.Error("mapping report does not flag key as a provider-filled required wire")
+	}
+	if flagged["priority"] {
+		t.Error("mapping report flags priority, which is forced Required rather than provider-filled")
+	}
+}
+
+// An opt-out naming a wire the artifact does not mark required on create is
+// stale: it would lift a force that never fires, so the compile refuses it
+// rather than let it linger once the SDK stops requiring the wire.
+func TestCompileRefusesAStaleProviderFilledWire(t *testing.T) {
+	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	rules["provider_filled_wires"] = []any{map[string]any{
+		"structural_name": "ttl",
+		"reason":          "ttl is not required on create, so this opt-out is stale",
+	}}
+	_, err := Compile(CompileInput{
+		Bootstrap: dnsBootstrapWithLeadStruct(t, dnsFieldNames()),
+		Policy:    mustJSON(t, rules),
+		Behavior:  testBehavior(t, map[string][]string{"DNSRecord": {"key"}}),
+	})
+	if err == nil || !strings.Contains(err.Error(), `"ttl"`) || !strings.Contains(err.Error(), "stale") {
+		t.Fatalf("Compile() error = %v, want a refusal naming the stale opt-out wire", err)
+	}
+}
+
+// The compiler cannot check the fill an opt-out stands in for, so the reason
+// is required: a bare entry would assert the exception with nothing behind it.
+func TestCompileRefusesAProviderFilledWireWithoutAReason(t *testing.T) {
+	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	rules["provider_filled_wires"] = []any{map[string]any{"structural_name": "key"}}
+	_, err := Compile(CompileInput{
+		Bootstrap: dnsBootstrapWithLeadStruct(t, dnsFieldNames()),
+		Policy:    mustJSON(t, rules),
+		Behavior:  testBehavior(t, map[string][]string{"DNSRecord": {"key"}}),
+	})
+	if err == nil || !strings.Contains(err.Error(), "reason") {
+		t.Fatalf("Compile() error = %v, want a refusal demanding a reason", err)
+	}
+}
+
 // Requiredness is an attribute fact; a wire served as a block has nowhere to
 // carry it, and silently not carrying it would ship the measurement dropped.
 func TestCompileRefusesARequiredOnCreateWireDeclaredAsABlock(t *testing.T) {

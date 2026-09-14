@@ -1,4 +1,14 @@
 {
+  "provider_filled_wires": [
+    {
+      "structural_name": "network_id",
+      "reason": "The controller refuses a create without network_id, but the provider supplies it: traffic_route_descriptor.go lists network_id in AlwaysWire and trafficRouteBeforeSend fills it from the site's primary WAN network (found by trafficRoutePrefetchWANID) whenever the encoded object left it empty, so a config may omit it and the attribute stays Optional+Computed."
+    },
+    {
+      "structural_name": "target_devices",
+      "reason": "The controller refuses a create without target_devices, but the provider supplies it: New seeds a single ALL_CLIENTS entry and traffic_route_descriptor.go lists target_devices in AlwaysWire, so an unset source still travels that default. The source claim partitions the one wire into source.clients and source.networks, so no single attribute is user-required."
+    }
+  ],
   "claims": [
     {
       "mapping": {

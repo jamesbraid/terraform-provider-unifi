@@ -22,11 +22,12 @@ type mappingArtifact struct {
 	SurfaceName string `json:"surface_name"`
 	Resource    string `json:"resource"`
 	Fields      []struct {
-		StructuralName string `json:"structural_name"`
-		TerraformName  string `json:"terraform_name"`
-		StructuralType string `json:"structural_type"`
-		TerraformType  string `json:"terraform_type"`
-		Disposition    string `json:"disposition"`
+		StructuralName            string `json:"structural_name"`
+		TerraformName             string `json:"terraform_name"`
+		StructuralType            string `json:"structural_type"`
+		TerraformType             string `json:"terraform_type"`
+		Disposition               string `json:"disposition"`
+		ProviderFillsRequiredWire bool   `json:"provider_fills_required_wire"`
 	} `json:"fields"`
 	ProviderOwned []struct {
 		TerraformName string `json:"terraform_name"`

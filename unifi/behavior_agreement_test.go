@@ -92,6 +92,11 @@ func loadCommittedSchemaSnapshot(t *testing.T) providerSchemaSnapshot {
 type mappedWire struct {
 	terraformName string
 	disposition   string
+	// providerFilled marks a required-on-create wire the compiler was told
+	// the provider supplies (policy's provider_filled_wires): required on the
+	// wire, but filled by the provider, so the served attribute is
+	// deliberately not Required. Such a wire is not a disagreement.
+	providerFilled bool
 }
 
 // requiredOnCreateFindings compares one surface's measured required wires
@@ -110,6 +115,13 @@ func requiredOnCreateFindings(
 	for _, wire := range requiredWires {
 		row, exposed := mapped[wire]
 		if !exposed || row.disposition != "managed" {
+			continue
+		}
+		// A managed wire the provider fills is served user-optional on
+		// purpose; the mapping report records that decision, so it is not a
+		// disagreement here either. Only wires the policy did not opt out
+		// still have to be Required.
+		if row.providerFilled {
 			continue
 		}
 		fact, present := attributes[row.terraformName]
@@ -156,7 +168,11 @@ func TestEveryServedRequiredOnCreateWireIsRequiredInTheSchema(t *testing.T) {
 		mapping := readMapping(t, strings.TrimPrefix(surface, "unifi_"))
 		mapped := make(map[string]mappedWire, len(mapping.Fields))
 		for _, row := range mapping.Fields {
-			mapped[row.StructuralName] = mappedWire{row.TerraformName, row.Disposition}
+			mapped[row.StructuralName] = mappedWire{
+				terraformName:  row.TerraformName,
+				disposition:    row.Disposition,
+				providerFilled: row.ProviderFillsRequiredWire,
+			}
 		}
 		served, servedOK := snapshot.Resources[surface]
 		if !servedOK {
@@ -190,24 +206,30 @@ func TestEveryServedRequiredOnCreateWireIsRequiredInTheSchema(t *testing.T) {
 // quiet exactly where policy is allowed to decide.
 func TestRequiredOnCreateFindingsDetectEveryDisagreement(t *testing.T) {
 	mapped := map[string]mappedWire{
-		"protocol":      {"protocol", "managed"},
-		"source_filter": {"source_filter", "managed"},
-		"vanished":      {"vanished", "managed"},
-		"supplied":      {"supplied", "computed"},
+		"protocol":       {terraformName: "protocol", disposition: "managed"},
+		"source_filter":  {terraformName: "source_filter", disposition: "managed"},
+		"vanished":       {terraformName: "vanished", disposition: "managed"},
+		"supplied":       {terraformName: "supplied", disposition: "computed"},
+		"provider_fills": {terraformName: "provider_fills", disposition: "managed", providerFilled: true},
 	}
 	attributes := map[string]schemaSnapshotFact{
-		"protocol":      {Kind: "attribute", Optional: true, Computed: true},
-		"source_filter": {Kind: "attribute", Required: true},
+		"protocol":       {Kind: "attribute", Optional: true, Computed: true},
+		"source_filter":  {Kind: "attribute", Required: true},
+		"provider_fills": {Kind: "attribute", Optional: true, Computed: true},
 	}
 
 	findings := requiredOnCreateFindings("unifi_probe",
-		[]string{"protocol", "source_filter", "vanished", "supplied", "omitted_wire"},
+		[]string{"protocol", "source_filter", "vanished", "supplied", "provider_fills", "omitted_wire"},
 		mapped, attributes)
 
+	// protocol is a genuine required-but-optional disagreement and must still
+	// be caught; provider_fills is served optional on the same terms but is
+	// opted out, so it must stay silent -- the opt-out suppresses only where
+	// it is declared, and does not swallow protocol.
 	if len(findings) != 2 {
 		t.Fatalf("findings = %v, want exactly 2: a non-Required managed wire and a mapped "+
-			"attribute the snapshot does not carry; the agreeing, provider-supplied and "+
-			"unexposed wires must stay silent", findings)
+			"attribute the snapshot does not carry; the agreeing, provider-supplied, "+
+			"provider-filled and unexposed wires must stay silent", findings)
 	}
 	for _, want := range []string{`"protocol"`, `"vanished"`} {
 		var named bool

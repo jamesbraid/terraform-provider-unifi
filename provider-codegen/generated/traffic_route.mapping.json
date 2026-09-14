@@ -38,7 +38,8 @@
       "terraform_name": "network_id",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed"
+      "disposition": "managed",
+      "provider_fills_required_wire": true
     },
     {
       "structural_name": "next_hop",
