@@ -210,6 +210,49 @@ func (f Int64Field[M, S]) CopyPlanToState(plan, state *M) {
 	}
 }
 
+// Float64Field maps a types.Float64 to a float64, the non-pointer sibling of
+// Int64Field for the one SDK member type Int64Field cannot cover: a controller
+// field the JSON schema types as a fractional number rather than an integer
+// (HotspotPackage's amount and trial_reset).
+type Float64Field[M any, S any] struct {
+	Wire  string
+	Model func(*M) *types.Float64
+	SDK   func(*S) *float64
+	Elide ElideZero
+}
+
+func (f Float64Field[M, S]) WireName() string { return f.Wire }
+
+func (f Float64Field[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
+	value := f.Model(model)
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	*f.SDK(sdk) = value.ValueFloat64()
+	return nil
+}
+
+func (f Float64Field[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
+	raw := *f.SDK(sdk)
+	if raw == 0 && bool(f.Elide) {
+		*f.Model(model) = types.Float64Null()
+		return nil
+	}
+	*f.Model(model) = types.Float64Value(raw)
+	return nil
+}
+
+func (f Float64Field[M, S]) SetInPlan(plan *M) bool {
+	value := f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f Float64Field[M, S]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
+
 // Int64PtrField maps a types.Int64 to a *int64: a pointer is a third state
 // (absent, present-and-zero, present-and-set) the value types can't express.
 type Int64PtrField[M any, S any] struct {

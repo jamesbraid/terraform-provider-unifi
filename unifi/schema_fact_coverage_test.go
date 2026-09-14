@@ -75,8 +75,9 @@ var specFactCoverage = map[string]factCoverage{
 	// rather than key by key. Nesting is recorded separately, as the nesting
 	// mode, and every nested attribute appears again under its own dotted path.
 	"bool": {By: "TestProviderSchemaSnapshot"}, "string": {By: "TestProviderSchemaSnapshot"},
-	"int64": {By: "TestProviderSchemaSnapshot"}, "list": {By: "TestProviderSchemaSnapshot"},
-	"set": {By: "TestProviderSchemaSnapshot"}, "element_type": {By: "TestProviderSchemaSnapshot"},
+	"int64": {By: "TestProviderSchemaSnapshot"}, "float64": {By: "TestProviderSchemaSnapshot"},
+	"list": {By: "TestProviderSchemaSnapshot"},
+	"set":  {By: "TestProviderSchemaSnapshot"}, "element_type": {By: "TestProviderSchemaSnapshot"},
 	"single_nested": {By: "TestProviderSchemaSnapshot"}, "list_nested": {By: "TestProviderSchemaSnapshot"},
 	"set_nested": {By: "TestProviderSchemaSnapshot"}, "nested_object": {By: "TestProviderSchemaSnapshot"},
 	"attributes": {By: "TestProviderSchemaSnapshot"},
@@ -85,11 +86,12 @@ var specFactCoverage = map[string]factCoverage{
 	"schema":     {By: "TestProviderSchemaSnapshot"},
 
 	// Type shapes this estate has never compiled. Every attribute it emits is
-	// a bool, string, int64, list, set, single-nested or list-nested one, so
-	// the framework's number, float64, dynamic, map, map-nested and object
-	// attributes have never been through the pipeline at all.
+	// a bool, string, int64, float64, list, set, single-nested or
+	// list-nested one, so the framework's number, dynamic, map, map-nested
+	// and object attributes have never been through the pipeline at all.
+	// float64 joined the compiled set with unifi_hotspot_package's amount
+	// and trial_reset, the SDK's own fractional fields.
 	"number":          {Unused: true, Because: neverEmittedShape},
-	"float64":         {Unused: true, Because: neverEmittedShape},
 	"dynamic":         {Unused: true, Because: neverEmittedShape},
 	"map":             {Unused: true, Because: neverEmittedShape},
 	"map_nested":      {Unused: true, Because: neverEmittedShape},

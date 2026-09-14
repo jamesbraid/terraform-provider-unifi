@@ -83,10 +83,10 @@ func TestEverySurfaceServesItsFrozenTypeName(t *testing.T) {
 			len(orphaned), strings.Join(orphaned, "\n    "))
 	}
 
-	// The provider is not a surface: the count is 48 surfaces plus the
+	// The provider is not a surface: the count is 52 surfaces plus the
 	// provider row (which serves "unifi" and satisfies the same shape as a
 	// resource), not 43 surfaces.
-	const wantSurfaces = 51
+	const wantSurfaces = 52
 	providerRows := 0
 	for receiver, name := range metadatacontract.FrozenTypeNames {
 		if name == "unifi" {

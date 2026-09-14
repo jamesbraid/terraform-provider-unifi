@@ -24,6 +24,7 @@ import (
 	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	resource_hotspot_op "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_op"
+	resource_hotspot_package "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_hotspot_package"
 	resource_nat "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_nat"
 	resource_network "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_network"
 	resource_ospf_router "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ospf_router"
@@ -145,6 +146,19 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				hotspotOpKitSpec(), resource_hotspot_op.HotspotOpResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		// hotspot_package carries amount and trial_reset by hand, both plain
+		// Float64Field entries with no nested members, so no NestedProblems
+		// check is needed alongside WireNameProblems/ElideProblems.
+		"hotspot_package": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(hotspotPackageKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				hotspotPackageKitSpec(), resource_hotspot_package.HotspotPackageResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

@@ -54,6 +54,16 @@ All notable changes to this project will be documented in this file.
   requires a protocol and both filters on every rule, and rejects a
   cleared `in_interface` or `ip_address` on update — drop the attribute
   rather than blanking it.
+- **New resource `unifi_hotspot_package`** manages a guest-portal hotspot
+  package: the trial duration, rate and quota limits, and which payment
+  fields the guest-portal payment form collects. Derived from the
+  controller's own `HotspotPackage` definition. The controller requires
+  `trial_duration_minutes` on every create and refuses a masked update
+  that omits it, even one touching only an unrelated field — this
+  resource always sends it. Only the free-trial packages that fact
+  describes are modeled; a paid, hourly package needs
+  `trial_duration_minutes` absent, which this resource cannot express
+  yet.
 
 ### 🔧 Maintenance
 

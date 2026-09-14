@@ -188,6 +188,11 @@
         ]
       }
     },
+    "unifi_hotspot_package": {
+      "sdk_type": "HotspotPackage",
+      "duration_units": {},
+      "schema_version": 0
+    },
     "unifi_nat": {
       "sdk_type": "Nat",
       "duration_units": {},
