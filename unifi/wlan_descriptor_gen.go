@@ -37,11 +37,10 @@ func wlanGenFields() []resourcekit.Field[wlanKitModel, ui.WLAN] {
 			Elide: resourcekit.KeepZero,
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
-			Wire:      "ap_group_mode",
-			Model:     func(m *wlanKitModel) *types.String { return &m.APGroupMode },
-			SDK:       func(s *ui.WLAN) *string { return &s.ApGroupMode },
-			Elide:     resourcekit.NullZero,
-			WriteWhen: func(m *wlanKitModel) bool { return !m.APGroupMode.IsNull() && m.APGroupMode.ValueString() != "" },
+			Wire:  "ap_group_mode",
+			Model: func(m *wlanKitModel) *types.String { return &m.APGroupMode },
+			SDK:   func(s *ui.WLAN) *string { return &s.ApGroupMode },
+			Elide: resourcekit.NullZero,
 		},
 		resourcekit.StringSetField[wlanKitModel, ui.WLAN]{
 			Wire:  "bc_filter_list",
@@ -137,9 +136,6 @@ func wlanGenFields() []resourcekit.Field[wlanKitModel, ui.WLAN] {
 			Model: func(m *wlanKitModel) *types.String { return &m.MinrateSettingPreference },
 			SDK:   func(s *ui.WLAN) *string { return &s.MinrateSettingPreference },
 			Elide: resourcekit.NullZero,
-			WriteWhen: func(m *wlanKitModel) bool {
-				return !m.MinrateSettingPreference.IsNull() && m.MinrateSettingPreference.ValueString() != ""
-			},
 		},
 		resourcekit.BoolField[wlanKitModel, ui.WLAN]{
 			Wire:  "mlo_enabled",
@@ -147,11 +143,10 @@ func wlanGenFields() []resourcekit.Field[wlanKitModel, ui.WLAN] {
 			SDK:   func(s *ui.WLAN) *bool { return &s.MloEnabled },
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
-			Wire:      "name",
-			Model:     func(m *wlanKitModel) *types.String { return &m.Name },
-			SDK:       func(s *ui.WLAN) *string { return &s.Name },
-			Elide:     resourcekit.KeepZero,
-			WriteWhen: func(m *wlanKitModel) bool { return !m.Name.IsNull() && m.Name.ValueString() != "" },
+			Wire:  "name",
+			Model: func(m *wlanKitModel) *types.String { return &m.Name },
+			SDK:   func(s *ui.WLAN) *string { return &s.Name },
+			Elide: resourcekit.KeepZero,
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
 			Wire:  "nas_identifier_type",
@@ -171,11 +166,10 @@ func wlanGenFields() []resourcekit.Field[wlanKitModel, ui.WLAN] {
 			SDK:   func(s *ui.WLAN) *bool { return &s.No2GhzOui },
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
-			Wire:      "pmf_mode",
-			Model:     func(m *wlanKitModel) *types.String { return &m.PMFMode },
-			SDK:       func(s *ui.WLAN) *string { return &s.PMFMode },
-			Elide:     resourcekit.NullZero,
-			WriteWhen: func(m *wlanKitModel) bool { return !m.PMFMode.IsNull() && m.PMFMode.ValueString() != "" },
+			Wire:  "pmf_mode",
+			Model: func(m *wlanKitModel) *types.String { return &m.PMFMode },
+			SDK:   func(s *ui.WLAN) *string { return &s.PMFMode },
+			Elide: resourcekit.NullZero,
 		},
 		resourcekit.BoolField[wlanKitModel, ui.WLAN]{
 			Wire:  "private_preshared_keys_enabled",
@@ -223,11 +217,10 @@ func wlanGenFields() []resourcekit.Field[wlanKitModel, ui.WLAN] {
 			OmitZero: true,
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
-			Wire:      "security",
-			Model:     func(m *wlanKitModel) *types.String { return &m.Security },
-			SDK:       func(s *ui.WLAN) *string { return &s.Security },
-			Elide:     resourcekit.KeepZero,
-			WriteWhen: func(m *wlanKitModel) bool { return !m.Security.IsNull() && m.Security.ValueString() != "" },
+			Wire:  "security",
+			Model: func(m *wlanKitModel) *types.String { return &m.Security },
+			SDK:   func(s *ui.WLAN) *string { return &s.Security },
+			Elide: resourcekit.KeepZero,
 		},
 		resourcekit.BoolField[wlanKitModel, ui.WLAN]{
 			Wire:  "uapsd_enabled",
@@ -279,25 +272,22 @@ func wlanGenFields() []resourcekit.Field[wlanKitModel, ui.WLAN] {
 			SDK:   func(s *ui.WLAN) *bool { return &s.WPA3Transition },
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
-			Wire:      "wpa_enc",
-			Model:     func(m *wlanKitModel) *types.String { return &m.WPAEnc },
-			SDK:       func(s *ui.WLAN) *string { return &s.WPAEnc },
-			Elide:     resourcekit.NullZero,
-			WriteWhen: func(m *wlanKitModel) bool { return !m.WPAEnc.IsNull() && m.WPAEnc.ValueString() != "" },
+			Wire:  "wpa_enc",
+			Model: func(m *wlanKitModel) *types.String { return &m.WPAEnc },
+			SDK:   func(s *ui.WLAN) *string { return &s.WPAEnc },
+			Elide: resourcekit.NullZero,
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
-			Wire:      "wpa_mode",
-			Model:     func(m *wlanKitModel) *types.String { return &m.WPAMode },
-			SDK:       func(s *ui.WLAN) *string { return &s.WPAMode },
-			Elide:     resourcekit.NullZero,
-			WriteWhen: func(m *wlanKitModel) bool { return !m.WPAMode.IsNull() && m.WPAMode.ValueString() != "" },
+			Wire:  "wpa_mode",
+			Model: func(m *wlanKitModel) *types.String { return &m.WPAMode },
+			SDK:   func(s *ui.WLAN) *string { return &s.WPAMode },
+			Elide: resourcekit.NullZero,
 		},
 		resourcekit.StringField[wlanKitModel, ui.WLAN]{
-			Wire:      "x_passphrase",
-			Model:     func(m *wlanKitModel) *types.String { return &m.Passphrase },
-			SDK:       func(s *ui.WLAN) *string { return &s.Passphrase },
-			Elide:     resourcekit.NullZero,
-			WriteWhen: func(m *wlanKitModel) bool { return !m.Passphrase.IsNull() && m.Passphrase.ValueString() != "" },
+			Wire:  "x_passphrase",
+			Model: func(m *wlanKitModel) *types.String { return &m.Passphrase },
+			SDK:   func(s *ui.WLAN) *string { return &s.Passphrase },
+			Elide: resourcekit.NullZero,
 		},
 	}
 }

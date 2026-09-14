@@ -63,6 +63,6 @@
     }
   ],
   "resource": "unifi_traffic_route",
-  "source_specification_sha256": "a7afc614dab1dcd828a6ca33c34e90681f583a618432d2fe5d6071ec880b1d7a",
+  "source_specification_sha256": "b8e9ca7a42aa2f406ae182281e372bd59f6dc34a885a4b33368d44a865360a36",
   "surface_kind": "list_resource"
 }

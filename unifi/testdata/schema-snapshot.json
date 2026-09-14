@@ -10834,8 +10834,7 @@
         "network_id": {
           "kind": "attribute",
           "type": "\"string\"",
-          "optional": true,
-          "computed": true,
+          "required": true,
           "description": "The ID of the network or VPN to route matching traffic through. Defaults to the primary WAN network.",
           "description_kind": "markdown",
           "plan_modifiers": [

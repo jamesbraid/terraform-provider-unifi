@@ -25,16 +25,14 @@
       "terraform_name": "subnet",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "name",
       "terraform_name": "name",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "radiusprofile_id",

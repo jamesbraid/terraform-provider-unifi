@@ -67,8 +67,7 @@
       "terraform_name": "forward",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "full_duplex",
@@ -124,16 +123,14 @@
       "terraform_name": "op_mode",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "poe_mode",
       "terraform_name": "poe_mode",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "port_keepalive_enabled",
@@ -189,8 +186,7 @@
       "terraform_name": "setting_preference",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "speed",
@@ -246,8 +242,7 @@
       "terraform_name": "stormctrl_type",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "stormctrl_ucast_enabled",

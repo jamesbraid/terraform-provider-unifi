@@ -130,8 +130,7 @@
       "terraform_name": "name",
       "structural_type": "string",
       "terraform_type": "string",
-      "disposition": "managed",
-      "suppress_empty_write": true
+      "disposition": "managed"
     },
     {
       "structural_name": "remote_vpn_subnets",

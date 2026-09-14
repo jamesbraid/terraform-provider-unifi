@@ -60,6 +60,6 @@
     }
   ],
   "resource": "unifi_dns_record",
-  "source_specification_sha256": "676e769fe4211455d97ecc62cf974facaf80f37a601604c6b7d6ac923abe4116",
+  "source_specification_sha256": "26ed0e0b7eb71f8cc8ddd719980d35649c6ec7983efc01184aff7dac1b4d847e",
   "surface_kind": "list_resource"
 }
