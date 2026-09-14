@@ -2,7 +2,6 @@ package unifi
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -18,12 +17,10 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// wlanPrefetched is what Prefetch fetches. Two lookups rather than one, because
-// the surface defaults two different identifiers from site inventory and the
-// kit hands back a single value.
+// wlanPrefetched is what Prefetch fetches: AP groups, from which the surface
+// defaults ap_group_ids on create when the mode is "all".
 type wlanPrefetched struct {
-	wlanGroups []ui.WLANGroup
-	apGroups   []ui.APGroup
+	apGroups []ui.APGroup
 }
 
 // AttributeTypes for the two element models that lacked one. ppsk already
@@ -157,23 +154,18 @@ func wlanScheduleFromSDK(sdk *ui.WLAN, model *wlanKitModel) diag.Diagnostics {
 func wlanPrefetch(client *ui.ApiClient) func(context.Context, string) (any, diag.Diagnostics) {
 	return func(ctx context.Context, site string) (any, diag.Diagnostics) {
 		var diags diag.Diagnostics
-		wlanGroups, err := client.ListWLANGroup(ctx, site)
-		if err != nil {
-			diags.AddError("Error Listing WLAN Groups", "Could not list WLAN groups: "+resourcekit.DiagErrorText(err))
-			return nil, diags
-		}
 		apGroups, err := client.ListAPGroup(ctx, site)
 		if err != nil {
 			diags.AddError("Error Listing AP Groups", "Could not list AP groups: "+resourcekit.DiagErrorText(err))
 			return nil, diags
 		}
-		return wlanPrefetched{wlanGroups: wlanGroups, apGroups: apGroups}, diags
+		return wlanPrefetched{apGroups: apGroups}, diags
 	}
 }
 
-// wlanBeforeSend carries the five derived wires and the two defaults, all in
-// AlwaysWire since no attribute holds them and nothing else would add them to
-// the mask.
+// wlanBeforeSend carries the five derived wires and the ap_group_ids default,
+// all in AlwaysWire since no attribute holds them and nothing else would add
+// them to the mask.
 func wlanBeforeSend(ctx context.Context, config, effective *wlanKitModel, _ wlanKitModel, sdk *ui.WLAN, prefetched any) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -239,22 +231,6 @@ func wlanBeforeSend(ctx context.Context, config, effective *wlanKitModel, _ wlan
 		}
 		if len(sdk.ApGroupIDs) == 0 && len(inventory.apGroups) > 0 {
 			sdk.ApGroupIDs = []string{inventory.apGroups[0].ID}
-		}
-	}
-
-	// go-unifi serialises WLANGroupID without omitempty, so a blank sends
-	// `"wlangroup_id":""`, which UniFi Network 10.x rejects. The default WLAN
-	// group reports attr_hidden_id "Default"; AP groups use "default", so match
-	// case-insensitively.
-	if sdk.WLANGroupID == "" { //nolint:staticcheck // required on the wire regardless, see above
-		for _, group := range inventory.wlanGroups {
-			if strings.EqualFold(group.HiddenID, "default") {
-				sdk.WLANGroupID = group.ID //nolint:staticcheck // as above
-				break
-			}
-		}
-		if sdk.WLANGroupID == "" && len(inventory.wlanGroups) > 0 { //nolint:staticcheck // as above
-			sdk.WLANGroupID = inventory.wlanGroups[0].ID //nolint:staticcheck // as above
 		}
 	}
 
@@ -442,11 +418,10 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 		// The documented import handle is the bare SSID; see Spec.Name.
 		Name:   func(m *wlanKitModel) *types.String { return &m.Name },
 		IDWire: "_id",
-		// Five wires no attribute holds. Each is set by wlanBeforeSend, so the
+		// Six wires no attribute holds. Each is set by wlanBeforeSend, so the
 		// plan never mentions them and nothing else would add them to the mask.
 		AlwaysWire: []string{
 			"name_combine_enabled",
-			"wlangroup_id",
 			"wlan_band",
 			"schedule_enabled",
 			"schedule_with_duration",

@@ -57,7 +57,6 @@ func wlanManagedWireFields() []string {
 		"vlan_enabled",
 		"wlan_band",
 		"wlan_bands",
-		"wlangroup_id",
 		"wpa3_enhanced_192",
 		"wpa3_fast_roaming",
 		"wpa3_support",
