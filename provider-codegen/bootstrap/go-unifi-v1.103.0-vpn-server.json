@@ -2,9 +2,9 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.113.1-0.20260913175936-ae6c3f1109b2",
-    "commit": "ae6c3f1109b2519dc69cba7c216e146100b4e796",
-    "specification_sha256": "6b40f87df39d8e210230daa2b1a5b3b19cad1523e1237a8482226c2defae004e"
+    "version": "v1.113.1-0.20260913225340-2b6e7b3b7e12",
+    "commit": "2b6e7b3b7e12c6ac8d2e6614d7256311eef21191",
+    "specification_sha256": "58a62319859b17302c33c9e9e450ce621c646b1fe2b38b7ee787308721c0d094"
   },
   "resource": {
     "name": "unifi_vpn_server",

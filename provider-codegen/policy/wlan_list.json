@@ -101,7 +101,6 @@
     "wep_idx",
     "wlan_band",
     "wlan_bands",
-    "wlangroup_id",
     "wpa3_enhanced_192",
     "wpa3_fast_roaming",
     "wpa3_support",
@@ -156,6 +155,6 @@
     }
   ],
   "resource": "unifi_wlan",
-  "source_specification_sha256": "806160571cd8df694bc8269eca6548d12050df04fc2924a9eac74de50efe761f",
+  "source_specification_sha256": "8a4b77cd005ccfaf0b216c0e0f527c98a9af0c75c9ca761ff515e3263ee07deb",
   "surface_kind": "list_resource"
 }
