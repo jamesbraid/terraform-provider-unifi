@@ -101,8 +101,7 @@ func TrafficRouteResourceSchema(ctx context.Context) schema.Schema {
 				Default:             booldefault.StaticBool(false),
 			},
 			"network_id": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
+				Required:            true,
 				Description:         "The ID of the network or VPN to route matching traffic through. Defaults to the primary WAN network.",
 				MarkdownDescription: "The ID of the network or VPN to route matching traffic through. Defaults to the primary WAN network.",
 				PlanModifiers: []planmodifier.String{

@@ -59,6 +59,6 @@
     }
   ],
   "resource": "unifi_firewall_group",
-  "source_specification_sha256": "bf70906816b111079e5cd22bd8847401893ad0a847434609ceef91101b746eee",
+  "source_specification_sha256": "3afaadb479bc84a56e9bf803f5c66f44ab5868e9196354a8f0d3a84ab274096e",
   "surface_kind": "list_resource"
 }

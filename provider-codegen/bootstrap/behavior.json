@@ -2,9 +2,9 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.113.1-0.20260913225340-2b6e7b3b7e12",
-    "commit": "2b6e7b3b7e12c6ac8d2e6614d7256311eef21191",
-    "specification_sha256": "140100693ea076f367e66bab7030740d41a0295614e48c85587c42f60994985c"
+    "version": "v1.113.1-0.20260914003144-121ee9ac6a37",
+    "commit": "121ee9ac6a37d721d33d4892b87802137b723647",
+    "specification_sha256": "1ed9dc0db5148ec4c780b2673c68836e3443687e4d6b29f6f3641dbcf568c010"
   },
   "behavior": {
     "controller_version": "10.6.101",
@@ -163,10 +163,12 @@
       }
     },
     "discarded": {
+      "DNSRecord": [],
       "DevicePortOverrides": [],
       "DeviceRadioTable": [
         "dfs"
       ],
+      "FirewallGroup": [],
       "HotspotPackage": [],
       "Network": [
         "dhcpd_dns_enabled",
@@ -177,7 +179,9 @@
         "domain_name",
         "igmp_snooping",
         "upnp_lan_enabled"
-      ]
+      ],
+      "PortForward": [],
+      "TrafficRoute": []
     },
     "empty": {
       "DeviceRadioTable": {
@@ -192,18 +196,40 @@
           "omit": "OMIT-KEEPS"
         }
       },
+      "firewallgroup": {
+        "description": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "group_members": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "group_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "source": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
       "hotspotpackage": {
         "charged_as": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "currency": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "name": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         }
       },
       "nat": {
@@ -223,23 +249,23 @@
       "networkconf": {
         "dhcpd_boot_filename": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "dhcpd_boot_server": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "dhcpd_dns_1": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "dhcpd_dns_3": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "dhcpd_gateway": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "dhcpd_ip_1": {
           "empty": "EMPTY-REJECTED",
@@ -251,135 +277,225 @@
         },
         "dhcpd_ntp_1": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "dhcpd_start": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "dhcpd_stop": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "domain_name": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "external_id": {
-          "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "empty": "EMPTY-IGNORED",
+          "omit": "OMIT-KEEPS"
         },
         "ip_subnet": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "ipv6_setting_preference": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "mac_override": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "name": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "networkgroup": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-REPLACED-default"
         },
         "setting_preference": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         }
       },
       "portconf": {
         "forward": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "name": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "native_networkconf_id": {
           "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "op_mode": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "poe_mode": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "setting_preference": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "stormctrl_type": {
           "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "portforward": {
+        "destination_ip": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "destination_ips": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-KEEPS"
+        },
+        "dst_port": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "fwd": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "fwd_port": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "name": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "pfwd_interface": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "proto": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "src": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "src_firewall_group_id": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        },
+        "src_limiting_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-KEEPS"
+        }
+      },
+      "static-dns": {
+        "enabled": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "key": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "port": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "priority": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "record_type": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "ttl": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "value": {
+          "empty": "EMPTY-REJECTED",
+          "omit": "OMIT-REJECTED"
+        },
+        "weight": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        }
+      },
+      "trafficroutes": {
+        "description": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        },
+        "next_hop": {
+          "empty": "EMPTY-CLEARS",
           "omit": "OMIT-CLEARS"
         }
       },
       "wlanconf": {
         "ap_group_mode": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "external_id": {
-          "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "empty": "EMPTY-IGNORED",
+          "omit": "OMIT-KEEPS"
         },
         "minrate_setting_preference": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "name": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "networkconf_id": {
-          "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "empty": "EMPTY-REPLACED-default",
+          "omit": "OMIT-KEEPS"
         },
         "pmf_mode": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "security": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "setting_preference": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "usergroup_id": {
-          "empty": "EMPTY-CLEARS",
-          "omit": "OMIT-CLEARS"
+          "empty": "EMPTY-REPLACED-default",
+          "omit": "OMIT-KEEPS"
         },
         "wlan_band": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "wpa_enc": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "wpa_mode": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "x_iapp_key": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         },
         "x_passphrase": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-KEEPS"
         }
       }
     },
@@ -399,12 +515,33 @@
           "schedule"
         ]
       },
+      "DNSRecord": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/static-dns",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/static-dns/{id}",
+        "required_on_create": [
+          "key",
+          "record_type",
+          "value"
+        ]
+      },
       "DeviceRadioTable": {
         "create_verb": "",
         "create_path": "",
         "update_verb": "PUT",
         "update_path": "api/s/{site}/rest/device/{id}",
         "required_on_update": [
+          "name"
+        ]
+      },
+      "FirewallGroup": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/firewallgroup",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/firewallgroup/{id}",
+        "required_on_create": [
+          "group_type",
           "name"
         ]
       },
@@ -451,6 +588,28 @@
         "min_items": {
           "areas[].network_ids": 1
         }
+      },
+      "PortForward": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/rest/portforward",
+        "update_verb": "PUT",
+        "update_path": "api/s/{site}/rest/portforward/{id}"
+      },
+      "TrafficRoute": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/trafficroutes",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/trafficroutes/{id}",
+        "required_on_create": [
+          "matching_target",
+          "network_id",
+          "target_devices"
+        ],
+        "required_on_update": [
+          "matching_target",
+          "network_id",
+          "target_devices"
+        ]
       }
     },
     "rejected_creates": {
