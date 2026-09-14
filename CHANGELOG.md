@@ -54,6 +54,12 @@ All notable changes to this project will be documented in this file.
   requires a protocol and both filters on every rule, and rejects a
   cleared `in_interface` or `ip_address` on update — drop the attribute
   rather than blanking it.
+- **New resource `unifi_content_filtering`** manages content-filtering
+  rules: the categories to block, a name, an optional schedule, and the
+  networks or clients the rule applies to. Derived from the controller's
+  own `ContentFiltering` definition. The controller requires `categories`,
+  `name` and `schedule` on create, and refuses a rule that names neither a
+  network nor a client.
 - **New resource `unifi_hotspot_package`** manages a guest-portal hotspot
   package: the trial duration, rate and quota limits, and which payment
   fields the guest-portal payment form collects. Derived from the
