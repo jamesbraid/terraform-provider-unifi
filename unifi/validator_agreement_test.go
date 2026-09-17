@@ -859,7 +859,7 @@ func loadValidatorAgreementSurfaces(t *testing.T) []*vaSurface {
 	for _, report := range reports {
 		raw, err := os.ReadFile(report)
 		if err != nil {
-			t.Fatalf("the mapping report is one of this check's oracles and it is unreadable: %v", err)
+			t.Fatalf("the mapping report is one of this check's sources of truth and it is unreadable: %v", err)
 		}
 		var header struct {
 			SurfaceKind string `json:"surface_kind"`
