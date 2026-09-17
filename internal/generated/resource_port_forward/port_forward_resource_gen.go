@@ -35,10 +35,9 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 						},
 						"interface": schema.StringAttribute{
 							Optional:            true,
-							Description:         "The WAN interface for this destination (e.g. `wan`, `wan2`).",
-							MarkdownDescription: "The WAN interface for this destination (e.g. `wan`, `wan2`).",
+							Description:         "The WAN interface for this destination. One of `wan`, or `wan2` through `wan9`.",
+							MarkdownDescription: "The WAN interface for this destination. One of `wan`, or `wan2` through `wan9`.",
 							Validators: []validator.String{
-								stringvalidator.OneOf("wan", "wan2"),
 								controllerregex.Matches(`wan[2-9]?`, ""),
 							},
 						},
@@ -165,10 +164,9 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 				Attributes: map[string]schema.Attribute{
 					"interface": schema.StringAttribute{
 						Optional:            true,
-						Description:         "The WAN interface. Can be `wan`, `wan2`, or `both`.",
-						MarkdownDescription: "The WAN interface. Can be `wan`, `wan2`, or `both`.",
+						Description:         "The WAN interface. One of `wan`, `wan2` through `wan9`, `both`, or `all`.",
+						MarkdownDescription: "The WAN interface. One of `wan`, `wan2` through `wan9`, `both`, or `all`.",
 						Validators: []validator.String{
-							stringvalidator.OneOf("wan", "wan2", "both"),
 							controllerregex.Matches(`wan[2-9]?|both|all`, ""),
 						},
 					},

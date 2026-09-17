@@ -19,6 +19,14 @@ All notable changes to this project will be documented in this file.
 
 ### 🔒 Fixed
 
+- **The WAN interface fields now accept `wan3` through `wan9`.**
+  `unifi_dynamic_dns` and `unifi_port_forward` capped their WAN selector
+  at `wan2`, refusing the higher interfaces the controller declares
+  (`wan[2-9]`). The provider now derives the validator from the
+  controller's own pattern, so it accepts exactly what the controller
+  does; `unifi_port_forward` additionally accepts `all` on its
+  per-destination interface, which the controller allows.
+
 - **The remaining resources that could print credentials in an error now
   strip the request body too.** v0.109.0 covered resources built on the
   shared resource kit. The rest call the controller API directly and

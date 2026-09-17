@@ -38,13 +38,12 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 			"interface": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "The interface for the dynamic DNS. Can be `wan` or `wan2`.",
-				MarkdownDescription: "The interface for the dynamic DNS. Can be `wan` or `wan2`.",
+				Description:         "The WAN interface for the dynamic DNS. One of `wan`, or `wan2` through `wan9`.",
+				MarkdownDescription: "The WAN interface for the dynamic DNS. One of `wan`, or `wan2` through `wan9`.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("wan", "wan2"),
 					controllerregex.Matches(`wan[2-9]?`, ""),
 				},
 				Default: stringdefault.StaticString("wan"),
