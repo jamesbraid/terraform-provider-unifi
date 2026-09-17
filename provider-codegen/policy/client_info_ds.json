@@ -379,6 +379,12 @@
       "terraform_name": "usergroup_id"
     },
     {
+      "disposition": "omitted",
+      "structural_name": "network_members_group_ids",
+      "structural_source": null,
+      "terraform_name": "omitted_network_members_group_ids"
+    },
+    {
       "attribute": {
         "computed_optional_required": "computed",
         "description": "The wired connection rate in Mbps."
@@ -453,6 +459,6 @@
     }
   ],
   "resource": "unifi_client_info",
-  "source_specification_sha256": "57b0c8921fb90032731210b53274e6ae3c3722acb4e7e7883349b1c1bf24c607",
+  "source_specification_sha256": "b8802c0b86c8be40151286fd77618771bb2f135dc305260867aa091dc83ea84b",
   "surface_kind": "data_source"
 }
