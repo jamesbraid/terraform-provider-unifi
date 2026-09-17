@@ -3703,10 +3703,10 @@
           "kind": "attribute",
           "type": "\"number\"",
           "required": true,
-          "description": "The index of the rule. Must be in one of the interface-specific blocks: `2000-2999` (LAN), `3000-3999` (WAN), `4000-4999` (GUEST), or their high-range equivalents `20000-29999`, `30000-39999`, `40000-49999` used by newer UniFi OS versions.",
+          "description": "The index of the rule. Must be in `2000-2999` or `4000-4999` (or the high-range equivalents `20000-29999`, `40000-49999` on newer UniFi OS versions). The controller accepts either range for any ruleset; the `2000`/`3000`/`4000` per-interface split shown in the UI is not enforced by the API, and `3000-3999` is refused outright.",
           "description_kind": "markdown",
           "validators": [
-            "int64validator.anyValidator: Value must satisfy at least one of the validations: value must be between 2000 and 2999 + value must be between 3000 and 3999 + value must be between 4000 and 4999 + value must be between 20000 and 29999 + value must be between 30000 and 39999 + value must be between 40000 and 49999"
+            "int64validator.anyValidator: Value must satisfy at least one of the validations: value must be between 2000 and 2999 + value must be between 4000 and 4999 + value must be between 20000 and 29999 + value must be between 40000 and 49999"
           ]
         },
         "ruleset": {

@@ -19,6 +19,19 @@ All notable changes to this project will be documented in this file.
 
 ### 🔒 Fixed
 
+- **`unifi_firewall_rule` no longer accepts a `rule_index` in
+  `3000-3999`, which the controller has always refused.** The validator
+  advertised a `3000-3999` WAN block and the shipped examples used
+  `3001`/`3002`, but no controller version accepts a 3xxx index -- checked
+  on 10.4.57, 10.5.67 and 10.6.101, each returns HTTP 400. The
+  `2000`/`3000`/`4000` per-interface split is a UI convention the API does
+  not enforce: every ruleset takes a `2000-2999` or `4000-4999` index
+  (or the high ranges `20000-29999`/`40000-49999`). The validator now
+  allows only those ranges, the examples use valid indexes, and the
+  description drops the bucketing claim. Configs copied from the old
+  examples failed at apply on every version; they now fail at plan
+  instead, and the examples work.
+
 - **The WAN interface fields now accept `wan3` through `wan9`.**
   `unifi_dynamic_dns` and `unifi_port_forward` capped their WAN selector
   at `wan2`, refusing the higher interfaces the controller declares
