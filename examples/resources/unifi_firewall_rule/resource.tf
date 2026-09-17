@@ -2,9 +2,10 @@
 #
 # action  must be one of: drop, accept, reject.
 # ruleset is the rule chain, e.g. LAN_IN, WAN_IN, GUEST_IN, WANv6_IN, etc.
-# rule_index must fall in an interface-specific block:
-#   2000-2999 (LAN), 3000-3999 (WAN), 4000-4999 (GUEST),
-#   or the high-range equivalents 20000-29999 / 30000-39999 / 40000-49999.
+# rule_index must be in 2000-2999 or 4000-4999 (or the high ranges
+#   20000-29999 / 40000-49999 on newer UniFi OS). The controller accepts
+#   either range for any ruleset -- the 2000/3000/4000 per-interface split
+#   the UI suggests is not enforced by the API, and 3000-3999 is refused.
 
 # Drop all traffic destined to the gateway from the LAN.
 resource "unifi_firewall_rule" "drop_to_gateway" {
@@ -24,7 +25,7 @@ resource "unifi_firewall_rule" "wan_in_established" {
   action  = "accept"
   ruleset = "WAN_IN"
 
-  rule_index = 3001
+  rule_index = 4002
   protocol   = "all"
 
   state_established = true
@@ -92,6 +93,6 @@ resource "unifi_firewall_rule" "drop_wan_v6" {
   action  = "drop"
   ruleset = "WANv6_IN"
 
-  rule_index  = 3002
+  rule_index  = 4003
   protocol_v6 = "all"
 }

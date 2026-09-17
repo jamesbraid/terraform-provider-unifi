@@ -154,10 +154,10 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"rule_index": schema.Int64Attribute{
 				Required:            true,
-				Description:         "The index of the rule. Must be in one of the interface-specific blocks: `2000-2999` (LAN), `3000-3999` (WAN), `4000-4999` (GUEST), or their high-range equivalents `20000-29999`, `30000-39999`, `40000-49999` used by newer UniFi OS versions.",
-				MarkdownDescription: "The index of the rule. Must be in one of the interface-specific blocks: `2000-2999` (LAN), `3000-3999` (WAN), `4000-4999` (GUEST), or their high-range equivalents `20000-29999`, `30000-39999`, `40000-49999` used by newer UniFi OS versions.",
+				Description:         "The index of the rule. Must be in `2000-2999` or `4000-4999` (or the high-range equivalents `20000-29999`, `40000-49999` on newer UniFi OS versions). The controller accepts either range for any ruleset; the `2000`/`3000`/`4000` per-interface split shown in the UI is not enforced by the API, and `3000-3999` is refused outright.",
+				MarkdownDescription: "The index of the rule. Must be in `2000-2999` or `4000-4999` (or the high-range equivalents `20000-29999`, `40000-49999` on newer UniFi OS versions). The controller accepts either range for any ruleset; the `2000`/`3000`/`4000` per-interface split shown in the UI is not enforced by the API, and `3000-3999` is refused outright.",
 				Validators: []validator.Int64{
-					int64validator.Any(int64validator.Between(2000, 2999), int64validator.Between(3000, 3999), int64validator.Between(4000, 4999), int64validator.Between(20000, 29999), int64validator.Between(30000, 39999), int64validator.Between(40000, 49999)),
+					int64validator.Any(int64validator.Between(2000, 2999), int64validator.Between(4000, 4999), int64validator.Between(20000, 29999), int64validator.Between(40000, 49999)),
 				},
 			},
 			"ruleset": schema.StringAttribute{
