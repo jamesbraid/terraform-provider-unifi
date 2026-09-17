@@ -2,9 +2,9 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.113.1-0.20260914070148-cf82bcd9ac5b",
-    "commit": "cf82bcd9ac5b6780a311220c2349db886a28074d",
-    "specification_sha256": "91a97175de844e2e3b1176ea597a1758c26e28a864325e5eb9813878a609b37a"
+    "version": "v1.113.1-0.20260917020644-0e09368a49da",
+    "commit": "0e09368a49da1f98afceb282ffeeebfc70fe167c",
+    "specification_sha256": "fccde86c79bb425f92685e5d7b6b11159d0582855c4ce2d8ba706a54222fe080"
   },
   "behavior": {
     "controller_version": "10.6.101",
@@ -250,6 +250,18 @@
         "x_ssh_username": {
           "empty": "EMPTY-REJECTED",
           "omit": "OMIT-KEEPS"
+        }
+      },
+      "Site": {
+        "desc": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
+        }
+      },
+      "WireGuardPeer": {
+        "name": {
+          "empty": "EMPTY-CLEARS",
+          "omit": "OMIT-CLEARS"
         }
       },
       "account": {
@@ -525,7 +537,7 @@
         },
         "ip_address": {
           "empty": "EMPTY-REJECTED",
-          "omit": "OMIT-CLEARS"
+          "omit": "OMIT-VARIES-BY-TYPE"
         }
       },
       "network-members-group": {
@@ -917,6 +929,24 @@
         }
       }
     },
+    "empty_when": {
+      "nat": {
+        "ip_address": {
+          "type=DNAT": {
+            "empty": "EMPTY-REJECTED",
+            "omit": "OMIT-REJECTED"
+          },
+          "type=MASQUERADE": {
+            "empty": "EMPTY-REJECTED",
+            "omit": "OMIT-OK"
+          },
+          "type=SNAT": {
+            "empty": "EMPTY-REJECTED",
+            "omit": "OMIT-REJECTED"
+          }
+        }
+      }
+    },
     "coercions": {
       "HotspotPackage": {},
       "SettingUsg": {}
@@ -1259,6 +1289,12 @@
         "update_verb": "PUT",
         "update_path": "api/s/{site}/set/setting/mgmt"
       },
+      "Site": {
+        "create_verb": "POST",
+        "create_path": "api/s/{site}/cmd/sitemgr",
+        "update_verb": "POST",
+        "update_path": "api/s/{site}/cmd/sitemgr"
+      },
       "SpatialRecord": {
         "create_verb": "POST",
         "create_path": "api/s/{site}/rest/spatialrecord",
@@ -1326,6 +1362,12 @@
         "create_path": "api/s/{site}/rest/wlangroup",
         "update_verb": "PUT",
         "update_path": "api/s/{site}/rest/wlangroup/{id}"
+      },
+      "WireGuardPeer": {
+        "create_verb": "POST",
+        "create_path": "v2/api/site/{site}/wireguard/{network_id}/users/batch",
+        "update_verb": "PUT",
+        "update_path": "v2/api/site/{site}/wireguard/{network_id}/users/batch"
       }
     },
     "rejected_creates": {

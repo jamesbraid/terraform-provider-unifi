@@ -56,11 +56,18 @@ func natGenFields() []resourcekit.Field[natKitModel, ui.Nat] {
 			WriteWhen: func(m *natKitModel) bool { return !m.InInterface.IsNull() && m.InInterface.ValueString() != "" },
 		},
 		resourcekit.StringField[natKitModel, ui.Nat]{
-			Wire:      "ip_address",
-			Model:     func(m *natKitModel) *types.String { return &m.IPAddress },
-			SDK:       func(s *ui.Nat) *string { return &s.IPAddress },
-			Elide:     resourcekit.KeepZero,
-			WriteWhen: func(m *natKitModel) bool { return !m.IPAddress.IsNull() && m.IPAddress.ValueString() != "" },
+			Wire:  "ip_address",
+			Model: func(m *natKitModel) *types.String { return &m.IPAddress },
+			SDK:   func(s *ui.Nat) *string { return &s.IPAddress },
+			Elide: resourcekit.KeepZero,
+			WriteWhen: func(m *natKitModel) bool {
+				switch m.Type.ValueString() {
+				case "MASQUERADE":
+					return false
+				default:
+					return true
+				}
+			},
 		},
 		resourcekit.StringField[natKitModel, ui.Nat]{
 			Wire:  "ip_version",

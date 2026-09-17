@@ -446,6 +446,13 @@ type mappingField struct {
 	// the wire, so the attribute stays user-optional. The behaviour-agreement
 	// suite reads this to know the attribute is deliberately not Required.
 	ProviderFillsRequiredWire bool `json:"provider_fills_required_wire,omitempty"`
+	// ConditionalOmitWrite marks a field whose omit disposition varies by a
+	// sibling discriminator (the artifact's OMIT-VARIES-BY-TYPE flat verdict,
+	// resolved through empty_when). The descriptor emitter turns it into a
+	// WriteWhen that omits the field when the discriminator holds one of the
+	// named values and sends it otherwise. Derived from the artifact, never
+	// hand-set in policy.
+	ConditionalOmitWrite *conditionalOmitWire `json:"conditional_omit_write,omitempty"`
 }
 
 type providerOwnedMapping struct {

@@ -235,4 +235,4 @@ tool (
 	gotest.tools/gotestsum
 )
 
-replace github.com/ubiquiti-community/go-unifi => github.com/jamesbraid/go-unifi v1.113.1-0.20260914070148-cf82bcd9ac5b
+replace github.com/ubiquiti-community/go-unifi => github.com/jamesbraid/go-unifi v1.113.1-0.20260917020644-0e09368a49da

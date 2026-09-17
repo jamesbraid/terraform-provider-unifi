@@ -618,6 +618,99 @@ func TestBehaviorEmptySuppressedWiresLeavesADataSourceAlone(t *testing.T) {
 	}
 }
 
+// testBehaviorEmptyWhen is testBehaviorEmpty plus the per-discriminator empty
+// family the conditional-omit derivation reads.
+func testBehaviorEmptyWhen(t *testing.T, writes, empty, emptyWhen map[string]any) []byte {
+	t.Helper()
+	return mustJSON(t, map[string]any{
+		"format_version": 1,
+		"source": map[string]any{
+			"repository":           "github.com/jamesbraid/go-unifi",
+			"version":              "v1.113.1",
+			"commit":               strings.Repeat("a", 40),
+			"specification_sha256": strings.Repeat("a", 64),
+		},
+		"behavior": map[string]any{
+			"controller_version": "10.6.101",
+			"writes":             writes,
+			"empty":              empty,
+			"empty_when":         emptyWhen,
+		},
+	})
+}
+
+// A field whose flat omit is OMIT-VARIES-BY-TYPE resolves through its
+// empty_when branch: the discriminator wire, and the values it must be omitted
+// for (the OMIT-OK branches). Values it is required on (OMIT-REJECTED) are sent
+// and so recorded nowhere.
+func TestBehaviorConditionalOmitWiresResolvesThePerTypeBranch(t *testing.T) {
+	behavior := testBehaviorEmptyWhen(t,
+		map[string]any{"Nat": map[string]any{"update_path": "v2/api/site/{site}/nat/{id}"}},
+		map[string]any{"nat": map[string]any{
+			"ip_address": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-VARIES-BY-TYPE"},
+		}},
+		map[string]any{"nat": map[string]any{"ip_address": map[string]any{
+			"type=DNAT":       map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-REJECTED"},
+			"type=SNAT":       map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-REJECTED"},
+			"type=MASQUERADE": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-OK"},
+		}}},
+	)
+	source := bootstrap{Resource: bootstrapSchema{Struct: "Nat"}}
+	got, err := behaviorConditionalOmitWires(behavior, ManagedResource, source)
+	if err != nil {
+		t.Fatalf("behaviorConditionalOmitWires() error = %v", err)
+	}
+	rule, ok := got["ip_address"]
+	if !ok {
+		t.Fatalf("no rule for ip_address; got %v", got)
+	}
+	if rule.DiscriminatorWire != "type" {
+		t.Errorf("discriminator = %q, want type", rule.DiscriminatorWire)
+	}
+	if len(rule.OmitWhenValues) != 1 || rule.OmitWhenValues[0] != "MASQUERADE" {
+		t.Errorf("omit-when values = %v, want [MASQUERADE]", rule.OmitWhenValues)
+	}
+}
+
+// The resolver refuses a branch it cannot model rather than derive something
+// false: an omit verdict outside {OMIT-OK, OMIT-REJECTED}, an empty verdict
+// other than EMPTY-REJECTED, a key that is not "wire=value", two branches
+// naming different discriminators, or the flat sentinel with no branch at all.
+func TestBehaviorConditionalOmitWiresRefusesUnmodelledBranches(t *testing.T) {
+	source := bootstrap{Resource: bootstrapSchema{Struct: "Nat"}}
+	writes := map[string]any{"Nat": map[string]any{"update_path": "v2/api/site/{site}/nat/{id}"}}
+	flat := map[string]any{"nat": map[string]any{
+		"ip_address": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-VARIES-BY-TYPE"},
+	}}
+	cases := []struct {
+		name      string
+		emptyWhen map[string]any
+	}{
+		{"unknown omit verdict", map[string]any{"nat": map[string]any{"ip_address": map[string]any{
+			"type=DNAT": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-CLEARS"},
+		}}}},
+		{"non-rejected empty", map[string]any{"nat": map[string]any{"ip_address": map[string]any{
+			"type=DNAT": map[string]any{"empty": "EMPTY-CLEARS", "omit": "OMIT-OK"},
+		}}}},
+		{"malformed key", map[string]any{"nat": map[string]any{"ip_address": map[string]any{
+			"DNAT": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-OK"},
+		}}}},
+		{"mixed discriminators", map[string]any{"nat": map[string]any{"ip_address": map[string]any{
+			"type=DNAT":   map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-OK"},
+			"action=SNAT": map[string]any{"empty": "EMPTY-REJECTED", "omit": "OMIT-REJECTED"},
+		}}}},
+		{"varies flat but no branch", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			behavior := testBehaviorEmptyWhen(t, writes, flat, tc.emptyWhen)
+			if _, err := behaviorConditionalOmitWires(behavior, ManagedResource, source); err == nil {
+				t.Fatalf("expected an error for %q, got nil", tc.name)
+			}
+		})
+	}
+}
+
 // The derived verdict lands on the mapping report the descriptor emitter
 // reads: a managed field the artifact refuses an empty write on is flagged,
 // and one it does not is left alone.
