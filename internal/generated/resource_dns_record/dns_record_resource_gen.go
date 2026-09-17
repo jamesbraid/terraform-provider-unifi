@@ -66,8 +66,8 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"record_type": schema.StringAttribute{
 				Required:            true,
-				Description:         "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
-				MarkdownDescription: "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
+				Description:         "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `NS`, `SRV` or `TXT`.",
+				MarkdownDescription: "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `NS`, `SRV` or `TXT`.",
 				Validators: []validator.String{
 					stringvalidator.OneOf("A", "AAAA", "CNAME", "MX", "NS", "SRV", "TXT"),
 				},

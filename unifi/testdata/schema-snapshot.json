@@ -2281,7 +2281,7 @@
           "kind": "attribute",
           "type": "\"string\"",
           "required": true,
-          "description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
+          "description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `NS`, `SRV` or `TXT`.",
           "description_kind": "markdown",
           "validators": [
             "stringvalidator.oneOfValidator: value must be one of: [\"A\" \"AAAA\" \"CNAME\" \"MX\" \"NS\" \"SRV\" \"TXT\"]"

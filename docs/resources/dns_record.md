@@ -81,7 +81,7 @@ resource "unifi_dns_record" "forward_ns" {
 ### Required
 
 - `name` (String) The key of the DNS record.
-- `record_type` (String) The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.
+- `record_type` (String) The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `NS`, `SRV` or `TXT`.
 - `value` (String) The value of the DNS record.
 
 ### Optional
