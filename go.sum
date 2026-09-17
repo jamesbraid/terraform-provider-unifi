@@ -335,6 +335,8 @@ github.com/jamesbraid/go-unifi v1.113.1-0.20260914070148-cf82bcd9ac5b h1:tZFXVve
 github.com/jamesbraid/go-unifi v1.113.1-0.20260914070148-cf82bcd9ac5b/go.mod h1:qnj9C4P4BvrlluLL+okgD7OcaEcVR+lnxPsRrMHOua0=
 github.com/jamesbraid/go-unifi v1.113.1-0.20260917020644-0e09368a49da h1:DeLGpZyfb/dQKHELwfz9gvb3v8MOdCyVT7aEXq/eEXk=
 github.com/jamesbraid/go-unifi v1.113.1-0.20260917020644-0e09368a49da/go.mod h1:qnj9C4P4BvrlluLL+okgD7OcaEcVR+lnxPsRrMHOua0=
+github.com/jamesbraid/go-unifi v1.113.1-0.20260917101727-872f4f5a630e h1:6DyCzyW51qPqZlE1TNkUUxD86dJKKITXUJ4t7auRBWQ=
+github.com/jamesbraid/go-unifi v1.113.1-0.20260917101727-872f4f5a630e/go.mod h1:qnj9C4P4BvrlluLL+okgD7OcaEcVR+lnxPsRrMHOua0=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jhump/protoreflect v1.17.0 h1:qOEr613fac2lOuTgWN4tPAtLL7fUSbuJL5X5XumQh94=
