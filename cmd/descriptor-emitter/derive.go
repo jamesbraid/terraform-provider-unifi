@@ -32,6 +32,20 @@ type mappingField struct {
 	// rather than written. A StringField carrying it gets a WriteWhen that
 	// suppresses the write when the value is null or "".
 	SuppressEmptyWrite bool `json:"suppress_empty_write,omitempty"`
+	// ConditionalOmitWrite is the compiler's verdict, from the artifact's
+	// empty_when branch, that this field's write depends on a sibling
+	// discriminator: omitted when the discriminator holds one of the named
+	// values, sent otherwise. A StringField carrying it gets a WriteWhen that
+	// switches on the discriminator.
+	ConditionalOmitWrite *conditionalOmitWrite `json:"conditional_omit_write,omitempty"`
+}
+
+// conditionalOmitWrite mirrors the compiler's discriminator-conditional write
+// rule. DiscriminatorWire is a structural name resolved to its model member
+// here; OmitWhenValues are the discriminator values that must omit the field.
+type conditionalOmitWrite struct {
+	DiscriminatorWire string   `json:"discriminator_wire"`
+	OmitWhenValues    []string `json:"omit_when_values"`
 }
 
 type mapping struct {
@@ -271,6 +285,18 @@ type genField struct {
 	// mapping's suppress_empty_write verdict. Only a StringField carries it:
 	// emptiness is the literal "", which only a string has.
 	SuppressEmpty bool
+	// ConditionalOmit emits a WriteWhen that omits the field when a sibling
+	// discriminator holds one of OmitValues and sends it otherwise, from the
+	// mapping's conditional_omit_write verdict. Only a StringField carries it.
+	ConditionalOmit *conditionalOmit
+}
+
+// conditionalOmit is a resolved discriminator-conditional write rule: the
+// discriminator's model member (e.g. "Type") and the values for which the
+// field is omitted.
+type conditionalOmit struct {
+	DiscriminatorModel string
+	OmitValues         []string
 }
 
 // sdkValueType is the SDK accessor's pointee per kind; the compiler holds
@@ -333,6 +359,13 @@ func deriveFields(
 	patterns map[string]string,
 	hand handFacts,
 ) ([]genField, error) {
+	// Model member for each wire, so a conditional-omit write can name its
+	// discriminator's model field -- the same camel(terraformName) the fields
+	// themselves are emitted with below.
+	modelByWire := make(map[string]string, len(doc.Fields))
+	for _, f := range doc.Fields {
+		modelByWire[f.StructuralName] = camel(f.TerraformName)
+	}
 	var out []genField
 	for _, f := range doc.Fields {
 		if f.Disposition != "managed" || f.StructuralName == "" || f.StructuralName == "_id" {
@@ -403,6 +436,27 @@ func deriveFields(
 				)
 			}
 			field.SuppressEmpty = true
+		}
+		if f.ConditionalOmitWrite != nil {
+			// Same string-only reasoning as suppression above: the write guard
+			// tests the discriminator, but the field it governs carries a "".
+			if kind != "StringField" {
+				return nil, fmt.Errorf(
+					"%s: mapping marks conditional_omit_write on a %s, but it is a string rule",
+					f.StructuralName, kind,
+				)
+			}
+			model, ok := modelByWire[f.ConditionalOmitWrite.DiscriminatorWire]
+			if !ok {
+				return nil, fmt.Errorf(
+					"%s: conditional_omit_write names discriminator wire %q, not a field of this surface",
+					f.StructuralName, f.ConditionalOmitWrite.DiscriminatorWire,
+				)
+			}
+			field.ConditionalOmit = &conditionalOmit{
+				DiscriminatorModel: model,
+				OmitValues:         f.ConditionalOmitWrite.OmitWhenValues,
+			}
 		}
 		out = append(out, field)
 	}

@@ -3,6 +3,7 @@ package providercompiler
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -26,6 +27,14 @@ type behaviorFacts struct {
 	// field left out of the request. Consumed to suppress an empty write
 	// where the controller refuses one but clears on omission.
 	Empty map[string]map[string]behaviorEmptyDisposition `json:"empty"`
+	// EmptyWhen is the per-discriminator empty family: the same measurement as
+	// Empty, but for a field whose disposition varies by a sibling
+	// discriminator's value, keyed collection -> field -> "wire=value" ->
+	// disposition. A field carries an EmptyWhen entry exactly when its flat
+	// Empty omit verdict is OMIT-VARIES-BY-TYPE, the sentinel that says the one
+	// flat value would be false for at least one branch. Consumed into a
+	// discriminator-conditional write guard.
+	EmptyWhen map[string]map[string]map[string]behaviorEmptyDisposition `json:"empty_when"`
 }
 
 // behaviorWrites is one SDK type's measured write behaviour. required_on_create,
@@ -62,7 +71,29 @@ type behaviorEmptyDisposition struct {
 const (
 	emptyRejected = "EMPTY-REJECTED"
 	omitClears    = "OMIT-CLEARS"
+	// omitVariesByType is the flat omit sentinel for a field whose omit verdict
+	// is not one value but depends on a sibling discriminator. It never matches
+	// the suppression pair on its own; it routes the field to its EmptyWhen
+	// branch, where the real per-value verdicts live.
+	omitVariesByType = "OMIT-VARIES-BY-TYPE"
+	// omitOK: the controller accepts the field left out. Paired with
+	// EMPTY-REJECTED for a branch, it means that discriminator value cannot
+	// carry the field at all -- it must be omitted from the write.
+	omitOK = "OMIT-OK"
+	// omitRejected: the controller refuses the field left out, so that
+	// discriminator value must always carry it.
+	omitRejected = "OMIT-REJECTED"
 )
+
+// conditionalOmitWire is the derived write rule for a field whose omit verdict
+// varies by a discriminator (flat omit OMIT-VARIES-BY-TYPE). The write is
+// omitted when the discriminator wire equals one of OmitWhenValues and sent
+// otherwise. Wires are structural names; the emitter resolves them to model
+// members.
+type conditionalOmitWire struct {
+	DiscriminatorWire string   `json:"discriminator_wire"`
+	OmitWhenValues    []string `json:"omit_when_values"`
+}
 
 // behaviorRequiredWires resolves the artifact's required_on_create facts
 // against this compile's structs: the bootstrap's lead struct and its
@@ -222,6 +253,97 @@ func behaviorEmptySuppressedWires(behavior []byte, kind SurfaceKind, source boot
 		return nil, nil
 	}
 	return suppressed, nil
+}
+
+// behaviorConditionalOmitWires resolves, for the surface's controller
+// collection, the wires whose empty family varies by a discriminator: a flat
+// omit verdict of OMIT-VARIES-BY-TYPE, with the real per-value verdicts in the
+// EmptyWhen branch. Each rule names the discriminator wire and the
+// discriminator values the field must be omitted for -- a branch the
+// controller accepts omitted (OMIT-OK) but refuses any value on
+// (EMPTY-REJECTED), so the field cannot exist for that value. Values the
+// controller requires the field on (OMIT-REJECTED) are sent. Nil when there is
+// no artifact, the surface never writes, or no field on it varies.
+//
+// It refuses a branch it cannot model rather than guess: an omit verdict
+// outside {OMIT-OK, OMIT-REJECTED}, an empty verdict other than
+// EMPTY-REJECTED, a key that is not "wire=value", a field marked
+// OMIT-VARIES-BY-TYPE with no branch, or two branches naming different
+// discriminator wires for one field.
+func behaviorConditionalOmitWires(behavior []byte, kind SurfaceKind, source bootstrap) (map[string]conditionalOmitWire, error) {
+	if len(behavior) == 0 {
+		return nil, nil
+	}
+	var document behaviorDocument
+	if err := decodeJSON("behaviour artifact", behavior, &document, true); err != nil {
+		return nil, err
+	}
+	if document.FormatVersion != 1 {
+		return nil, fmt.Errorf("unsupported behaviour artifact format %d", document.FormatVersion)
+	}
+	var facts behaviorFacts
+	if err := decodeJSON("behaviour facts", document.Behavior, &facts, false); err != nil {
+		return nil, err
+	}
+	if kind != ManagedResource || len(facts.Empty) == 0 {
+		return nil, nil
+	}
+	collection := emptyFamilyCollection(source, facts.Writes)
+	if collection == "" {
+		return nil, nil
+	}
+	fields, named := facts.Empty[collection]
+	if !named {
+		return nil, nil
+	}
+	rules := map[string]conditionalOmitWire{}
+	for wire, disposition := range fields {
+		if disposition.Omit != omitVariesByType {
+			continue
+		}
+		branches, ok := facts.EmptyWhen[collection][wire]
+		if !ok || len(branches) == 0 {
+			return nil, fmt.Errorf(
+				"behaviour artifact: %s.%s carries omit %s but no empty_when branch to resolve it",
+				collection, wire, omitVariesByType)
+		}
+		rule := conditionalOmitWire{}
+		for key, branch := range branches {
+			discriminator, value, found := strings.Cut(key, "=")
+			if !found || discriminator == "" || value == "" {
+				return nil, fmt.Errorf(
+					"behaviour artifact: %s.%s empty_when key %q is not \"wire=value\"", collection, wire, key)
+			}
+			if rule.DiscriminatorWire == "" {
+				rule.DiscriminatorWire = discriminator
+			} else if rule.DiscriminatorWire != discriminator {
+				return nil, fmt.Errorf(
+					"behaviour artifact: %s.%s empty_when mixes discriminators %q and %q",
+					collection, wire, rule.DiscriminatorWire, discriminator)
+			}
+			if branch.Empty != emptyRejected {
+				return nil, fmt.Errorf(
+					"behaviour artifact: %s.%s branch %q has empty %q, only %s is modelled",
+					collection, wire, key, branch.Empty, emptyRejected)
+			}
+			switch branch.Omit {
+			case omitOK:
+				rule.OmitWhenValues = append(rule.OmitWhenValues, value)
+			case omitRejected:
+				// The controller requires the field for this value; it is sent.
+			default:
+				return nil, fmt.Errorf(
+					"behaviour artifact: %s.%s branch %q has omit %q, only %s and %s are modelled",
+					collection, wire, key, branch.Omit, omitOK, omitRejected)
+			}
+		}
+		sort.Strings(rule.OmitWhenValues)
+		rules[wire] = rule
+	}
+	if len(rules) == 0 {
+		return nil, nil
+	}
+	return rules, nil
 }
 
 // emptyFamilyCollection resolves the controller collection the empty family

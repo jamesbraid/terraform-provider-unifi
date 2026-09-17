@@ -152,6 +152,14 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, err
 	}
 
+	// Wires whose omit disposition varies by a discriminator (OMIT-VARIES-BY-TYPE):
+	// resolved through the artifact's empty_when branch into a
+	// discriminator-conditional write guard, not a flat suppression.
+	conditionalOmitWires, err := behaviorConditionalOmitWires(input.Behavior, rules.SurfaceKind, source)
+	if err != nil {
+		return Result{}, err
+	}
+
 	// List and set wires the controller requires a minimum element count in.
 	// Derived into a plan-time size validator on the matching attribute, laid
 	// into the policy field's own validators before the build reads it -- the
@@ -403,6 +411,11 @@ func Compile(input CompileInput) (Result, error) {
 		}
 		_, suppressEmptyWrite := suppressedEmptyWires[name]
 		_, providerFillsRequired := providerFilled[name]
+		var conditionalOmit *conditionalOmitWire
+		if rule, ok := conditionalOmitWires[name]; ok && field.Disposition == "managed" {
+			ruleCopy := rule
+			conditionalOmit = &ruleCopy
+		}
 		mapping.Fields = append(mapping.Fields, mappingField{
 			StructuralName:            name,
 			TerraformName:             field.TerraformName,
@@ -411,6 +424,7 @@ func Compile(input CompileInput) (Result, error) {
 			Disposition:               field.Disposition,
 			SuppressEmptyWrite:        suppressEmptyWrite && field.Disposition == "managed",
 			ProviderFillsRequiredWire: providerFillsRequired && field.Disposition == "managed",
+			ConditionalOmitWrite:      conditionalOmit,
 		})
 		if field.Disposition == "managed" || field.Disposition == "computed" {
 			if _, must := requiredWires[name]; must && field.Disposition == "managed" {

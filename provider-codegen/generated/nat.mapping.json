@@ -54,7 +54,12 @@
       "structural_type": "string",
       "terraform_type": "string",
       "disposition": "managed",
-      "suppress_empty_write": true
+      "conditional_omit_write": {
+        "discriminator_wire": "type",
+        "omit_when_values": [
+          "MASQUERADE"
+        ]
+      }
     },
     {
       "structural_name": "ip_version",

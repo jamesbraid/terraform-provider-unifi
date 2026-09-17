@@ -190,6 +190,20 @@ func render(
 				"\t\t\tWriteWhen: func(m *%s) bool { return !m.%s.IsNull() && m.%s.ValueString() != \"\" },\n",
 				modelName, f.Model, f.Model)
 		}
+		if f.ConditionalOmit != nil {
+			quoted := make([]string, len(f.ConditionalOmit.OmitValues))
+			for i, v := range f.ConditionalOmit.OmitValues {
+				quoted[i] = fmt.Sprintf("%q", v)
+			}
+			fmt.Fprintf(&b, "\t\t\tWriteWhen: func(m *%s) bool {\n", modelName)
+			fmt.Fprintf(&b, "\t\t\t\tswitch m.%s.ValueString() {\n", f.ConditionalOmit.DiscriminatorModel)
+			fmt.Fprintf(&b, "\t\t\t\tcase %s:\n", strings.Join(quoted, ", "))
+			fmt.Fprintf(&b, "\t\t\t\t\treturn false\n")
+			fmt.Fprintf(&b, "\t\t\t\tdefault:\n")
+			fmt.Fprintf(&b, "\t\t\t\t\treturn true\n")
+			fmt.Fprintf(&b, "\t\t\t\t}\n")
+			fmt.Fprintf(&b, "\t\t\t},\n")
+		}
 		fmt.Fprintf(&b, "\t\t},\n")
 	}
 	fmt.Fprintf(&b, "\t}\n}\n")
