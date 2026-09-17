@@ -37,7 +37,7 @@
         "default": {
           "static": "wan"
         },
-        "description": "The interface for the dynamic DNS. Can be `wan` or `wan2`.",
+        "description": "The WAN interface for the dynamic DNS. One of `wan`, or `wan2` through `wan9`.",
         "plan_modifiers": [
           {
             "custom": {
@@ -47,18 +47,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.RequiresReplace()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"wan\", \"wan2\")"
             }
           }
         ]

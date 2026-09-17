@@ -78,19 +78,7 @@
         {
           "attribute": {
             "computed_optional_required": "optional",
-            "description": "The WAN interface for this destination (e.g. `wan`, `wan2`).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"wan\", \"wan2\")"
-                }
-              }
-            ]
+            "description": "The WAN interface for this destination. One of `wan`, or `wan2` through `wan9`."
           },
           "disposition": "managed",
           "structural_name": "interface",
@@ -122,19 +110,7 @@
         {
           "attribute": {
             "computed_optional_required": "optional",
-            "description": "The WAN interface. Can be `wan`, `wan2`, or `both`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"wan\", \"wan2\", \"both\")"
-                }
-              }
-            ]
+            "description": "The WAN interface. One of `wan`, `wan2` through `wan9`, `both`, or `all`."
           },
           "disposition": "managed",
           "structural_name": "pfwd_interface",

@@ -2656,14 +2656,13 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "The interface for the dynamic DNS. Can be `wan` or `wan2`.",
+          "description": "The WAN interface for the dynamic DNS. One of `wan`, or `wan2` through `wan9`.",
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to wan",
           "plan_modifiers": [
             "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource."
           ],
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]",
             "controllerregex.matchesValidator: value must match regular expression 'wan[2-9]?'"
           ]
         },
@@ -5934,10 +5933,9 @@
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
-          "description": "The WAN interface for this destination (e.g. `wan`, `wan2`).",
+          "description": "The WAN interface for this destination. One of `wan`, or `wan2` through `wan9`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]",
             "controllerregex.matchesValidator: value must match regular expression 'wan[2-9]?'"
           ]
         },
@@ -6136,10 +6134,9 @@
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
-          "description": "The WAN interface. Can be `wan`, `wan2`, or `both`.",
+          "description": "The WAN interface. One of `wan`, `wan2` through `wan9`, `both`, or `all`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\" \"both\"]",
             "controllerregex.matchesValidator: value must match regular expression 'wan[2-9]?|both|all'"
           ]
         },
