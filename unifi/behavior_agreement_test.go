@@ -44,7 +44,7 @@ func loadBehaviorArtifact(t *testing.T) behaviorArtifactDocument {
 	path := filepath.Join("..", "provider-codegen", "bootstrap", "behavior.json")
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("the behaviour artifact is this check's oracle and it is unreadable: %v\n"+
+		t.Fatalf("the behaviour artifact is this check's source of truth and it is unreadable: %v\n"+
 			"    Regenerate it: cd provider-codegen && go generate ./...", err)
 	}
 	var document behaviorArtifactDocument
@@ -74,7 +74,7 @@ func loadCommittedSchemaSnapshot(t *testing.T) providerSchemaSnapshot {
 	t.Helper()
 	raw, err := os.ReadFile(schemaSnapshotPath)
 	if err != nil {
-		t.Fatalf("the schema snapshot is this check's other oracle and it is unreadable: %v\n"+
+		t.Fatalf("the schema snapshot is this check's other source of truth and it is unreadable: %v\n"+
 			"    Run UPDATE_SCHEMA_SNAPSHOT=1 go test ./unifi/ -run TestProviderSchemaSnapshot", err)
 	}
 	var snapshot providerSchemaSnapshot

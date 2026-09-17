@@ -41,7 +41,7 @@ func readMapping(t *testing.T, artifact string) mappingArtifact {
 	path := filepath.Join("..", "provider-codegen", "generated", artifact+".mapping.json")
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("the mapping artifact is the oracle for this check and it is unreadable: %v", err)
+		t.Fatalf("the mapping artifact is the source of truth for this check and it is unreadable: %v", err)
 	}
 	var parsed mappingArtifact
 	if err := json.Unmarshal(raw, &parsed); err != nil {
