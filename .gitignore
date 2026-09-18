@@ -96,6 +96,7 @@ __debug_bin*
 # cmd binaries begin
 /action-gen
 /descriptor-emitter
+/firewall-capability-gen
 /generated-value-strip
 /list-resource-gen
 /metadata-contract-gen
