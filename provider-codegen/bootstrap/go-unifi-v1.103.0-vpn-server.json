@@ -2,8 +2,8 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.113.1-0.20260917101727-872f4f5a630e",
-    "commit": "872f4f5a630ed0fda2386ccd950d0fe4c744ca8e",
+    "version": "v1.113.1-0.20260917161811-e3eb2d5d535d",
+    "commit": "e3eb2d5d535dc78c2ee80293f444353a2cdc4655",
     "specification_sha256": "58a62319859b17302c33c9e9e450ce621c646b1fe2b38b7ee787308721c0d094"
   },
   "resource": {

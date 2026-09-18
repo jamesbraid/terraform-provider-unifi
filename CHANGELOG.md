@@ -94,7 +94,9 @@ All notable changes to this project will be documented in this file.
 
 ### 🔧 Maintenance
 
-- The bundled go-unifi client is now v1.113.0. Its error messages no
+- The bundled go-unifi client is now v1.114.0 (17 documented breaking
+  Go API changes from v1.113.0; the provider pins by commit and builds
+  against all of them). Its error messages no
   longer include the request body at all (previously appended to every
   failed request's error, redacted by field-name guesswork), and when a
   caller opts back in, redaction is derived from the controller's own
