@@ -7,45 +7,45 @@ import (
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/firewallcapability"
 )
 
-// TestFirewallPolicyProtocolMatrixMatchesTheMeasuredSets pins the three
-// buckets to the matrix measured against UniFi Network 10.6.101,
-// 2026-08-28: 23 universal names/numbers, 29 IPv4-only, 6 IPv6-only, plus
-// the one name ("ipv6-icmp") the controller never accepts under any
-// ip_version. A change to any set is a new measurement, not a refactor --
-// this test fails loudly if one drifts.
-func TestFirewallPolicyProtocolMatrixMatchesTheMeasuredSets(t *testing.T) {
-	if got, want := len(firewallPolicyUniversalProtocols), 23; got != want {
-		t.Errorf("universal set has %d entries, want %d", got, want)
+// TestFirewallPolicyCapabilityMatrixIsDerivedAndSane checks the generated
+// matrix (firewallcapability.Matrix, derived from the behaviour artifact)
+// carries the controller's measured verdicts: a universal name accepted under
+// every ip_version, an IPv4-only name refused under IPV6 and BOTH, icmpv6
+// IPv6-only, the numeric/name asymmetry (58 accepted under IPV4 where the name
+// icmpv6 is not), and BOTH behaving as the intersection. It also confirms the
+// non-existent name "ipv6-icmp" has no entry -- the vocabulary validator, not
+// this matrix, is what rejects a name the controller does not have.
+func TestFirewallPolicyCapabilityMatrixIsDerivedAndSane(t *testing.T) {
+	m := firewallcapability.Matrix
+	if len(m) == 0 {
+		t.Fatal("the generated capability matrix is empty")
 	}
-	if got, want := len(firewallPolicyIPv4OnlyProtocols), 29; got != want {
-		t.Errorf("IPv4-only set has %d entries, want %d", got, want)
+	cases := []struct {
+		key  string
+		want bool
+	}{
+		{"IPV4|tcp", true}, {"IPV6|tcp", true}, {"BOTH|tcp", true},
+		{"IPV4|icmp", true}, {"IPV6|icmp", false}, {"BOTH|icmp", false},
+		{"IPV6|icmpv6", true}, {"IPV4|icmpv6", false}, {"BOTH|icmpv6", false},
+		{"IPV4|58", true}, // the numeric form escapes the ip_version gate the name is under
 	}
-	if got, want := len(firewallPolicyIPv6OnlyProtocols), 6; got != want {
-		t.Errorf("IPv6-only set has %d entries, want %d", got, want)
-	}
-
-	for _, name := range []string{"all", "tcp", "udp", "tcp_udp", "6", "58", "ospf"} {
-		if !firewallPolicyUniversalProtocols[name] {
-			t.Errorf("%q missing from the universal set", name)
+	for _, c := range cases {
+		got, measured := m[c.key]
+		if !measured {
+			t.Errorf("%q: absent from the matrix, expected a measured verdict", c.key)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("%q = %v, want %v", c.key, got, c.want)
 		}
 	}
-	for _, name := range []string{"icmp", "igmp", "ip"} {
-		if !firewallPolicyIPv4OnlyProtocols[name] {
-			t.Errorf("%q missing from the IPv4-only set", name)
+	for _, v := range []string{"IPV4", "IPV6", "BOTH"} {
+		if _, present := m[v+"|ipv6-icmp"]; present {
+			t.Errorf("%s|ipv6-icmp is in the matrix; that name does not exist on the controller", v)
 		}
-	}
-	for _, name := range []string{"icmpv6", "ipv6", "ipv6-route"} {
-		if !firewallPolicyIPv6OnlyProtocols[name] {
-			t.Errorf("%q missing from the IPv6-only set", name)
-		}
-	}
-	if firewallPolicyUniversalProtocols["ipv6-icmp"] ||
-		firewallPolicyIPv4OnlyProtocols["ipv6-icmp"] ||
-		firewallPolicyIPv6OnlyProtocols["ipv6-icmp"] {
-		t.Error(`"ipv6-icmp" must not appear in any of the three sets -- ` +
-			"it is measured unsupported under every ip_version")
 	}
 }
 
@@ -158,10 +158,12 @@ func Test_firewallPolicyProtocolIPVersionConfigValidator_ValidateResource(t *tes
 		// unlike the name, the number is accepted under IPV4.
 		{"numeric_form_under_ipv4", types.StringValue("58"), types.StringValue("IPV4"), false},
 		{"name_form_under_ipv4", types.StringValue("icmpv6"), types.StringValue("IPV4"), true},
-		// Always unsupported, regardless of ip_version.
-		{"never_under_ipv4", types.StringValue("ipv6-icmp"), types.StringValue("IPV4"), true},
-		{"never_under_ipv6", types.StringValue("ipv6-icmp"), types.StringValue("IPV6"), true},
-		{"never_under_both", types.StringValue("ipv6-icmp"), types.StringValue("BOTH"), true},
+		// "ipv6-icmp" is not a controller protocol name (the name is icmpv6),
+		// so the matrix has no row and this cross-field validator stays silent;
+		// the protocol vocabulary validator rejects the name instead.
+		{"nonexistent_name_under_ipv4", types.StringValue("ipv6-icmp"), types.StringValue("IPV4"), false},
+		{"nonexistent_name_under_ipv6", types.StringValue("ipv6-icmp"), types.StringValue("IPV6"), false},
+		{"nonexistent_name_under_both", types.StringValue("ipv6-icmp"), types.StringValue("BOTH"), false},
 		// Unset ip_version resolves to the schema default, IPV4.
 		{"unset_ip_version_with_ipv4_only", types.StringValue("icmp"), types.StringNull(), false},
 		{"unset_ip_version_with_ipv6_only", types.StringValue("icmpv6"), types.StringNull(), true},

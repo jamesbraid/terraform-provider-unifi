@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/firewallcapability"
 	resource_firewall_policy "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
@@ -135,62 +136,27 @@ func (r *firewallPolicyKitResource) ConfigValidators(
 	return []resource.ConfigValidator{&firewallPolicyProtocolIPVersionConfigValidator{}}
 }
 
-// firewallPolicyUniversalProtocols accepts on any declared ip_version
-// (BOTH/IPV4/IPV6). Includes two numeric forms ("6", "58") alongside their
-// names' asymmetric siblings: the controller accepts a protocol *number*
-// under any ip_version even where the equivalent *name* is gated -- "58"
-// (icmpv6's protocol number) passes under IPV4, where the name "icmpv6"
-// does not. Measured against UniFi Network 10.6.101, 2026-08-28; see
-// TestFirewallPolicyProtocolMatrixMatchesTheMeasuredSets.
-var firewallPolicyUniversalProtocols = map[string]bool{
-	"all": true, "tcp": true, "udp": true, "tcp_udp": true,
-	"6": true, "58": true,
-	"ah": true, "dccp": true, "eigrp": true, "esp": true, "gre": true,
-	"ipcomp": true, "isis": true, "l2tp": true, "manet": true,
-	"mobility-header": true, "mpls-in-ip": true, "ospf": true, "pim": true,
-	"rsvp": true, "sctp": true, "shim6": true, "vrrp": true,
-}
+//go:generate go run ../cmd/firewall-capability-gen -behavior ../provider-codegen/bootstrap/behavior.json -output ../internal/generated/firewallcapability/matrix_gen.go
 
-// firewallPolicyIPv4OnlyProtocols accepts only when ip_version is IPV4.
-// Same measurement as firewallPolicyUniversalProtocols.
-var firewallPolicyIPv4OnlyProtocols = map[string]bool{
-	"ax.25": true, "ddp": true, "egp": true, "encap": true, "etherip": true,
-	"fc": true, "ggp": true, "hip": true, "hmp": true, "icmp": true,
-	"idpr-cmtp": true, "idrp": true, "igmp": true, "igp": true, "ip": true,
-	"ipencap": true, "ipip": true, "iso-tp4": true, "pup": true, "rdp": true,
-	"rohc": true, "rspf": true, "skip": true, "st": true, "udplite": true,
-	"vmtp": true, "wesp": true, "xns-idp": true, "xtp": true,
-}
-
-// firewallPolicyIPv6OnlyProtocols accepts only when ip_version is IPV6.
-// Same measurement as firewallPolicyUniversalProtocols.
-var firewallPolicyIPv6OnlyProtocols = map[string]bool{
-	"icmpv6": true, "ipv6": true, "ipv6-frag": true, "ipv6-nonxt": true,
-	"ipv6-opts": true, "ipv6-route": true,
-}
-
-// firewallPolicyProtocolAllowedForIPVersion answers whether the matrix has
-// positive evidence protocol is valid for ipVersion. A protocol this matrix
-// never measured returns true (no claim, not an assertion of validity) --
-// this provider only narrows what it has measured. protocol's own derived
-// RegexMatches (go-unifi v1.110.0's vocabulary, confirmed to match this
-// matrix's measured union exactly; SDK-bump task 3) knows nothing about
-// ip_version, so this per-version narrowing still has to happen here.
-// "ipv6-icmp" is the one name measured unsupported under every ip_version
-// (the controller always answers "unsupported on IP version" for it), so it
-// is rejected unconditionally rather than folded into a per-version set.
+// firewallPolicyProtocolAllowedForIPVersion answers whether the controller
+// accepts protocol under ipVersion, read from the capability matrix generated
+// out of the behaviour artifact (firewallcapability.Matrix). The matrix keys
+// each protocol -- name or numeric form -- by ip_version, exactly as the
+// go-unifi lane measured it against a live controller across 10.4.57, 10.5.67
+// and 10.6.101. A pair the matrix never measured returns true: this provider
+// narrows only what has been measured and never invents a verdict, so an
+// unswept numeric protocol stays silent rather than permissive.
+//
+// The verdict keys on (protocol, ip_version) alone. It deliberately does not
+// consider matching_target or zone kind: those gate a different field
+// (a target not applicable to a zone), and folding them in here would reject
+// configs the controller accepts on predefined zones. protocol's own derived
+// vocabulary validator rejects a name the controller does not have -- so a
+// non-existent name like "ipv6-icmp" (the controller's name is "icmpv6") is
+// caught there, and correctly absent from this matrix.
 func firewallPolicyProtocolAllowedForIPVersion(protocol, ipVersion string) bool {
-	if protocol == "ipv6-icmp" {
-		return false
-	}
-	if firewallPolicyUniversalProtocols[protocol] {
-		return true
-	}
-	if firewallPolicyIPv4OnlyProtocols[protocol] {
-		return ipVersion == "IPV4"
-	}
-	if firewallPolicyIPv6OnlyProtocols[protocol] {
-		return ipVersion == "IPV6"
+	if accepted, measured := firewallcapability.Matrix[ipVersion+"|"+protocol]; measured {
+		return accepted
 	}
 	return true
 }
