@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.114.0] - 2026-09-18
+
 ### ✨ Features
 
 - **Six new resources**, each derived from the controller's own
