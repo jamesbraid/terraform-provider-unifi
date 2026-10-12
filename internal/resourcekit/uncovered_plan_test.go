@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -110,6 +111,87 @@ func TestApplyPlanToStateLeavesHookOwnedAttributesToTheHook(t *testing.T) {
 	if state.Vlan.ValueInt64() != 76 {
 		t.Errorf("vlan = %v, want the reconciled 76; a hook-owned attribute must not be "+
 			"overwritten by the raw plan", state.Vlan)
+	}
+}
+
+func TestUpdateHandsAHookOwnedAttributeThePlannedValue(t *testing.T) {
+	// Name is made hook-owned and Field-less, written through AlwaysWire --
+	// the shape of unifi_device's radio_table: the plan copy skips it, and the
+	// AfterReceive hook rebuilds it from the model it is handed. That model must already carry the
+	// plan's value -- a device imported without radios has none in state, and
+	// a hook working from that stale null kept it null, so the apply failed as
+	// an inconsistent result even though the write had landed.
+	r := kitResource(Backend[kitSDK]{
+		UpdateFields: func(_ context.Context, _ string, in *kitSDK, _ ...string) (*kitSDK, error) {
+			return &kitSDK{ID: in.ID}, nil
+		},
+	})
+	r.Spec.Fields = nil
+	r.Spec.AlwaysWire = []string{"name"}
+	r.Spec.HookOwned = []func(*kitModel) any{
+		func(m *kitModel) any { return &m.Name },
+	}
+	var hookSaw types.String
+	r.Spec.AfterReceive = func(_ context.Context, _ *kitSDK, model *kitModel, _ kitModel, _ any) diag.Diagnostics {
+		hookSaw = model.Name
+		return nil
+	}
+	ctx := context.Background()
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("before"),
+	})
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("after"),
+	})
+	identity := kitIdentity(t)
+	resp := &resource.UpdateResponse{State: state, Identity: &identity}
+	r.Update(ctx, resource.UpdateRequest{
+		State:  state,
+		Plan:   tfsdk.Plan(plan),
+		Config: tfsdk.Config(plan),
+	}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+	if hookSaw.ValueString() != "after" {
+		t.Errorf("the hook saw name = %v, want the planned after; a hook that rebuilds "+
+			"its attribute from the old state reports the old value back", hookSaw)
+	}
+	var name types.String
+	if diags := resp.State.GetAttribute(ctx, path.Root("name"), &name); diags.HasError() {
+		t.Fatalf("reading name: %v", diags)
+	}
+	if name.ValueString() != "after" {
+		t.Errorf("name = %v, want after; the result disagrees with the plan", name)
+	}
+}
+
+func TestCopyHookOwnedPlanValuesLeavesUnsetPlanValuesAlone(t *testing.T) {
+	spec := uncoveredSpec()
+	spec.HookOwned = []func(*uncoveredModel) any{
+		func(m *uncoveredModel) any { return &m.Vlan },
+	}
+	state := uncoveredModel{
+		ID:   types.StringValue("id-1"),
+		Vlan: types.Int64Value(76),
+	}
+	plan := uncoveredModel{
+		ID:   types.StringValue("id-1"),
+		Vlan: types.Int64Null(),
+	}
+	spec.copyHookOwnedPlanValues(&plan, &state)
+	if state.Vlan.ValueInt64() != 76 {
+		t.Errorf("vlan = %v, want the state's 76; a null plan value is an absence, "+
+			"not an instruction", state.Vlan)
+	}
+
+	plan.Vlan = types.Int64Unknown()
+	spec.copyHookOwnedPlanValues(&plan, &state)
+	if state.Vlan.IsUnknown() || state.Vlan.ValueInt64() != 76 {
+		t.Errorf("vlan = %v, want the state's 76; an unknown must never overwrite a "+
+			"known value", state.Vlan)
 	}
 }
 

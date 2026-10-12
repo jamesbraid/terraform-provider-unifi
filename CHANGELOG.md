@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### 🐛 Bug Fixes
+
+- **`unifi_device`: declaring `radio_table` on a device whose state holds
+  none no longer fails the apply.** The radios were written, but the apply
+  ended in "Provider produced inconsistent result ... but now null". Any
+  imported device hits this, since import does not read radios into state.
+  The update path skips `HookOwned` attributes when it merges the plan
+  into state, so the reconcile hook rebuilt `radio_table` from the stale
+  null rather than from what was just declared. The plan's value is now
+  copied in before the write; the skip after the write, which keeps the
+  hook's reconciled value from being overwritten, is unchanged. Checked
+  on 10.6.106: a U6 Pro, imported and then taken 80 → 40 → 80 MHz,
+  applies cleanly each time and re-plans with no changes.
+
 ## [v0.114.0] - 2026-09-18
 
 ### ✨ Features

@@ -268,6 +268,30 @@ func (s Spec[M, S]) applyOwnFieldsToState(plan, state *M) {
 	}
 }
 
+// copyHookOwnedPlanValues moves the plan's known, non-null value for each
+// HookOwned attribute into state. ApplyPlanToState skips these so the plan
+// cannot overwrite what the hook reconciled from the controller's answer --
+// right after the write. Before the write the hook has not run, and its prior
+// is this state: left at the old value, a hook that rebuilds its attribute
+// from prior has the wrong template. unifi_device's radio_table is the case:
+// declared on a device whose state held none (any import), the hook saw a null
+// prior, kept it null, and the apply failed as an inconsistent result even
+// though the radios were written.
+func (s Spec[M, S]) copyHookOwnedPlanValues(plan, state *M) {
+	for _, accessor := range s.HookOwned {
+		dst := reflect.ValueOf(accessor(state))
+		src := reflect.ValueOf(accessor(plan))
+		if dst.Kind() != reflect.Ptr || src.Kind() != reflect.Ptr {
+			continue
+		}
+		value, ok := src.Elem().Interface().(attr.Value)
+		if !ok || value.IsNull() || value.IsUnknown() {
+			continue
+		}
+		dst.Elem().Set(src.Elem())
+	}
+}
+
 // copyUncoveredPlanValues moves every set plan value no Field claims -- needed
 // because a hook-derived attribute (e.g. network's vlan) has no Field to carry
 // the plan's change forward. A known, non-null plan value wins; null and
@@ -574,6 +598,9 @@ func (r *Resource[M, S]) Update(
 	priorState := state
 
 	r.Spec.ApplyPlanToState(&plan, &state)
+	// The merge above leaves hook-owned attributes at their old value, but
+	// this state becomes AfterReceive's prior, so the hook needs the plan's.
+	r.Spec.copyHookOwnedPlanValues(&plan, &state)
 	site := r.Site(&state)
 
 	// Config is read ahead of the mask and ToSDK for the same reason as
