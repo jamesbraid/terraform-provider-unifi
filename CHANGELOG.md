@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.114.1] - 2026-10-26
+
+### 🔒 Fixed
+
+- **State written by 0.101.2 plans again.** Upgrading from 0.101.2 to
+  0.114.0 failed every plan in two ways:
+  - every `unifi_client` failed with `attribute "id" is required` and no
+    resource address. 0.101.2 stored a client's identity as `mac` alone,
+    and a later release added `id` without raising the identity schema
+    version, so OpenTofu could not decode the stored identity.
+    (Terraform 1.16 decoded it, then failed with `Unexpected Identity
+    Change` instead.) The client identity schema is now version 1, and
+    the upgrade carries `mac` over and leaves `id` null.
+  - an imported `unifi_dynamic_dns` failed with `Unexpected Identity
+    Change`, because 0.101.2 stored its identity's `site` as null and a
+    refresh now filled in the default site.
+
+  Refresh now returns a stored identity unchanged on every resource, and
+  writes one only when none was stored. An acceptance test creates state
+  with 0.101.2, then plans it with the current build and expects no
+  errors, no changes and the same identities.
+
 ## [v0.114.0] - 2026-09-18
 
 ### ✨ Features
