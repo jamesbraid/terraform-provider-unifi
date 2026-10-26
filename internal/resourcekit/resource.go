@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
@@ -532,9 +533,20 @@ func (r *Resource[M, S]) Read(
 	prior := data
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, found, &data, site)...)
 	resp.Diagnostics.Append(r.afterReceive(ctx, found, &data, prior, prefetched)...)
-	resp.Diagnostics.Append(
-		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
+	if !HasStoredIdentity(req.Identity) {
+		resp.Diagnostics.Append(
+			resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// HasStoredIdentity reports whether Read was handed an identity it must return
+// unchanged. The framework rejects any change to one on refresh, and the
+// response identity already starts as a copy of it, so Read only writes an
+// identity when none was stored -- state from before identity support, or an
+// import that routed by name.
+func HasStoredIdentity(identity *tfsdk.ResourceIdentity) bool {
+	return identity != nil && !identity.Raw.IsFullyNull()
 }
 
 func (r *Resource[M, S]) Update(
