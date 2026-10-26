@@ -116,7 +116,10 @@ func (r *dynamicDNSKitResource) Read(
 	resp *resource.ReadResponse,
 ) {
 	r.Resource.Read(ctx, req, resp)
-	if resp.Diagnostics.HasError() || resp.State.Raw.IsNull() {
+	// An import under 0.101.2 stored site as null; refreshing it to the
+	// default site would be an identity change, which the framework refuses.
+	if resp.Diagnostics.HasError() || resp.State.Raw.IsNull() ||
+		resourcekit.HasStoredIdentity(req.Identity) {
 		return
 	}
 	var site types.String
