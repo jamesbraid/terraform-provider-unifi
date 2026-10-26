@@ -2,6 +2,7 @@ package unifi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -30,11 +31,12 @@ type clientKitResource struct {
 }
 
 var (
-	_ resource.Resource                = &clientKitResource{}
-	_ resource.ResourceWithImportState = &clientKitResource{}
-	_ resource.ResourceWithIdentity    = &clientKitResource{}
-	_ list.ListResource                = &clientKitResource{}
-	_ list.ListResourceWithConfigure   = &clientKitResource{}
+	_ resource.Resource                    = &clientKitResource{}
+	_ resource.ResourceWithImportState     = &clientKitResource{}
+	_ resource.ResourceWithIdentity        = &clientKitResource{}
+	_ resource.ResourceWithUpgradeIdentity = &clientKitResource{}
+	_ list.ListResource                    = &clientKitResource{}
+	_ list.ListResourceWithConfigure       = &clientKitResource{}
 )
 
 func newClientKitResource() *clientKitResource {
@@ -89,6 +91,10 @@ func (r *clientKitResource) IdentitySchema(
 	resp *resource.IdentitySchemaResponse,
 ) {
 	resp.IdentitySchema = identityschema.Schema{
+		// Version 1 because id was added under version 0: 0.101.2 stored
+		// mac alone, and core cannot decode that against an id+mac schema of
+		// the same version.
+		Version: 1,
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{OptionalForImport: true},
 			"mac": identityschema.StringAttribute{
@@ -96,6 +102,34 @@ func (r *clientKitResource) IdentitySchema(
 				OptionalForImport: true,
 			},
 		},
+	}
+}
+
+// UpgradeIdentity reads a version 0 identity as raw JSON because version 0
+// had two shapes: mac alone (0.101.2) and id plus mac (later releases).
+func (r *clientKitResource) UpgradeIdentity(context.Context) map[int64]resource.IdentityUpgrader {
+	return map[int64]resource.IdentityUpgrader{
+		0: {IdentityUpgrader: func(
+			ctx context.Context,
+			req resource.UpgradeIdentityRequest,
+			resp *resource.UpgradeIdentityResponse,
+		) {
+			var prior struct {
+				ID  *string `json:"id"`
+				MAC *string `json:"mac"`
+			}
+			if err := json.Unmarshal(req.RawIdentity.JSON, &prior); err != nil {
+				resp.Diagnostics.AddError("Error Upgrading Client Identity", resourcekit.DiagErrorText(err))
+				return
+			}
+			resp.Diagnostics.Append(resp.Identity.Set(ctx, struct {
+				ID  types.String       `tfsdk:"id"`
+				MAC hwtypes.MACAddress `tfsdk:"mac"`
+			}{
+				ID:  types.StringPointerValue(prior.ID),
+				MAC: hwtypes.MACAddress{StringValue: types.StringPointerValue(prior.MAC)},
+			})...)
+		}},
 	}
 }
 
