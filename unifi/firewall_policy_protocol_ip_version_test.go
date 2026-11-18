@@ -27,9 +27,15 @@ func TestFirewallPolicyCapabilityMatrixIsDerivedAndSane(t *testing.T) {
 		key  string
 		want bool
 	}{
-		{"IPV4|tcp", true}, {"IPV6|tcp", true}, {"BOTH|tcp", true},
-		{"IPV4|icmp", true}, {"IPV6|icmp", false}, {"BOTH|icmp", false},
-		{"IPV6|icmpv6", true}, {"IPV4|icmpv6", false}, {"BOTH|icmpv6", false},
+		{"IPV4|tcp", true},
+		{"IPV6|tcp", true},
+		{"BOTH|tcp", true},
+		{"IPV4|icmp", true},
+		{"IPV6|icmp", false},
+		{"BOTH|icmp", false},
+		{"IPV6|icmpv6", true},
+		{"IPV4|icmpv6", false},
+		{"BOTH|icmpv6", false},
 		{"IPV4|58", true}, // the numeric form escapes the ip_version gate the name is under
 	}
 	for _, c := range cases {
